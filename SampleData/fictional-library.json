@@ -1,0 +1,64 @@
+{
+  "fixtureVersion": 1,
+  "books": [
+    {
+      "id": "fiction-book-001",
+      "title": "雾港档案",
+      "contributors": [
+        {
+          "name": "林汐远",
+          "role": "author"
+        }
+      ],
+      "publisher": "远灯出版社",
+      "source": "虚构的海岬书店",
+      "list": "待探索",
+      "tags": [
+        "虚构",
+        "城市"
+      ]
+    },
+    {
+      "id": "fiction-book-002",
+      "title": "机器与花园",
+      "contributors": [
+        {
+          "name": "周弦",
+          "role": "author"
+        }
+      ],
+      "publisher": "青铜叶出版",
+      "source": "虚构的纸桥书讯",
+      "list": "主题阅读",
+      "tags": [
+        "虚构",
+        "技术"
+      ]
+    },
+    {
+      "id": "fiction-book-003",
+      "title": "星图索引",
+      "contributors": [
+        {
+          "name": "许澄野",
+          "role": "author"
+        }
+      ],
+      "publisher": "北纬书房",
+      "source": "虚构的朋友推荐",
+      "list": "待探索",
+      "tags": [
+        "虚构",
+        "地图"
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "from": "fiction-book-001",
+      "to": "fiction-book-003",
+      "kind": "read-with"
+    }
+  ]
+}
+

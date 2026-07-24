@@ -1,0 +1,71 @@
+# macOS
+.DS_Store
+.AppleDouble
+
+# Xcode and Swift build output
+DerivedData/
+.build/
+Build/
+build/
+*.xcuserstate
+xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcworkspace/xcuserdata/
+
+# Local and personal library data
+LocalData/*
+!LocalData/README.md
+!LocalData/.gitkeep
+PrivateData/
+PersonalData/
+Imports/
+ImportTemp/
+Exports/
+Backups/
+CoverCache/
+Logs/
+
+# Databases and database sidecars
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+*.db
+*.db-wal
+*.db-shm
+*.db-journal
+
+# User exports and backups
+*.bookatlas-export
+*.bookatlas-backup
+*.backup
+*.bak
+
+# Secrets, local configuration, and signing material
+.env
+.env.*
+!.env.example
+PrivateConfig/
+Secrets/
+*.p12
+*.pfx
+*.cer
+*.mobileprovision
+*.provisionprofile
+*.key
+*.pem
+*credentials*.json
+*secrets*.json
+
+# Private file-access permission data
+*.bookmark
+*.bookmarks
+*.security-scoped-bookmark
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*.swp
+*~
