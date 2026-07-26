@@ -7,8 +7,8 @@ The roadmap is sequential. Complete a prompt's acceptance criteria, real validat
 ### Milestone 0 — foundation and technical confidence
 
 - **Prompt 0:** repository audit, rules, privacy boundaries, documentation, ADR mechanism, and plans.
-- **Prompt 1:** isolated technical experiments for persistence, migration, macOS UI, graph rendering, external links, file authorization, and build/test commands.
-- **Prompt 2:** minimal runnable sandboxed macOS application skeleton.
+- **Prompt 1:** completed isolated technical experiments for persistence, migration, macOS UI, graph rendering, external links, file authorization, and build/test commands; see the Milestone 0 plan and ADR-0002 through ADR-0006.
+- **Prompt 2:** completed minimal runnable sandboxed macOS application skeleton with native navigation, placeholders, unit tests, and UI smoke coverage; see the Milestone 0 plan.
 
 Exit condition: the toolchain and deployment target are documented, key technology choices have evidence-backed ADRs, and a minimal app builds and tests reproducibly.
 
@@ -59,4 +59,3 @@ At every stage:
 4. run the real build and relevant tests once those commands exist;
 5. update documentation and state unverified behavior and risk;
 6. stop on conflicts, private data, destructive-cleanup needs, or assumptions invalidated by repository facts.
-

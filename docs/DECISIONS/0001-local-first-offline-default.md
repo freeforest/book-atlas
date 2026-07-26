@@ -14,7 +14,7 @@ Book Atlas will be a sandboxed native macOS application whose primary data store
 
 User-initiated import, export, backup, restore, and opening of validated external links are compatible with this decision. Any future network feature requires a separate accepted ADR with a concrete user need, explicit data flow, privacy and security review, entitlement rationale, and visible user control.
 
-This ADR does not choose the persistence framework or deployment target; Prompt 1 must validate those separately.
+This ADR does not choose the persistence framework or deployment target. Those Prompt 1 decisions are recorded separately in ADR-0002 and ADR-0003.
 
 ## Alternatives considered
 
@@ -42,5 +42,4 @@ Private content stays on the device unless the user explicitly selects an export
 
 ## Validation
 
-This is a repository-level product constraint, verified by documentation review in Prompt 0. Entitlement behavior, storage location, file authorization, and external URL handling remain technical experiments for Prompt 1 and implementation checks for later prompts.
-
+This is a repository-level product constraint, verified by documentation review in Prompt 0. Prompt 1 recorded entitlement/file authorization and external URL boundaries in ADR-0005 and ADR-0006; production implementation checks remain work for later prompts.

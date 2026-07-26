@@ -22,4 +22,8 @@ Keep ADRs concise. An ADR records a decision; implementation details belong in c
 ## Index
 
 - [ADR-0001: Local-first and offline by default](0001-local-first-offline-default.md) — Accepted
-
+- [ADR-0002: Direct SQLite persistence](0002-direct-sqlite-persistence.md) — Accepted
+- [ADR-0003: macOS 14 deployment target](0003-macos-14-deployment-target.md) — Accepted
+- [ADR-0004: Bounded Canvas graph](0004-bounded-canvas-graph.md) — Accepted
+- [ADR-0005: External links and Apple Books](0005-external-links-and-apple-books.md) — Accepted
+- [ADR-0006: Sandboxed file access](0006-sandboxed-file-access.md) — Accepted

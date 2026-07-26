@@ -2,7 +2,7 @@
 
 ## Status
 
-This is a storage-independent vocabulary for product and experiment planning. It is not a committed SQL, SwiftData, or Core Data schema. Prompt 1 chooses the persistence direction; Prompt 3 defines the production schema, version 1 migration, constraints, and tests.
+This is a storage-independent vocabulary for product and experiment planning. It is not a committed production SQL schema. Prompt 1 selected direct SQLite as the persistence direction; Prompt 3 defines the production schema, version 1 migration, constraints, and tests behind that store boundary.
 
 ## Candidate concepts
 
@@ -56,9 +56,8 @@ No single field proves identity. Future detection may rank normalized identifier
 
 ## Schema evolution
 
-Every production schema has an integer version. Each change supplies a forward migration and fixtures that test both successful migration and safe failure. Backup/restore compatibility and transaction boundaries must be specified before applying migrations to user data.
+Every production schema has an integer version stored in SQLite metadata. Each change supplies a transactional forward migration and fixtures that test both successful migration and safe failure. Backup/restore compatibility and transaction boundaries must be specified before applying migrations to user data. The Prompt 1 experiment demonstrated version-1-to-2 and failed version-3 rollback only; it is not the production schema or migration history.
 
 ## Test data
 
 All fixtures must be deterministic and fictional. Approved example titles include 《雾港档案》, 《机器与花园》, 《星图索引》, 《静默算法》, and 《北岸来信》. Contributors, publishers, sources, lists, URLs, identifiers, and relationships must also be fictional.
-

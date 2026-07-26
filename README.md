@@ -4,7 +4,7 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-The repository is at Milestone 0. It currently contains project rules and planning documents only—there is no Xcode project, Swift package, application target, build command, or test command yet. Prompt 1 will validate the key technical choices; Prompt 2 will establish the minimal runnable app and its real build/test commands.
+The repository is at Milestone 0. Prompt 1 validated the technical direction in isolated experiments, and Prompt 2 created the production `BookAtlas` macOS application skeleton. It has native navigation and placeholders only: no production database, book CRUD, import/export, graph implementation, or external-link behavior has been added.
 
 ## Product boundaries
 
@@ -33,13 +33,12 @@ The planned Xcode project and Swift module are both `BookAtlas`, the display nam
 
 ## Development environment
 
-The intended environment is a supported macOS and Xcode toolchain. Prompt 1 must record the installed Xcode/Swift versions, evaluate deployment-target tradeoffs, and verify candidate APIs. Do not install third-party dependencies or project generators during Milestone 0.
+The verified environment is Xcode 26.6 (build 17F113) with Swift 6.3.3. The product deployment target is macOS 14.0. Prompt 1 kept third-party dependencies out of the repository; the selected production direction is a focused internal SQLite store, specified in [ADR-0002](docs/DECISIONS/0002-direct-sqlite-persistence.md).
 
 ### Build and test
 
-No build or test command exists yet. Do not treat documentation checks as an application build. Prompt 2 will add the project and document reproducible commands after Prompt 1 selects and records the supported toolchain.
+The production scheme is `BookAtlas`. The verified commands and current limitations are in [Development](docs/DEVELOPMENT.md) and [Milestone 0](docs/PLANS/MILESTONE-0.md). Prompt 1's isolated experiments remain in `Experiments/TechnicalSpikes/` and are not a production dependency.
 
 ## Working on the repository
 
 Read [AGENTS.md](AGENTS.md), the core documents, and the active plan before modifying code. Check the Git worktree first, preserve uncommitted work, keep sample data fictional, and report only commands that were actually run.
-

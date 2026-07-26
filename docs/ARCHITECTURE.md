@@ -2,7 +2,7 @@
 
 ## Current state
 
-Milestone 0 contains no application implementation. This document defines boundaries to test, not a completed architecture. Prompt 1 must validate the uncertain choices; accepted choices must be recorded as ADRs before production implementation.
+Milestone 0 contains a production application skeleton only. Prompt 1 recorded accepted decisions, and Prompt 2 added an App Sandbox-enabled SwiftUI shell with a lightweight navigation state and replaceable feature placeholders. There is no production persistence, domain, import, graph, or external-integration implementation yet.
 
 ## Intended shape
 
@@ -16,18 +16,11 @@ Book Atlas will be one sandboxed native macOS application with a small number of
 
 Dependencies should point from presentation and integrations toward explicit domain behavior. SwiftUI views must not perform complex SQL, migrations, file parsing, or merge decisions.
 
-## Persistence decision pending
+## Persistence decision
 
-Prompt 1 will compare a single primary SQLite approach with SwiftData, Core Data, and a reliable lightweight SQLite wrapper. The comparison must consider:
+The production direction is direct SQLite through a small internal Swift store boundary; see [ADR-0002](DECISIONS/0002-direct-sqlite-persistence.md). Prompt 1 verified CRUD, many-to-many rows, uniqueness, cascade deletion, transaction rollback, a version-1-to-2 migration, failed-migration rollback, online backup opening, and independent in-memory stores using only fictional data.
 
-- explicit schema versioning and deterministic migrations;
-- transaction and backup behavior;
-- test isolation and fixture setup;
-- query/search needs around 10,000 fictional books;
-- maintainability with the verified deployment target;
-- dependency cost and auditability.
-
-No production code will maintain two databases. FTS5 is optional and must be justified by measured needs. The conceptual model in `DATA_MODEL.md` does not imply a storage API or schema.
+Prompt 3 must define the production schema and migration registry. It will use explicit integer schema versions and transactional forward migrations; it must not reuse the disposable spike schema. No production code will maintain two databases. FTS5 remains deferred until a measured search workflow needs it.
 
 ## State and concurrency
 
@@ -35,17 +28,19 @@ UI state should remain feature-sized. Long-running import, export, backup, graph
 
 ## Storage and sandboxing
 
-Production data is expected under the application-specific macOS Application Support directory. Temporary work belongs in system temporary storage and should be cleaned safely. Access outside the sandbox starts with a user-selected URL and, when long-term access is needed, uses a security-scoped bookmark only after Prompt 1 validates the lifecycle.
+Production data is expected under the application-specific macOS Application Support directory. Temporary work belongs in system temporary storage and should be cleaned safely. Access outside the sandbox starts with a user-selected URL and, when long-term access is needed, uses a read-only, app-scoped security-scoped bookmark; see [ADR-0006](DECISIONS/0006-sandboxed-file-access.md).
 
-App Sandbox is the default. The application will not request the network client entitlement by default. Entitlements must be minimal, documented, and verified.
+App Sandbox is the default. The verified experiment entitlement set is App Sandbox, user-selected read-only files, and app-scoped bookmarks. The application will not request the network client entitlement by default. Bookmark bytes, paths, and user file content must not appear in logs.
 
-## Graph rendering decision pending
+## Graph rendering decision
 
-Prompt 1 will test a bounded local graph using native SwiftUI Canvas, gestures, and only necessary AppKit. The experiment must measure interaction and rendering with fictional data. The graph remains an optional view over library relationships; it cannot become the source of truth for books.
+The initial graph renderer will be native SwiftUI `Canvas` with a separate interaction model for hit testing, node dragging, panning, zooming, and an accessible list representation; see [ADR-0004](DECISIONS/0004-bounded-canvas-graph.md). Prompt 1 hosted and laid out the canvas with fictional 50-, 100-, and 250-node fixtures. The initial visible-node cap is 250 until Prompt 8 measures real frame timing and accessibility behavior.
 
-## External integration decision pending
+The graph remains an optional projection over library relationships; it cannot become the source of truth for books or persist view coordinates in bibliography entities.
 
-Opening ordinary user-approved URLs through supported macOS APIs may be feasible. Any Apple Books URL scheme, deep link, or ability to identify a specific item in a user's library must be supported by current official documentation or a reproducible experiment and recorded in an ADR. Unsupported behavior must degrade to a safe, visible alternative.
+## External integration decision
+
+Only a user-initiated, allowlisted HTTPS URL may be handed to `NSWorkspace`; Apple Books store URLs are a labeled subset of that rule. Prompt 1 located and background-launched the installed Books app and dispatched a fictional public store search. It did not establish a supported custom `ibooks:` scheme or a way to open a specific item in a user's local Books library. Those behaviors remain unsupported and must degrade to a visible external-link action; see [ADR-0005](DECISIONS/0005-external-links-and-apple-books.md).
 
 ## Dependencies
 
@@ -54,4 +49,3 @@ Prefer Apple frameworks. A third-party dependency requires a concrete need, lice
 ## Observability
 
 Use Apple's unified logging where suitable. Logs are diagnostic metadata, not a mirror of the user's library: titles, authors, notes, paths, URLs, import rows, identifiers tied to private content, and bookmark bytes must be redacted or omitted.
-

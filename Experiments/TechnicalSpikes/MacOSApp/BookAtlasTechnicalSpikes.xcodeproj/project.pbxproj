@@ -1,0 +1,84 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00100000000000000000101 /* BookAtlasTechnicalSpikesApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000010 /* BookAtlasTechnicalSpikesApp.swift */; };
+		A00100000000000000000102 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000011 /* ContentView.swift */; };
+		A00100000000000000000103 /* AppKitStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000012 /* AppKitStatusView.swift */; };
+		A00100000000000000000104 /* FileAccessProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000013 /* FileAccessProbe.swift */; };
+		A00100000000000000000105 /* BookAtlasTechnicalSpikesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000016 /* BookAtlasTechnicalSpikesTests.swift */; };
+		A00100000000000000000106 /* BookAtlasTechnicalSpikesUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000018 /* BookAtlasTechnicalSpikesUITests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00100000000000000000010 /* BookAtlasTechnicalSpikesApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAtlasTechnicalSpikesApp.swift; sourceTree = "<group>"; };
+		A00100000000000000000011 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A00100000000000000000012 /* AppKitStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppKitStatusView.swift; sourceTree = "<group>"; };
+		A00100000000000000000013 /* FileAccessProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileAccessProbe.swift; sourceTree = "<group>"; };
+		A00100000000000000000014 /* BookAtlasTechnicalSpikes.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BookAtlasTechnicalSpikes.entitlements; sourceTree = "<group>"; };
+		A00100000000000000000015 /* BookAtlasTechnicalSpikes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BookAtlasTechnicalSpikes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00100000000000000000016 /* BookAtlasTechnicalSpikesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAtlasTechnicalSpikesTests.swift; sourceTree = "<group>"; };
+		A00100000000000000000017 /* BookAtlasTechnicalSpikesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookAtlasTechnicalSpikesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00100000000000000000018 /* BookAtlasTechnicalSpikesUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAtlasTechnicalSpikesUITests.swift; sourceTree = "<group>"; };
+		A00100000000000000000019 /* BookAtlasTechnicalSpikesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookAtlasTechnicalSpikesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00100000000000000000202 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A00100000000000000000205 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A00100000000000000000207 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00100000000000000000002 = {isa = PBXGroup; children = (A00100000000000000000004 /* App */, A00100000000000000000005 /* Tests */, A00100000000000000000006 /* UITests */, A00100000000000000000003 /* Products */, ); sourceTree = "<group>"; };
+		A00100000000000000000003 /* Products */ = {isa = PBXGroup; children = (A00100000000000000000015 /* BookAtlasTechnicalSpikes.app */, A00100000000000000000017 /* BookAtlasTechnicalSpikesTests.xctest */, A00100000000000000000019 /* BookAtlasTechnicalSpikesUITests.xctest */, ); name = Products; sourceTree = "<group>"; };
+		A00100000000000000000004 /* App */ = {isa = PBXGroup; children = (A00100000000000000000010 /* BookAtlasTechnicalSpikesApp.swift */, A00100000000000000000011 /* ContentView.swift */, A00100000000000000000012 /* AppKitStatusView.swift */, A00100000000000000000013 /* FileAccessProbe.swift */, A00100000000000000000014 /* BookAtlasTechnicalSpikes.entitlements */, ); path = App; sourceTree = "<group>"; };
+		A00100000000000000000005 /* Tests */ = {isa = PBXGroup; children = (A00100000000000000000016 /* BookAtlasTechnicalSpikesTests.swift */, ); path = Tests; sourceTree = "<group>"; };
+		A00100000000000000000006 /* UITests */ = {isa = PBXGroup; children = (A00100000000000000000018 /* BookAtlasTechnicalSpikesUITests.swift */, ); path = UITests; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00100000000000000000301 /* BookAtlasTechnicalSpikes */ = {isa = PBXNativeTarget; buildConfigurationList = A00100000000000000000412 /* Build configuration list for PBXNativeTarget "BookAtlasTechnicalSpikes" */; buildPhases = (A00100000000000000000201 /* Sources */, A00100000000000000000202 /* Frameworks */, ); buildRules = (); dependencies = (); name = BookAtlasTechnicalSpikes; productName = BookAtlasTechnicalSpikes; productReference = A00100000000000000000015 /* BookAtlasTechnicalSpikes.app */; productType = "com.apple.product-type.application"; };
+		A00100000000000000000302 /* BookAtlasTechnicalSpikesTests */ = {isa = PBXNativeTarget; buildConfigurationList = A00100000000000000000422 /* Build configuration list for PBXNativeTarget "BookAtlasTechnicalSpikesTests" */; buildPhases = (A00100000000000000000204 /* Sources */, A00100000000000000000205 /* Frameworks */, ); buildRules = (); dependencies = (A00100000000000000000501 /* PBXTargetDependency */, ); name = BookAtlasTechnicalSpikesTests; productName = BookAtlasTechnicalSpikesTests; productReference = A00100000000000000000017 /* BookAtlasTechnicalSpikesTests.xctest */; productType = "com.apple.product-type.bundle.unit-test"; };
+		A00100000000000000000303 /* BookAtlasTechnicalSpikesUITests */ = {isa = PBXNativeTarget; buildConfigurationList = A00100000000000000000432 /* Build configuration list for PBXNativeTarget "BookAtlasTechnicalSpikesUITests" */; buildPhases = (A00100000000000000000206 /* Sources */, A00100000000000000000207 /* Frameworks */, ); buildRules = (); dependencies = (A00100000000000000000502 /* PBXTargetDependency */, ); name = BookAtlasTechnicalSpikesUITests; productName = BookAtlasTechnicalSpikesUITests; productReference = A00100000000000000000019 /* BookAtlasTechnicalSpikesUITests.xctest */; productType = "com.apple.product-type.bundle.ui-testing"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00100000000000000000001 /* Project object */ = {isa = PBXProject; attributes = { LastUpgradeCheck = 2600; TargetAttributes = { A00100000000000000000301 = { CreatedOnToolsVersion = 26.6; }; A00100000000000000000302 = { CreatedOnToolsVersion = 26.6; TestTargetID = A00100000000000000000301; }; A00100000000000000000303 = { CreatedOnToolsVersion = 26.6; TestTargetID = A00100000000000000000301; }; }; }; buildConfigurationList = A00100000000000000000403 /* Build configuration list for PBXProject "BookAtlasTechnicalSpikes" */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base, ); mainGroup = A00100000000000000000002; productRefGroup = A00100000000000000000003 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (A00100000000000000000301 /* BookAtlasTechnicalSpikes */, A00100000000000000000302 /* BookAtlasTechnicalSpikesTests */, A00100000000000000000303 /* BookAtlasTechnicalSpikesUITests */, ); };
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00100000000000000000201 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00100000000000000000101 /* BookAtlasTechnicalSpikesApp.swift in Sources */, A00100000000000000000102 /* ContentView.swift in Sources */, A00100000000000000000103 /* AppKitStatusView.swift in Sources */, A00100000000000000000104 /* FileAccessProbe.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		A00100000000000000000204 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00100000000000000000105 /* BookAtlasTechnicalSpikesTests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		A00100000000000000000206 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A00100000000000000000106 /* BookAtlasTechnicalSpikesUITests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A00100000000000000000501 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A00100000000000000000301 /* BookAtlasTechnicalSpikes */; }; 
+		A00100000000000000000502 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A00100000000000000000301 /* BookAtlasTechnicalSpikes */; }; 
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		A00100000000000000000401 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 6.0; }; name = Debug; };
+		A00100000000000000000402 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 6.0; }; name = Release; };
+		A00100000000000000000410 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; CODE_SIGN_ENTITLEMENTS = App/BookAtlasTechnicalSpikes.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; ENABLE_TESTABILITY = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Book Atlas Technical Spikes"; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas.TechnicalSpikes; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; }; name = Debug; };
+		A00100000000000000000411 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_ENTITLEMENTS = App/BookAtlasTechnicalSpikes.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Book Atlas Technical Spikes"; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas.TechnicalSpikes; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; }; name = Release; };
+		A00100000000000000000420 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas.TechnicalSpikesTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BookAtlasTechnicalSpikes.app/Contents/MacOS/BookAtlasTechnicalSpikes"; }; name = Debug; };
+		A00100000000000000000421 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas.TechnicalSpikesTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BookAtlasTechnicalSpikes.app/Contents/MacOS/BookAtlasTechnicalSpikes"; }; name = Release; };
+		A00100000000000000000430 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas.TechnicalSpikesUITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TEST_TARGET_NAME = BookAtlasTechnicalSpikes; }; name = Debug; };
+		A00100000000000000000431 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas.TechnicalSpikesUITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TEST_TARGET_NAME = BookAtlasTechnicalSpikes; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00100000000000000000403 /* Build configuration list for PBXProject "BookAtlasTechnicalSpikes" */ = {isa = XCConfigurationList; buildConfigurations = (A00100000000000000000401 /* Debug */, A00100000000000000000402 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00100000000000000000412 /* Build configuration list for PBXNativeTarget "BookAtlasTechnicalSpikes" */ = {isa = XCConfigurationList; buildConfigurations = (A00100000000000000000410 /* Debug */, A00100000000000000000411 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00100000000000000000422 /* Build configuration list for PBXNativeTarget "BookAtlasTechnicalSpikesTests" */ = {isa = XCConfigurationList; buildConfigurations = (A00100000000000000000420 /* Debug */, A00100000000000000000421 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A00100000000000000000432 /* Build configuration list for PBXNativeTarget "BookAtlasTechnicalSpikesUITests" */ = {isa = XCConfigurationList; buildConfigurations = (A00100000000000000000430 /* Debug */, A00100000000000000000431 /* Release */, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = A00100000000000000000001 /* Project object */;
+}

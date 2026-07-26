@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Scheme LastUpgradeVersion="2600" version="1.7">
+   <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+      <BuildActionEntries>
+         <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A00100000000000000000301" BuildableName="BookAtlasTechnicalSpikes.app" BlueprintName="BookAtlasTechnicalSpikes" ReferencedContainer="container:BookAtlasTechnicalSpikes.xcodeproj"/>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" shouldUseLaunchSchemeArgsEnv="YES">
+      <Testables>
+         <TestableReference skipped="NO">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A00100000000000000000302" BuildableName="BookAtlasTechnicalSpikesTests.xctest" BlueprintName="BookAtlasTechnicalSpikesTests" ReferencedContainer="container:BookAtlasTechnicalSpikes.xcodeproj"/>
+         </TestableReference>
+         <TestableReference skipped="NO">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A00100000000000000000303" BuildableName="BookAtlasTechnicalSpikesUITests.xctest" BlueprintName="BookAtlasTechnicalSpikesUITests" ReferencedContainer="container:BookAtlasTechnicalSpikes.xcodeproj"/>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle="0" useCustomWorkingDirectory="NO" ignoresPersistentStateOnLaunch="NO" debugDocumentVersioning="YES" debugServiceExtension="internal" allowLocationSimulation="YES">
+      <BuildableProductRunnable runnableDebuggingMode="0">
+         <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="A00100000000000000000301" BuildableName="BookAtlasTechnicalSpikes.app" BlueprintName="BookAtlasTechnicalSpikes" ReferencedContainer="container:BookAtlasTechnicalSpikes.xcodeproj"/>
+      </BuildableProductRunnable>
+   </LaunchAction>
+</Scheme>
+
