@@ -110,6 +110,51 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testSearchCombinesWithStatusFilterAndCanBeCleared() {
+        let app = launchInMemoryApp()
+        createFictionalBook(in: app, title: "A101", author: "Harbor Author")
+        createFictionalBook(in: app, title: "B202", author: "Forest Author")
+
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 3))
+        replaceText(in: searchField, with: "A101")
+        XCTAssertTrue(app.staticTexts["A101"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["B202"].exists)
+
+        element("library-filter-menu", in: app).click()
+        XCTAssertTrue(app.menuItems["想读"].waitForExistence(timeout: 3))
+        app.menuItems["想读"].click()
+        XCTAssertTrue(element("active-filter-summary", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["A101"].exists)
+
+        replaceText(in: searchField, with: "不存在的虚构书")
+        XCTAssertTrue(element("library-no-results", in: app).waitForExistence(timeout: 3))
+        element("clear-filters-button", in: app).click()
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
+
+        element("library-sort-menu", in: app).click()
+        XCTAssertTrue(app.menuItems["添加时间：旧到新"].waitForExistence(timeout: 3))
+        app.menuItems["添加时间：旧到新"].click()
+        XCTAssertTrue(element("library-book-list", in: app).exists)
+    }
+
+    @MainActor
+    func testCatalogManagementSupportsNativeSheetAndKeyboardDismissal() {
+        let app = launchInMemoryApp()
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        element("catalog-management-button", in: app).click()
+        XCTAssertTrue(element("catalog-management-view", in: app).waitForExistence(timeout: 3))
+
+        element("add-tag-button", in: app).click()
+        XCTAssertTrue(element("tag-name-field", in: app).waitForExistence(timeout: 3))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("add-tag-button", in: app).waitForExistence(timeout: 3))
+
+        element("close-catalog-management", in: app).click()
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
     func testDatabaseUnavailableUsesGenericErrorState() {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasForceUnavailableStore"]

@@ -236,7 +236,7 @@ struct Tag: Identifiable, Equatable, Sendable {
 
     init(id: UUID = UUID(), name: String, createdAt: Date = Date(), updatedAt: Date? = nil) throws {
         self.id = id
-        self.name = try required(name, error: .blankName)
+        self.name = try CatalogNameNormalizer.displayName(name)
         self.createdAt = createdAt
         self.updatedAt = updatedAt ?? createdAt
     }
@@ -257,7 +257,7 @@ struct BookCollection: Identifiable, Equatable, Sendable {
         updatedAt: Date? = nil
     ) throws {
         self.id = id
-        self.name = try required(name, error: .blankName)
+        self.name = try CatalogNameNormalizer.displayName(name)
         self.description = optional(description)
         self.createdAt = createdAt
         self.updatedAt = updatedAt ?? createdAt
@@ -279,7 +279,7 @@ struct RecommendationSource: Identifiable, Equatable, Sendable {
         updatedAt: Date? = nil
     ) throws {
         self.id = id
-        self.name = try required(name, error: .blankName)
+        self.name = try CatalogNameNormalizer.displayName(name)
         self.details = optional(details)
         self.createdAt = createdAt
         self.updatedAt = updatedAt ?? createdAt

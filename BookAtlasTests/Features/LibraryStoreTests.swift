@@ -3,13 +3,17 @@ import XCTest
 
 @MainActor
 final class LibraryStoreTests: XCTestCase {
-    func testStoreSelectsNewlyCreatedBookAndClearsSelectionAfterDelete() throws {
+    func testStoreSelectsNewlyCreatedBookAndClearsSelectionAfterDelete() async throws {
         let repository = try BookRepository.inMemory()
         let store = LibraryStore(catalog: LibraryCatalogService(repository: repository))
+        await store.waitForPendingWork()
 
         store.beginCreate()
         let session = try XCTUnwrap(store.editorSession)
-        guard case .success = store.save(BookEditorDraft(title: "《雾港档案》", author: "林雾"), for: session) else {
+        guard case .success = await store.save(
+            BookEditorDraft(title: "《雾港档案》", author: "林雾"),
+            for: session
+        ) else {
             return XCTFail("Expected book creation to succeed")
         }
         XCTAssertEqual(store.books.count, 1)
@@ -17,17 +21,22 @@ final class LibraryStoreTests: XCTestCase {
 
         store.beginDelete()
         store.confirmDelete()
+        await store.waitForPendingWork()
         XCTAssertTrue(store.books.isEmpty)
         XCTAssertNil(store.selectedBookID)
     }
 
-    func testValidationFailureKeepsEditorSessionAndDraftAvailable() throws {
+    func testValidationFailureKeepsEditorSessionAndDraftAvailable() async throws {
         let repository = try BookRepository.inMemory()
         let store = LibraryStore(catalog: LibraryCatalogService(repository: repository))
+        await store.waitForPendingWork()
         store.beginCreate()
         let session = try XCTUnwrap(store.editorSession)
 
-        guard case let .failure(error) = store.save(BookEditorDraft(title: " ", author: "林雾"), for: session) else {
+        guard case let .failure(error) = await store.save(
+            BookEditorDraft(title: " ", author: "林雾"),
+            for: session
+        ) else {
             return XCTFail("Expected validation failure")
         }
         XCTAssertEqual(error, .validation(.titleRequired))
@@ -35,22 +44,25 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertTrue(store.books.isEmpty)
     }
 
-    func testLoadAndDeleteFailuresAreMappedWithoutPrivateDetails() throws {
+    func testLoadAndDeleteFailuresAreMappedWithoutPrivateDetails() async throws {
         let book = try Book(draft: FictionalLibraryFixtures.draft(), createdAt: FictionalLibraryFixtures.timestamp)
         let failingCatalog = FailingCatalog(books: [book])
         let store = LibraryStore(catalog: failingCatalog)
 
+        await store.waitForPendingWork()
         XCTAssertEqual(store.loadingState, .failed(.loadFailed))
 
         let deleteFailingCatalog = FailingCatalog(books: [book], failsOnLoad: false)
         let deleteStore = LibraryStore(catalog: deleteFailingCatalog)
+        await deleteStore.waitForPendingWork()
         deleteStore.beginDelete()
         deleteStore.confirmDelete()
+        await deleteStore.waitForPendingWork()
         XCTAssertEqual(deleteStore.operationError, .deleteFailed)
     }
 }
 
-private final class FailingCatalog: LibraryCataloging {
+private actor FailingCatalog: LibraryCataloging {
     private let books: [Book]
     private let failsOnLoad: Bool
 
@@ -59,7 +71,7 @@ private final class FailingCatalog: LibraryCataloging {
         self.failsOnLoad = failsOnLoad
     }
 
-    func loadBooks() throws -> [Book] {
+    func queryBooks(_ query: LibraryQuery) throws -> [Book] {
         if failsOnLoad {
             throw TestFailure.failed
         }

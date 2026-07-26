@@ -4,7 +4,7 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-The repository is at Milestone 2. Prompt 1 validated the technical direction in isolated experiments, Prompt 2 created the production `BookAtlas` macOS application skeleton, Prompt 3 added a testable SQLite-backed library core with explicit migrations, and Prompt 4 delivered the first usable book catalog. The library now supports local create, view, edit, and confirmed delete flows with form validation, empty and generic local-store error states, and keyboard commands. Search, import/export, duplicate merge, graph implementation, and external-link actions have not been added.
+The repository is at Milestone 2. Prompt 1 validated the technical direction in isolated experiments, Prompt 2 created the production `BookAtlas` macOS application skeleton, Prompt 3 added a testable SQLite-backed library core with explicit migrations, Prompt 4 delivered the first usable book catalog, and Prompt 5 added unified local search, filtering, stable sorting, and catalog organization. The library now supports local book CRUD plus tags, collections, recommendation sources, and per-book memberships. Import/export, duplicate merge, graph implementation, and external-link actions have not been added.
 
 ## Product boundaries
 

@@ -132,15 +132,17 @@ struct BookEditorSheet: View {
     }
 
     private func save() {
-        switch store.save(draft, for: session) {
-        case .success:
-            validationError = nil
-        case let .failure(error):
-            validationError = error
-            if case .validation(.titleRequired) = error {
-                focusedField = .title
-            } else if case .validation(.authorRequired) = error {
-                focusedField = .author
+        Task { @MainActor in
+            switch await store.save(draft, for: session) {
+            case .success:
+                validationError = nil
+            case let .failure(error):
+                validationError = error
+                if case .validation(.titleRequired) = error {
+                    focusedField = .title
+                } else if case .validation(.authorRequired) = error {
+                    focusedField = .author
+                }
             }
         }
     }

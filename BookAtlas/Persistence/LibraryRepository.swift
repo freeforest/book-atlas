@@ -12,7 +12,7 @@ struct DatabaseMigration: Equatable {
 }
 
 enum BookAtlasSchema {
-    static let latestVersion = 2
+    static let latestVersion = 3
 
     static let migrations: [DatabaseMigration] = [
         DatabaseMigration(
@@ -130,6 +130,15 @@ enum BookAtlasSchema {
             statements: [
                 "ALTER TABLE book_collections ADD COLUMN description TEXT"
             ]
+        ),
+        DatabaseMigration(
+            version: 3,
+            statements: [
+                "CREATE INDEX idx_books_original_title ON books(original_title)",
+                "CREATE INDEX idx_books_created_order ON books(created_at, id)",
+                "CREATE INDEX idx_books_updated_order ON books(updated_at, id)",
+                "CREATE INDEX idx_books_priority_order ON books(priority, id)"
+            ]
         )
     ]
 }
@@ -178,6 +187,9 @@ final class DatabaseMigrator {
 enum BookRepositoryError: Error, Equatable {
     case invalidStoredRecord
     case bookNotFound
+    case entityNotFound
+    case invalidMerge
+    case invalidQuery
 }
 
 final class BookRepository {
@@ -275,20 +287,89 @@ final class BookRepository {
     }
 
     func search(_ keyword: String, limit: Int = 100) throws -> [Book] {
-        let limit = try checkedLimit(limit)
-        let query = "%\(escapeLike(keyword.trimmingCharacters(in: .whitespacesAndNewlines)))%"
+        try query(LibraryQuery(searchText: keyword, limit: limit))
+    }
+
+    func query(_ query: LibraryQuery) throws -> [Book] {
+        let limit = try checkedLimit(query.limit)
+        guard query.offset >= 0 else {
+            throw BookRepositoryError.invalidQuery
+        }
+
+        var predicates: [String] = []
+        var bindings: [SQLiteValue] = []
+
+        let searchText = query.normalizedSearchText
+        if !searchText.isEmpty {
+            let textPattern = "%\(escapeLike(searchText))%"
+            let normalizedISBN = ISBNNormalizer.normalize(searchText)
+            let isbnPattern = "%\(escapeLike(normalizedISBN))%"
+            predicates.append(
+                """
+                (
+                    title LIKE ? ESCAPE '\\' COLLATE NOCASE
+                    OR original_title LIKE ? ESCAPE '\\' COLLATE NOCASE
+                    OR author LIKE ? ESCAPE '\\' COLLATE NOCASE
+                    OR replace(replace(isbn, '-', ''), ' ', '') LIKE ? ESCAPE '\\' COLLATE NOCASE
+                )
+                """
+            )
+            bindings.append(contentsOf: [.text(textPattern), .text(textPattern), .text(textPattern), .text(isbnPattern)])
+        }
+
+        if !query.readingStatuses.isEmpty {
+            let statuses = query.readingStatuses.sorted { $0.rawValue < $1.rawValue }
+            predicates.append("reading_status IN (\(placeholders(count: statuses.count)))")
+            bindings.append(contentsOf: statuses.map { .text($0.rawValue) })
+        }
+
+        appendAssociationPredicates(
+            ids: query.tagIDs,
+            table: "book_tags",
+            bookColumn: "book_id",
+            associationColumn: "tag_id",
+            predicates: &predicates,
+            bindings: &bindings
+        )
+        appendAssociationPredicates(
+            ids: query.collectionIDs,
+            table: "book_collections_books",
+            bookColumn: "book_id",
+            associationColumn: "collection_id",
+            predicates: &predicates,
+            bindings: &bindings
+        )
+        appendAssociationPredicates(
+            ids: query.sourceIDs,
+            table: "book_sources",
+            bookColumn: "book_id",
+            associationColumn: "source_id",
+            predicates: &predicates,
+            bindings: &bindings
+        )
+
+        let whereClause = predicates.isEmpty ? "" : "WHERE " + predicates.joined(separator: " AND ")
+        let direction = query.sortDirection == .ascending ? "ASC" : "DESC"
+        let orderClause: String
+        switch query.sortField {
+        case .createdAt:
+            orderClause = "created_at \(direction), id ASC"
+        case .updatedAt:
+            orderClause = "updated_at \(direction), id ASC"
+        case .priority:
+            orderClause = "priority IS NULL ASC, priority \(direction), id ASC"
+        }
+
+        bindings.append(.integer(Int64(limit)))
+        bindings.append(.integer(Int64(query.offset)))
         return try database.query(
             """
             SELECT \(bookColumns) FROM books
-            WHERE title LIKE ? ESCAPE '\\' COLLATE NOCASE
-               OR original_title LIKE ? ESCAPE '\\' COLLATE NOCASE
-               OR author LIKE ? ESCAPE '\\' COLLATE NOCASE
-               OR isbn LIKE ? ESCAPE '\\' COLLATE NOCASE
-               OR publisher LIKE ? ESCAPE '\\' COLLATE NOCASE
-            ORDER BY updated_at DESC, id ASC
-            LIMIT ?
+            \(whereClause)
+            ORDER BY \(orderClause)
+            LIMIT ? OFFSET ?
             """,
-            bindings: [.text(query), .text(query), .text(query), .text(query), .text(query), .integer(Int64(limit))],
+            bindings: bindings,
             row: decodeBook
         )
     }
@@ -300,6 +381,66 @@ final class BookRepository {
             bindings: [.text(tag.id.uuidString), .text(tag.name), .text(StorageDateCodec.encode(tag.createdAt)), .text(StorageDateCodec.encode(tag.updatedAt))]
         )
         return tag
+    }
+
+    func tagSummaries() throws -> [TagSummary] {
+        try database.query(
+            """
+            SELECT tags.id, tags.name, tags.created_at, tags.updated_at, COUNT(book_tags.book_id)
+            FROM tags
+            LEFT JOIN book_tags ON book_tags.tag_id = tags.id
+            GROUP BY tags.id, tags.name, tags.created_at, tags.updated_at
+            ORDER BY tags.name COLLATE NOCASE, tags.id
+            """
+        ) { row in
+            TagSummary(tag: try decodeTag(row), bookCount: Int(row.integer(at: 4)))
+        }
+    }
+
+    func updateTag(_ tag: Tag) throws {
+        try database.execute(
+            "UPDATE tags SET name = ?, updated_at = ? WHERE id = ?",
+            bindings: [
+                .text(tag.name),
+                .text(StorageDateCodec.encode(tag.updatedAt)),
+                .text(tag.id.uuidString)
+            ]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
+    func deleteTag(id: UUID) throws {
+        try database.execute("DELETE FROM tags WHERE id = ?", bindings: [.text(id.uuidString)])
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
+    func mergeTag(sourceID: UUID, into targetID: UUID) throws {
+        guard sourceID != targetID else {
+            throw BookRepositoryError.invalidMerge
+        }
+
+        try database.transaction {
+            guard try entityExists(table: "tags", id: sourceID),
+                  try entityExists(table: "tags", id: targetID)
+            else {
+                throw BookRepositoryError.entityNotFound
+            }
+            try database.execute(
+                """
+                INSERT OR IGNORE INTO book_tags (book_id, tag_id)
+                SELECT book_id, ? FROM book_tags WHERE tag_id = ?
+                """,
+                bindings: [.text(targetID.uuidString), .text(sourceID.uuidString)]
+            )
+            try database.execute("DELETE FROM tags WHERE id = ?", bindings: [.text(sourceID.uuidString)])
+            guard try database.changes() == 1 else {
+                throw BookRepositoryError.entityNotFound
+            }
+        }
     }
 
     func attach(tagID: UUID, toBookID bookID: UUID) throws {
@@ -340,6 +481,53 @@ final class BookRepository {
             ]
         )
         return collection
+    }
+
+    func collectionSummaries() throws -> [CollectionSummary] {
+        try database.query(
+            """
+            SELECT book_collections.id, book_collections.name, book_collections.description,
+                   book_collections.created_at, book_collections.updated_at,
+                   COUNT(book_collections_books.book_id)
+            FROM book_collections
+            LEFT JOIN book_collections_books
+              ON book_collections_books.collection_id = book_collections.id
+            GROUP BY book_collections.id, book_collections.name, book_collections.description,
+                     book_collections.created_at, book_collections.updated_at
+            ORDER BY book_collections.name COLLATE NOCASE, book_collections.id
+            """
+        ) { row in
+            CollectionSummary(collection: try decodeCollection(row), bookCount: Int(row.integer(at: 5)))
+        }
+    }
+
+    func updateCollection(_ collection: BookCollection) throws {
+        try database.execute(
+            """
+            UPDATE book_collections
+            SET name = ?, description = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            bindings: [
+                .text(collection.name),
+                nullable(collection.description),
+                .text(StorageDateCodec.encode(collection.updatedAt)),
+                .text(collection.id.uuidString)
+            ]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
+    func deleteCollection(id: UUID) throws {
+        try database.execute(
+            "DELETE FROM book_collections WHERE id = ?",
+            bindings: [.text(id.uuidString)]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
     }
 
     func add(bookID: UUID, toCollectionID collectionID: UUID) throws {
@@ -383,6 +571,53 @@ final class BookRepository {
         return source
     }
 
+    func sourceSummaries() throws -> [SourceSummary] {
+        try database.query(
+            """
+            SELECT recommendation_sources.id, recommendation_sources.name,
+                   recommendation_sources.details, recommendation_sources.created_at,
+                   recommendation_sources.updated_at, COUNT(book_sources.book_id)
+            FROM recommendation_sources
+            LEFT JOIN book_sources ON book_sources.source_id = recommendation_sources.id
+            GROUP BY recommendation_sources.id, recommendation_sources.name,
+                     recommendation_sources.details, recommendation_sources.created_at,
+                     recommendation_sources.updated_at
+            ORDER BY recommendation_sources.name COLLATE NOCASE, recommendation_sources.id
+            """
+        ) { row in
+            SourceSummary(source: try decodeSource(row), bookCount: Int(row.integer(at: 5)))
+        }
+    }
+
+    func updateSource(_ source: RecommendationSource) throws {
+        try database.execute(
+            """
+            UPDATE recommendation_sources
+            SET name = ?, details = ?, updated_at = ?
+            WHERE id = ?
+            """,
+            bindings: [
+                .text(source.name),
+                nullable(source.details),
+                .text(StorageDateCodec.encode(source.updatedAt)),
+                .text(source.id.uuidString)
+            ]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
+    func deleteSource(id: UUID) throws {
+        try database.execute(
+            "DELETE FROM recommendation_sources WHERE id = ?",
+            bindings: [.text(id.uuidString)]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
     func attach(sourceID: UUID, toBookID bookID: UUID) throws {
         try database.execute(
             "INSERT OR IGNORE INTO book_sources (book_id, source_id) VALUES (?, ?)",
@@ -409,6 +644,14 @@ final class BookRepository {
             """,
             bindings: [.text(bookID.uuidString)],
             row: decodeSource
+        )
+    }
+
+    func membership(forBookID bookID: UUID) throws -> BookMembership {
+        BookMembership(
+            tagIDs: Set(try tags(forBookID: bookID).map(\.id)),
+            collectionIDs: Set(try collections(forBookID: bookID).map(\.id)),
+            sourceIDs: Set(try sources(forBookID: bookID).map(\.id))
         )
     }
 
@@ -485,9 +728,38 @@ final class BookRepository {
         )
     }
 
+    private func appendAssociationPredicates(
+        ids: Set<UUID>,
+        table: String,
+        bookColumn: String,
+        associationColumn: String,
+        predicates: inout [String],
+        bindings: inout [SQLiteValue]
+    ) {
+        for id in ids.sorted(by: { $0.uuidString < $1.uuidString }) {
+            predicates.append(
+                """
+                EXISTS (
+                    SELECT 1 FROM \(table) association
+                    WHERE association.\(bookColumn) = books.id
+                      AND association.\(associationColumn) = ?
+                )
+                """
+            )
+            bindings.append(.text(id.uuidString))
+        }
+    }
+
+    private func entityExists(table: String, id: UUID) throws -> Bool {
+        try database.scalarInt(
+            "SELECT COUNT(*) FROM \(table) WHERE id = ?",
+            bindings: [.text(id.uuidString)]
+        ) == 1
+    }
+
     private func checkedLimit(_ limit: Int) throws -> Int {
-        guard (1 ... 500).contains(limit) else {
-            throw BookRepositoryError.invalidStoredRecord
+        guard (1 ... 1_000).contains(limit) else {
+            throw BookRepositoryError.invalidQuery
         }
         return limit
     }
@@ -630,4 +902,8 @@ private func escapeLike(_ value: String) -> String {
         .replacingOccurrences(of: "\\", with: "\\\\")
         .replacingOccurrences(of: "%", with: "\\%")
         .replacingOccurrences(of: "_", with: "\\_")
+}
+
+private func placeholders(count: Int) -> String {
+    Array(repeating: "?", count: count).joined(separator: ", ")
 }

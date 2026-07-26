@@ -140,9 +140,7 @@ struct BookEditorDraft: Equatable {
         guard !trimmed.isEmpty else {
             return nil
         }
-        let separators = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: "-"))
-        let normalizedScalars = trimmed.unicodeScalars.filter { !separators.contains($0) }
-        let normalized = String(String.UnicodeScalarView(normalizedScalars))
+        let normalized = ISBNNormalizer.normalize(trimmed)
         return normalized.isEmpty ? nil : normalized
     }
 }

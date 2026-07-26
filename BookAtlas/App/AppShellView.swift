@@ -50,9 +50,9 @@ struct AppShellView: View {
         case .library:
             LibraryView(store: libraryStore)
         case .collections:
-            CollectionsPlaceholderView()
+            CollectionsPlaceholderView(store: libraryStore)
         case .tags:
-            TagsPlaceholderView()
+            TagsPlaceholderView(store: libraryStore)
         case .graph:
             GraphPlaceholderView()
         case .settings:

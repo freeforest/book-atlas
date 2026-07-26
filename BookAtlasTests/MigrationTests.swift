@@ -18,7 +18,41 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(try migrator.migrate(database), BookAtlasSchema.latestVersion)
         XCTAssertEqual(
             try database.query("SELECT version FROM schema_migrations ORDER BY version") { row in row.integer(at: 0) },
-            [1, 2]
+            [1, 2, 3]
+        )
+    }
+
+    func testVersionThreeAddsQueryIndexesWithoutChangingBooks() throws {
+        let database = try SQLiteDatabase(path: ":memory:")
+        let migrator = DatabaseMigrator()
+        try migrator.migrate(database, through: 2)
+        let repository = try BookRepository(database: database, automaticallyMigrate: false)
+        let book = try repository.create(
+            FictionalLibraryFixtures.draft(),
+            at: FictionalLibraryFixtures.timestamp
+        )
+
+        XCTAssertEqual(try migrator.migrate(database), 3)
+        XCTAssertEqual(try repository.book(id: book.id), book)
+        XCTAssertEqual(
+            try database.query(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type = 'index' AND name IN (
+                    'idx_books_original_title',
+                    'idx_books_created_order',
+                    'idx_books_updated_order',
+                    'idx_books_priority_order'
+                )
+                ORDER BY name
+                """
+            ) { row in row.string(at: 0) },
+            [
+                "idx_books_created_order",
+                "idx_books_original_title",
+                "idx_books_priority_order",
+                "idx_books_updated_order"
+            ]
         )
     }
 
@@ -30,7 +64,7 @@ final class MigrationTests: XCTestCase {
         let existing = try repository.create(FictionalLibraryFixtures.draft(), at: FictionalLibraryFixtures.timestamp)
 
         let failingMigration = DatabaseMigration(
-            version: 3,
+            version: 4,
             statements: [
                 "CREATE TABLE migration_failure_probe (id INTEGER PRIMARY KEY)",
                 "NOT VALID SQL"
@@ -39,7 +73,7 @@ final class MigrationTests: XCTestCase {
         let migrator = DatabaseMigrator(migrations: BookAtlasSchema.migrations + [failingMigration])
 
         XCTAssertThrowsError(try migrator.migrate(database)) { error in
-            XCTAssertEqual(error as? DatabaseMigrationError, .migrationFailed(version: 3))
+            XCTAssertEqual(error as? DatabaseMigrationError, .migrationFailed(version: 4))
         }
         XCTAssertEqual(try database.schemaVersion(), BookAtlasSchema.latestVersion)
         XCTAssertEqual(try repository.book(id: existing.id), existing)

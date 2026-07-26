@@ -1,23 +1,79 @@
 import Foundation
 
-protocol LibraryCataloging: AnyObject {
-    func loadBooks() throws -> [Book]
+enum CatalogServiceError: Error, Equatable {
+    case nameConflict
+    case invalidMerge
+}
+
+protocol LibraryCataloging: Actor {
+    func queryBooks(_ query: LibraryQuery) throws -> [Book]
     func createBook(from editor: BookEditorDraft) throws -> Book
     func updateBook(_ book: Book, from editor: BookEditorDraft) throws -> Book
     func deleteBook(_ book: Book) throws
+
+    func catalogSnapshot() throws -> CatalogSnapshot
+    func membership(for bookID: UUID) throws -> BookMembership
+    func setAssociation(_ association: BookAssociation, included: Bool, bookID: UUID) throws
+
+    func createTag(name: String) throws -> Tag
+    func renameTag(_ tag: Tag, name: String) throws -> Tag
+    func deleteTag(_ tag: Tag) throws
+    func mergeTag(_ source: Tag, into target: Tag) throws
+
+    func createCollection(name: String, description: String?) throws -> BookCollection
+    func renameCollection(_ collection: BookCollection, name: String, description: String?) throws -> BookCollection
+    func deleteCollection(_ collection: BookCollection) throws
+
+    func createSource(name: String, details: String?) throws -> RecommendationSource
+    func renameSource(_ source: RecommendationSource, name: String, details: String?) throws -> RecommendationSource
+    func deleteSource(_ source: RecommendationSource) throws
 }
 
-final class LibraryCatalogService: LibraryCataloging {
-    private let repository: BookRepository
-    private let now: () -> Date
+extension LibraryCataloging {
+    func catalogSnapshot() throws -> CatalogSnapshot { .empty }
+    func membership(for bookID: UUID) throws -> BookMembership { .empty }
+    func setAssociation(_ association: BookAssociation, included: Bool, bookID: UUID) throws {
+        throw BookRepositoryError.entityNotFound
+    }
+    func createTag(name: String) throws -> Tag { throw BookRepositoryError.entityNotFound }
+    func renameTag(_ tag: Tag, name: String) throws -> Tag { throw BookRepositoryError.entityNotFound }
+    func deleteTag(_ tag: Tag) throws { throw BookRepositoryError.entityNotFound }
+    func mergeTag(_ source: Tag, into target: Tag) throws { throw BookRepositoryError.invalidMerge }
+    func createCollection(name: String, description: String?) throws -> BookCollection {
+        throw BookRepositoryError.entityNotFound
+    }
+    func renameCollection(
+        _ collection: BookCollection,
+        name: String,
+        description: String?
+    ) throws -> BookCollection {
+        throw BookRepositoryError.entityNotFound
+    }
+    func deleteCollection(_ collection: BookCollection) throws { throw BookRepositoryError.entityNotFound }
+    func createSource(name: String, details: String?) throws -> RecommendationSource {
+        throw BookRepositoryError.entityNotFound
+    }
+    func renameSource(
+        _ source: RecommendationSource,
+        name: String,
+        details: String?
+    ) throws -> RecommendationSource {
+        throw BookRepositoryError.entityNotFound
+    }
+    func deleteSource(_ source: RecommendationSource) throws { throw BookRepositoryError.entityNotFound }
+}
 
-    init(repository: BookRepository, now: @escaping () -> Date = Date.init) {
+actor LibraryCatalogService: LibraryCataloging {
+    private let repository: BookRepository
+    private let now: @Sendable () -> Date
+
+    init(repository: BookRepository, now: @escaping @Sendable () -> Date = Date.init) {
         self.repository = repository
         self.now = now
     }
 
-    func loadBooks() throws -> [Book] {
-        try repository.list(limit: 500)
+    func queryBooks(_ query: LibraryQuery) throws -> [Book] {
+        try repository.query(query)
     }
 
     func createBook(from editor: BookEditorDraft) throws -> Book {
@@ -32,5 +88,151 @@ final class LibraryCatalogService: LibraryCataloging {
 
     func deleteBook(_ book: Book) throws {
         try repository.deleteBook(id: book.id)
+    }
+
+    func catalogSnapshot() throws -> CatalogSnapshot {
+        CatalogSnapshot(
+            tags: try repository.tagSummaries(),
+            collections: try repository.collectionSummaries(),
+            sources: try repository.sourceSummaries()
+        )
+    }
+
+    func membership(for bookID: UUID) throws -> BookMembership {
+        try repository.membership(forBookID: bookID)
+    }
+
+    func setAssociation(_ association: BookAssociation, included: Bool, bookID: UUID) throws {
+        switch association {
+        case let .tag(id):
+            if included {
+                try repository.attach(tagID: id, toBookID: bookID)
+            } else {
+                try repository.detach(tagID: id, fromBookID: bookID)
+            }
+        case let .collection(id):
+            if included {
+                try repository.add(bookID: bookID, toCollectionID: id)
+            } else {
+                try repository.remove(bookID: bookID, fromCollectionID: id)
+            }
+        case let .source(id):
+            if included {
+                try repository.attach(sourceID: id, toBookID: bookID)
+            } else {
+                try repository.detach(sourceID: id, fromBookID: bookID)
+            }
+        }
+    }
+
+    func createTag(name: String) throws -> Tag {
+        let tag = try Tag(name: name, createdAt: now())
+        try ensureUnique(name: tag.name, excluding: nil, existing: repository.tagSummaries().map { ($0.id, $0.tag.name) })
+        return try repository.createTag(tag)
+    }
+
+    func renameTag(_ tag: Tag, name: String) throws -> Tag {
+        let updated = try Tag(id: tag.id, name: name, createdAt: tag.createdAt, updatedAt: now())
+        try ensureUnique(
+            name: updated.name,
+            excluding: tag.id,
+            existing: repository.tagSummaries().map { ($0.id, $0.tag.name) }
+        )
+        try repository.updateTag(updated)
+        return updated
+    }
+
+    func deleteTag(_ tag: Tag) throws {
+        try repository.deleteTag(id: tag.id)
+    }
+
+    func mergeTag(_ source: Tag, into target: Tag) throws {
+        guard source.id != target.id else {
+            throw CatalogServiceError.invalidMerge
+        }
+        try repository.mergeTag(sourceID: source.id, into: target.id)
+    }
+
+    func createCollection(name: String, description: String?) throws -> BookCollection {
+        let collection = try BookCollection(name: name, description: description, createdAt: now())
+        try ensureUnique(
+            name: collection.name,
+            excluding: nil,
+            existing: repository.collectionSummaries().map { ($0.id, $0.collection.name) }
+        )
+        return try repository.createCollection(collection)
+    }
+
+    func renameCollection(
+        _ collection: BookCollection,
+        name: String,
+        description: String?
+    ) throws -> BookCollection {
+        let updated = try BookCollection(
+            id: collection.id,
+            name: name,
+            description: description,
+            createdAt: collection.createdAt,
+            updatedAt: now()
+        )
+        try ensureUnique(
+            name: updated.name,
+            excluding: collection.id,
+            existing: repository.collectionSummaries().map { ($0.id, $0.collection.name) }
+        )
+        try repository.updateCollection(updated)
+        return updated
+    }
+
+    func deleteCollection(_ collection: BookCollection) throws {
+        try repository.deleteCollection(id: collection.id)
+    }
+
+    func createSource(name: String, details: String?) throws -> RecommendationSource {
+        let source = try RecommendationSource(name: name, details: details, createdAt: now())
+        try ensureUnique(
+            name: source.name,
+            excluding: nil,
+            existing: repository.sourceSummaries().map { ($0.id, $0.source.name) }
+        )
+        return try repository.createSource(source)
+    }
+
+    func renameSource(
+        _ source: RecommendationSource,
+        name: String,
+        details: String?
+    ) throws -> RecommendationSource {
+        let updated = try RecommendationSource(
+            id: source.id,
+            name: name,
+            details: details,
+            createdAt: source.createdAt,
+            updatedAt: now()
+        )
+        try ensureUnique(
+            name: updated.name,
+            excluding: source.id,
+            existing: repository.sourceSummaries().map { ($0.id, $0.source.name) }
+        )
+        try repository.updateSource(updated)
+        return updated
+    }
+
+    func deleteSource(_ source: RecommendationSource) throws {
+        try repository.deleteSource(id: source.id)
+    }
+
+    private func ensureUnique(
+        name: String,
+        excluding excludedID: UUID?,
+        existing: [(UUID, String)]
+    ) throws {
+        let key = try CatalogNameNormalizer.comparisonKey(name)
+        for (id, existingName) in existing where id != excludedID {
+            if try CatalogNameNormalizer.comparisonKey(existingName) == key {
+                throw CatalogServiceError.nameConflict
+            }
+        }
     }
 }
