@@ -18,6 +18,13 @@
 		BA0000000000000000000110 /* PlaceholderViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000019 /* PlaceholderViews.swift */; };
 		BA0000000000000000000111 /* AppNavigationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000022 /* AppNavigationTests.swift */; };
 		BA0000000000000000000112 /* BookAtlasUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000024 /* BookAtlasUITests.swift */; };
+		BA0000000000000000000113 /* LibraryDomain.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000034 /* LibraryDomain.swift */; };
+		BA0000000000000000000114 /* SQLiteDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000035 /* SQLiteDatabase.swift */; };
+		BA0000000000000000000115 /* LibraryRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000036 /* LibraryRepository.swift */; };
+		BA0000000000000000000116 /* FictionalLibraryFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000038 /* FictionalLibraryFixtures.swift */; };
+		BA0000000000000000000117 /* LibraryDomainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000039 /* LibraryDomainTests.swift */; };
+		BA0000000000000000000118 /* LibraryRepositoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000040 /* LibraryRepositoryTests.swift */; };
+		BA0000000000000000000119 /* MigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA0000000000000000000041 /* MigrationTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +44,13 @@
 		BA0000000000000000000023 /* BookAtlasTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookAtlasTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA0000000000000000000024 /* BookAtlasUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookAtlasUITests.swift; sourceTree = "<group>"; };
 		BA0000000000000000000025 /* BookAtlasUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BookAtlasUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA0000000000000000000034 /* LibraryDomain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDomain.swift; sourceTree = "<group>"; };
+		BA0000000000000000000035 /* SQLiteDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SQLiteDatabase.swift; sourceTree = "<group>"; };
+		BA0000000000000000000036 /* LibraryRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryRepository.swift; sourceTree = "<group>"; };
+		BA0000000000000000000038 /* FictionalLibraryFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FictionalLibraryFixtures.swift; sourceTree = "<group>"; };
+		BA0000000000000000000039 /* LibraryDomainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryDomainTests.swift; sourceTree = "<group>"; };
+		BA0000000000000000000040 /* LibraryRepositoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryRepositoryTests.swift; sourceTree = "<group>"; };
+		BA0000000000000000000041 /* MigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MigrationTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,8 +62,8 @@
 /* Begin PBXGroup section */
 		BA0000000000000000000002 = {isa = PBXGroup; children = (BA0000000000000000000004 /* BookAtlas */, BA0000000000000000000005 /* BookAtlasTests */, BA0000000000000000000006 /* BookAtlasUITests */, BA0000000000000000000003 /* Products */, ); sourceTree = "<group>"; };
 		BA0000000000000000000003 /* Products */ = {isa = PBXGroup; children = (BA0000000000000000000021 /* BookAtlas.app */, BA0000000000000000000023 /* BookAtlasTests.xctest */, BA0000000000000000000025 /* BookAtlasUITests.xctest */, ); name = Products; sourceTree = "<group>"; };
-		BA0000000000000000000004 /* BookAtlas */ = {isa = PBXGroup; children = (BA0000000000000000000007 /* App */, BA0000000000000000000008 /* Features */, BA0000000000000000000009 /* Shared */, ); path = BookAtlas; sourceTree = "<group>"; };
-		BA0000000000000000000005 /* BookAtlasTests */ = {isa = PBXGroup; children = (BA0000000000000000000022 /* AppNavigationTests.swift */, ); path = BookAtlasTests; sourceTree = "<group>"; };
+		BA0000000000000000000004 /* BookAtlas */ = {isa = PBXGroup; children = (BA0000000000000000000007 /* App */, BA0000000000000000000008 /* Features */, BA0000000000000000000009 /* Shared */, BA0000000000000000000032 /* Domain */, BA0000000000000000000033 /* Persistence */, ); path = BookAtlas; sourceTree = "<group>"; };
+		BA0000000000000000000005 /* BookAtlasTests */ = {isa = PBXGroup; children = (BA0000000000000000000022 /* AppNavigationTests.swift */, BA0000000000000000000037 /* Fixtures */, BA0000000000000000000039 /* LibraryDomainTests.swift */, BA0000000000000000000040 /* LibraryRepositoryTests.swift */, BA0000000000000000000041 /* MigrationTests.swift */, ); path = BookAtlasTests; sourceTree = "<group>"; };
 		BA0000000000000000000006 /* BookAtlasUITests */ = {isa = PBXGroup; children = (BA0000000000000000000024 /* BookAtlasUITests.swift */, ); path = BookAtlasUITests; sourceTree = "<group>"; };
 		BA0000000000000000000007 /* App */ = {isa = PBXGroup; children = (BA0000000000000000000010 /* BookAtlasApp.swift */, BA0000000000000000000011 /* AppNavigation.swift */, BA0000000000000000000012 /* AppShellView.swift */, BA0000000000000000000020 /* BookAtlas.entitlements */, ); path = App; sourceTree = "<group>"; };
 		BA0000000000000000000008 /* Features */ = {isa = PBXGroup; children = (BA0000000000000000000026 /* Library */, BA0000000000000000000027 /* Collections */, BA0000000000000000000028 /* Tags */, BA0000000000000000000029 /* Graph */, BA0000000000000000000030 /* Settings */, ); path = Features; sourceTree = "<group>"; };
@@ -60,6 +74,9 @@
 		BA0000000000000000000029 /* Graph */ = {isa = PBXGroup; children = (BA0000000000000000000016 /* GraphPlaceholderView.swift */, ); path = Graph; sourceTree = "<group>"; };
 		BA0000000000000000000030 /* Settings */ = {isa = PBXGroup; children = (BA0000000000000000000017 /* SettingsPlaceholderView.swift */, ); path = Settings; sourceTree = "<group>"; };
 		BA0000000000000000000031 /* UI */ = {isa = PBXGroup; children = (BA0000000000000000000018 /* BookAtlasDesign.swift */, BA0000000000000000000019 /* PlaceholderViews.swift */, ); path = UI; sourceTree = "<group>"; };
+		BA0000000000000000000032 /* Domain */ = {isa = PBXGroup; children = (BA0000000000000000000034 /* LibraryDomain.swift */, ); path = Domain; sourceTree = "<group>"; };
+		BA0000000000000000000033 /* Persistence */ = {isa = PBXGroup; children = (BA0000000000000000000035 /* SQLiteDatabase.swift */, BA0000000000000000000036 /* LibraryRepository.swift */, ); path = Persistence; sourceTree = "<group>"; };
+		BA0000000000000000000037 /* Fixtures */ = {isa = PBXGroup; children = (BA0000000000000000000038 /* FictionalLibraryFixtures.swift */, ); path = Fixtures; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -73,8 +90,8 @@
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
-		BA0000000000000000000201 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BA0000000000000000000101 /* BookAtlasApp.swift in Sources */, BA0000000000000000000102 /* AppNavigation.swift in Sources */, BA0000000000000000000103 /* AppShellView.swift in Sources */, BA0000000000000000000104 /* LibraryPlaceholderView.swift in Sources */, BA0000000000000000000105 /* CollectionsPlaceholderView.swift in Sources */, BA0000000000000000000106 /* TagsPlaceholderView.swift in Sources */, BA0000000000000000000107 /* GraphPlaceholderView.swift in Sources */, BA0000000000000000000108 /* SettingsPlaceholderView.swift in Sources */, BA0000000000000000000109 /* BookAtlasDesign.swift in Sources */, BA0000000000000000000110 /* PlaceholderViews.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
-		BA0000000000000000000204 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BA0000000000000000000111 /* AppNavigationTests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		BA0000000000000000000201 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BA0000000000000000000101 /* BookAtlasApp.swift in Sources */, BA0000000000000000000102 /* AppNavigation.swift in Sources */, BA0000000000000000000103 /* AppShellView.swift in Sources */, BA0000000000000000000104 /* LibraryPlaceholderView.swift in Sources */, BA0000000000000000000105 /* CollectionsPlaceholderView.swift in Sources */, BA0000000000000000000106 /* TagsPlaceholderView.swift in Sources */, BA0000000000000000000107 /* GraphPlaceholderView.swift in Sources */, BA0000000000000000000108 /* SettingsPlaceholderView.swift in Sources */, BA0000000000000000000109 /* BookAtlasDesign.swift in Sources */, BA0000000000000000000110 /* PlaceholderViews.swift in Sources */, BA0000000000000000000113 /* LibraryDomain.swift in Sources */, BA0000000000000000000114 /* SQLiteDatabase.swift in Sources */, BA0000000000000000000115 /* LibraryRepository.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
+		BA0000000000000000000204 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BA0000000000000000000111 /* AppNavigationTests.swift in Sources */, BA0000000000000000000116 /* FictionalLibraryFixtures.swift in Sources */, BA0000000000000000000117 /* LibraryDomainTests.swift in Sources */, BA0000000000000000000118 /* LibraryRepositoryTests.swift in Sources */, BA0000000000000000000119 /* MigrationTests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
 		BA0000000000000000000206 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (BA0000000000000000000112 /* BookAtlasUITests.swift in Sources */, ); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
@@ -86,8 +103,8 @@
 /* Begin XCBuildConfiguration section */
 		BA0000000000000000000401 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 6.0; }; name = Debug; };
 		BA0000000000000000000402 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CLANG_ENABLE_MODULES = YES; MACOSX_DEPLOYMENT_TARGET = 14.0; SDKROOT = macosx; SWIFT_VERSION = 6.0; }; name = Release; };
-		BA0000000000000000000410 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; CODE_SIGN_ENTITLEMENTS = BookAtlas/App/BookAtlas.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; ENABLE_TESTABILITY = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Book Atlas"; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; }; name = Debug; };
-		BA0000000000000000000411 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_ENTITLEMENTS = BookAtlas/App/BookAtlas.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Book Atlas"; MACOSX_DEPLOYMENT_TARGET = 14.0; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; }; name = Release; };
+		BA0000000000000000000410 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; CODE_SIGN_ENTITLEMENTS = BookAtlas/App/BookAtlas.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; ENABLE_TESTABILITY = YES; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Book Atlas"; MACOSX_DEPLOYMENT_TARGET = 14.0; OTHER_LDFLAGS = "-lsqlite3"; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; }; name = Debug; };
+		BA0000000000000000000411 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_ENTITLEMENTS = BookAtlas/App/BookAtlas.entitlements; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_CFBundleDisplayName = "Book Atlas"; MACOSX_DEPLOYMENT_TARGET = 14.0; OTHER_LDFLAGS = "-lsqlite3"; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlas; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; }; name = Release; };
 		BA0000000000000000000420 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlasTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BookAtlas.app/Contents/MacOS/BookAtlas"; }; name = Debug; };
 		BA0000000000000000000421 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlasTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BookAtlas.app/Contents/MacOS/BookAtlas"; }; name = Release; };
 		BA0000000000000000000430 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ARCHS = arm64; CODE_SIGN_IDENTITY = "-"; CODE_SIGN_STYLE = Manual; GENERATE_INFOPLIST_FILE = YES; PRODUCT_BUNDLE_IDENTIFIER = com.example.BookAtlasUITests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 6.0; TEST_TARGET_NAME = BookAtlas; }; name = Debug; };

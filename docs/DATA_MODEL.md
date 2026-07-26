@@ -2,7 +2,7 @@
 
 ## Status
 
-This is a storage-independent vocabulary for product and experiment planning. It is not a committed production SQL schema. Prompt 1 selected direct SQLite as the persistence direction; Prompt 3 defines the production schema, version 1 migration, constraints, and tests behind that store boundary.
+Prompt 3 turns the minimum library vocabulary into the committed production SQLite schema. It remains deliberately smaller than the long-term conceptual model: contributors are stored as a validated author string, while editions, ordered contributors, ratings, series, and duplicate resolution remain future work.
 
 ## Candidate concepts
 
@@ -12,15 +12,15 @@ A library record representing a work or edition as the user understands it. Cand
 
 The exact distinction between work and edition is deliberately unresolved. The first version must not claim to infer editions, translations, or series automatically.
 
-### Contributor
+### Author
 
-A fictional or user-entered person or organization associated with a book, with a role such as author, editor, or translator. A book can have multiple ordered contributors.
+The first production record stores one required, trimmed author string. It does not infer people, organizations, contributor roles, translations, or editions.
 
 ### Tag
 
 A user-defined label linked many-to-many with books. Normalization and uniqueness behavior must be explicit and tested.
 
-### Book list
+### Book collection
 
 A named, user-maintained collection linked many-to-many with books. List membership may carry ordering only if a real product workflow requires it.
 
@@ -40,6 +40,19 @@ An optional user-entered or verified integration destination. A stored link is n
 
 If future scope requires a local-file reference, store only the minimum metadata and permission bookmark needed. Book Atlas does not ingest ebook content in the first release.
 
+## Production schema and persistence rules
+
+The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is accessed only through `BookRepository`. The production database convention is `Application Support/BookAtlas/book-atlas.sqlite`; resolving that URL alone does not open it. The current application shell does not create or open a database yet.
+
+- Schema version is recorded in both SQLite `user_version` and the append-only `schema_migrations` table.
+- Version 1 creates `books`, `tags`, `book_tags`, `book_collections`, `book_collections_books`, `recommendation_sources`, `book_sources`, `external_links`, and `manual_book_relations`.
+- Version 2 adds the optional `book_collections.description` field. Its existence provides a real, data-preserving forward-migration test rather than a disposable spike-only history.
+- IDs are UUID text primary keys. Join tables use composite primary keys; required names are case-insensitively unique; relevant foreign keys use `ON DELETE CASCADE`; and indexes cover book status, title, author, ISBN, and reverse joins.
+- ISBN is indexed but intentionally not globally unique: the user may keep different records that share an identifier.
+- Manual relations are directed, unique by source/target/kind, and reject self-relations in both domain validation and a database check.
+- Timestamps are UTC ISO-8601 strings with fractional seconds. Collection membership and all list queries use explicit deterministic orderings.
+- Migrations run one version at a time inside `BEGIN IMMEDIATE` transactions. Failures roll back and surface an error; the store never deletes or silently rebuilds an existing database.
+
 ## General invariants to validate
 
 - Stable internal identifiers do not depend on titles or file paths.
@@ -56,7 +69,7 @@ No single field proves identity. Future detection may rank normalized identifier
 
 ## Schema evolution
 
-Every production schema has an integer version stored in SQLite metadata. Each change supplies a transactional forward migration and fixtures that test both successful migration and safe failure. Backup/restore compatibility and transaction boundaries must be specified before applying migrations to user data. The Prompt 1 experiment demonstrated version-1-to-2 and failed version-3 rollback only; it is not the production schema or migration history.
+Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production migration registry starts with the version-1 schema above and its version-2 collection-description migration.
 
 ## Test data
 

@@ -4,7 +4,7 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-The repository is at Milestone 0. Prompt 1 validated the technical direction in isolated experiments, and Prompt 2 created the production `BookAtlas` macOS application skeleton. It has native navigation and placeholders only: no production database, book CRUD, import/export, graph implementation, or external-link behavior has been added.
+The repository is at Milestone 1. Prompt 1 validated the technical direction in isolated experiments, Prompt 2 created the production `BookAtlas` macOS application skeleton, and Prompt 3 added a testable SQLite-backed library core with explicit migrations. The app still has navigation and placeholders only: book-management UI, import/export, graph implementation, and external-link actions have not been added.
 
 ## Product boundaries
 

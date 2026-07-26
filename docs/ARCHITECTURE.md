@@ -2,7 +2,7 @@
 
 ## Current state
 
-Milestone 0 contains a production application skeleton only. Prompt 1 recorded accepted decisions, and Prompt 2 added an App Sandbox-enabled SwiftUI shell with a lightweight navigation state and replaceable feature placeholders. There is no production persistence, domain, import, graph, or external-integration implementation yet.
+Milestone 1 contains a production application skeleton plus a testable library domain and one local SQLite persistence path. Prompt 1 recorded accepted decisions, Prompt 2 added an App Sandbox-enabled SwiftUI shell, and Prompt 3 added the migration registry and repository boundary. There is still no book-management UI, import/export, graph implementation, or external-link action.
 
 ## Intended shape
 
@@ -18,9 +18,9 @@ Dependencies should point from presentation and integrations toward explicit dom
 
 ## Persistence decision
 
-The production direction is direct SQLite through a small internal Swift store boundary; see [ADR-0002](DECISIONS/0002-direct-sqlite-persistence.md). Prompt 1 verified CRUD, many-to-many rows, uniqueness, cascade deletion, transaction rollback, a version-1-to-2 migration, failed-migration rollback, online backup opening, and independent in-memory stores using only fictional data.
+The production direction is direct SQLite through a small internal Swift store boundary; see [ADR-0002](DECISIONS/0002-direct-sqlite-persistence.md). `LibraryDomain.swift` contains entities and validation, `SQLiteDatabase.swift` is the focused SQLite wrapper, and `LibraryRepository.swift` owns all schema, migrations, CRUD, relationship, search, and transaction operations. SwiftUI imports none of that behavior.
 
-Prompt 3 must define the production schema and migration registry. It will use explicit integer schema versions and transactional forward migrations; it must not reuse the disposable spike schema. No production code will maintain two databases. FTS5 remains deferred until a measured search workflow needs it.
+The production registry currently advances from version 1 (core tables) to version 2 (collection descriptions). It records versions in `schema_migrations` and `PRAGMA user_version`, applies each migration transactionally, rejects future versions, and never rebuilds a database after an error. Tests use only `:memory:` or per-test fixtures; the app shell does not open the production database. No production code maintains two databases. FTS5 remains deferred until a measured search workflow needs it.
 
 ## State and concurrency
 
@@ -28,7 +28,7 @@ UI state should remain feature-sized. Long-running import, export, backup, graph
 
 ## Storage and sandboxing
 
-Production data is expected under the application-specific macOS Application Support directory. Temporary work belongs in system temporary storage and should be cleaned safely. Access outside the sandbox starts with a user-selected URL and, when long-term access is needed, uses a read-only, app-scoped security-scoped bookmark; see [ADR-0006](DECISIONS/0006-sandboxed-file-access.md).
+The future production database location is `Application Support/BookAtlas/book-atlas.sqlite`. Temporary work belongs in system temporary storage and should be cleaned safely. Access outside the sandbox starts with a user-selected URL and, when long-term access is needed, uses a read-only, app-scoped security-scoped bookmark; see [ADR-0006](DECISIONS/0006-sandboxed-file-access.md).
 
 App Sandbox is the default. The verified experiment entitlement set is App Sandbox, user-selected read-only files, and app-scoped bookmarks. The application will not request the network client entitlement by default. Bookmark bytes, paths, and user file content must not appear in logs.
 
