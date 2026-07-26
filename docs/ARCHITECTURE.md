@@ -2,7 +2,7 @@
 
 ## Current state
 
-Milestone 1 contains a production application skeleton plus a testable library domain and one local SQLite persistence path. Prompt 1 recorded accepted decisions, Prompt 2 added an App Sandbox-enabled SwiftUI shell, and Prompt 3 added the migration registry and repository boundary. There is still no book-management UI, import/export, graph implementation, or external-link action.
+Milestone 2 contains a production application skeleton, a testable library domain, one local SQLite persistence path, and the first usable catalog flow. Prompt 1 recorded accepted decisions, Prompt 2 added an App Sandbox-enabled SwiftUI shell, Prompt 3 added the migration registry and repository boundary, and Prompt 4 added book list, detail, form, edit, and confirmed-delete presentation. Import/export, duplicate merge, graph implementation, and external-link actions remain unimplemented.
 
 ## Intended shape
 
@@ -20,11 +20,11 @@ Dependencies should point from presentation and integrations toward explicit dom
 
 The production direction is direct SQLite through a small internal Swift store boundary; see [ADR-0002](DECISIONS/0002-direct-sqlite-persistence.md). `LibraryDomain.swift` contains entities and validation, `SQLiteDatabase.swift` is the focused SQLite wrapper, and `LibraryRepository.swift` owns all schema, migrations, CRUD, relationship, search, and transaction operations. SwiftUI imports none of that behavior.
 
-The production registry currently advances from version 1 (core tables) to version 2 (collection descriptions). It records versions in `schema_migrations` and `PRAGMA user_version`, applies each migration transactionally, rejects future versions, and never rebuilds a database after an error. Tests use only `:memory:` or per-test fixtures; the app shell does not open the production database. No production code maintains two databases. FTS5 remains deferred until a measured search workflow needs it.
+The production registry currently advances from version 1 (core tables) to version 2 (collection descriptions). It records versions in `schema_migrations` and `PRAGMA user_version`, applies each migration transactionally, rejects future versions, and never rebuilds a database after an error. The application opens its one production database at the documented Application Support location; test launches use an in-memory repository. `LibraryCatalogService` translates editor drafts into domain use cases, while the feature-scoped `LibraryStore` owns list selection, form presentation, delete confirmation, and generic error state. SwiftUI views do not execute SQL. FTS5 remains deferred until a measured search workflow needs it.
 
 ## State and concurrency
 
-UI state should remain feature-sized. Long-running import, export, backup, graph layout, and migration work must not block the main actor. Concurrency boundaries and store isolation will be chosen only after the toolchain and persistence experiments.
+UI state remains feature-sized: `LibraryStore` is scoped to the catalog screen and its editor flow. Prompt 4's bounded, local catalog reads and writes run through that store on the main actor; future long-running import, export, backup, graph layout, and migration work must move behind explicit background boundaries and must not block the main actor.
 
 ## Storage and sandboxing
 

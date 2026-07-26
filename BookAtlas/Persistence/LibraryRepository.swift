@@ -177,6 +177,7 @@ final class DatabaseMigrator {
 
 enum BookRepositoryError: Error, Equatable {
     case invalidStoredRecord
+    case bookNotFound
 }
 
 final class BookRepository {
@@ -253,10 +254,16 @@ final class BookRepository {
                 .text(book.id.uuidString)
             ]
         )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.bookNotFound
+        }
     }
 
     func deleteBook(id: UUID) throws {
         try database.execute("DELETE FROM books WHERE id = ?", bindings: [.text(id.uuidString)])
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.bookNotFound
+        }
     }
 
     func list(limit: Int = 100) throws -> [Book] {

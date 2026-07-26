@@ -83,6 +83,13 @@ final class SQLiteDatabase {
         Int(try scalarInt("PRAGMA user_version") ?? 0)
     }
 
+    func changes() throws -> Int {
+        guard let handle else {
+            throw SQLiteDatabaseError.closed
+        }
+        return Int(sqlite3_changes(handle))
+    }
+
     func transaction<T>(_ operation: () throws -> T) throws -> T {
         try execute("BEGIN IMMEDIATE TRANSACTION")
         do {

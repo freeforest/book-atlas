@@ -35,7 +35,10 @@ final class AppNavigationTests: XCTestCase {
     func testShellLaysOutAtSmallAndLargeWindowSizes() {
         for size in [CGSize(width: 520, height: 360), CGSize(width: 1280, height: 800)] {
             let host = NSHostingView(
-                rootView: AppShellView(selection: .constant(.library))
+                rootView: AppShellView(
+                    selection: .constant(.library),
+                    libraryStore: try! inMemoryLibraryStore()
+                )
             )
             host.frame = CGRect(origin: .zero, size: size)
             host.layoutSubtreeIfNeeded()
@@ -48,7 +51,10 @@ final class AppNavigationTests: XCTestCase {
     func testShellSupportsLightAndDarkAppearances() {
         for appearanceName in [NSAppearance.Name.aqua, .darkAqua] {
             let host = NSHostingView(
-                rootView: AppShellView(selection: .constant(.library))
+                rootView: AppShellView(
+                    selection: .constant(.library),
+                    libraryStore: try! inMemoryLibraryStore()
+                )
             )
             host.appearance = NSAppearance(named: appearanceName)
             host.frame = CGRect(x: 0, y: 0, width: 720, height: 480)
@@ -56,5 +62,11 @@ final class AppNavigationTests: XCTestCase {
             host.displayIfNeeded()
             XCTAssertEqual(host.effectiveAppearance.name, appearanceName)
         }
+    }
+
+    @MainActor
+    private func inMemoryLibraryStore() throws -> LibraryStore {
+        let repository = try BookRepository.inMemory()
+        return LibraryStore(catalog: LibraryCatalogService(repository: repository))
     }
 }

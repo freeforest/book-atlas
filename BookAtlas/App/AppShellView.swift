@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AppShellView: View {
     @Binding var selection: AppSection
+    @ObservedObject var libraryStore: LibraryStore
 
     var body: some View {
         NavigationSplitView {
@@ -40,11 +41,6 @@ struct AppShellView: View {
                 .accessibilityLabel("页面导航")
             }
         }
-        .searchable(
-            text: .constant(""),
-            placement: .toolbar,
-            prompt: "搜索书库（即将推出）"
-        )
         .accessibilityIdentifier("app-shell")
     }
 
@@ -52,7 +48,7 @@ struct AppShellView: View {
     private func page(for section: AppSection) -> some View {
         switch section {
         case .library:
-            LibraryPlaceholderView()
+            LibraryView(store: libraryStore)
         case .collections:
             CollectionsPlaceholderView()
         case .tags:
