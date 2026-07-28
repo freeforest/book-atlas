@@ -902,7 +902,8 @@ struct BookAtlasSchemaValidationResult: Equatable, Sendable {
 final class BookAtlasSchemaValidator {
     func validate(
         database: SQLiteDatabase,
-        expectedVersion: Int
+        expectedVersion: Int,
+        allowsBackupManifest: Bool = false
     ) throws -> BookAtlasSchemaValidationResult {
         do {
             guard (1 ... BookAtlasSchema.latestVersion).contains(expectedVersion),
@@ -912,7 +913,11 @@ final class BookAtlasSchemaValidator {
             else { throw PortabilityError.invalidBackupSchema }
 
             try validateMigrationHistory(database, version: expectedVersion)
-            try validateStructure(database, version: expectedVersion)
+            try validateStructure(
+                database,
+                version: expectedVersion,
+                allowsBackupManifest: allowsBackupManifest
+            )
             let books = try validateDomainRows(database, version: expectedVersion)
             return BookAtlasSchemaValidationResult(
                 schemaVersion: expectedVersion,
@@ -925,10 +930,18 @@ final class BookAtlasSchemaValidator {
         }
     }
 
-    func validateFile(_ url: URL, expectedVersion: Int) throws -> BookAtlasSchemaValidationResult {
+    func validateFile(
+        _ url: URL,
+        expectedVersion: Int,
+        allowsBackupManifest: Bool = false
+    ) throws -> BookAtlasSchemaValidationResult {
         let database = try SQLiteDatabase(path: url.path, readOnly: true)
         defer { try? database.close() }
-        return try validate(database: database, expectedVersion: expectedVersion)
+        return try validate(
+            database: database,
+            expectedVersion: expectedVersion,
+            allowsBackupManifest: allowsBackupManifest
+        )
     }
 
     private func validateMigrationHistory(_ database: SQLiteDatabase, version: Int) throws {
@@ -942,25 +955,46 @@ final class BookAtlasSchemaValidator {
         else { throw PortabilityError.invalidBackupSchema }
     }
 
-    private func validateStructure(_ database: SQLiteDatabase, version: Int) throws {
-        var expectations = Self.versionOneTables
-        if version >= 2 {
-            var collections = expectations["book_collections"]!
-            collections.columns.append("description")
-            expectations["book_collections"] = collections
-        }
-        if version >= 4 {
-            expectations.merge(Self.versionFourTables) { current, _ in current }
-        }
-
-        let existingTables = Set(try database.query(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-        ) { $0.string(at: 0) }.compactMap { $0 })
-        guard Set(expectations.keys).isSubset(of: existingTables) else {
+    private func validateStructure(
+        _ database: SQLiteDatabase,
+        version: Int,
+        allowsBackupManifest: Bool
+    ) throws {
+        guard var expectation = Self.versionedSchemas[version] else {
             throw PortabilityError.invalidBackupSchema
         }
+        if allowsBackupManifest {
+            expectation.tables[LibraryBackupCoordinator.manifestTable] =
+                Self.backupManifestTable
+        }
 
-        for (table, expectation) in expectations {
+        let objects = try database.query(
+            """
+            SELECT type, name, tbl_name, sql
+            FROM sqlite_master
+            WHERE name NOT LIKE 'sqlite_%'
+              AND type IN ('table', 'index', 'trigger', 'view')
+            ORDER BY type, name
+            """
+        ) { row in
+            SchemaObject(
+                type: row.string(at: 0) ?? "",
+                name: row.string(at: 1) ?? "",
+                table: row.string(at: 2) ?? "",
+                sql: row.string(at: 3) ?? ""
+            )
+        }
+        let existingTables = Set(objects.filter { $0.type == "table" }.map(\.name))
+        let existingIndexes = Set(objects.filter { $0.type == "index" }.map(\.name))
+        let existingTriggers = Set(objects.filter { $0.type == "trigger" }.map(\.name))
+        let existingViews = Set(objects.filter { $0.type == "view" }.map(\.name))
+        guard existingTables == Set(expectation.tables.keys),
+              existingIndexes == Set(expectation.indexes.keys),
+              existingTriggers == Set(expectation.triggers.keys),
+              existingViews == expectation.views
+        else { throw PortabilityError.invalidBackupSchema }
+
+        for (table, tableExpectation) in expectation.tables {
             let columns = try database.query("PRAGMA table_info(\(table))") { row in
                 (
                     name: row.string(at: 1) ?? "",
@@ -968,19 +1002,18 @@ final class BookAtlasSchemaValidator {
                     primaryKeyOrder: Int(row.integer(at: 5))
                 )
             }
-            let names = Set(columns.map(\.name))
-            guard Set(expectation.columns).isSubset(of: names) else {
+            guard columns.map(\.name) == tableExpectation.columns else {
                 throw PortabilityError.invalidBackupSchema
             }
             let primaryKey = columns
                 .filter { $0.primaryKeyOrder > 0 }
                 .sorted { $0.primaryKeyOrder < $1.primaryKeyOrder }
                 .map(\.name)
-            guard primaryKey == expectation.primaryKey else {
+            guard primaryKey == tableExpectation.primaryKey else {
                 throw PortabilityError.invalidBackupSchema
             }
             let nonNullNames = Set(columns.filter(\.notNull).map(\.name))
-            guard Set(expectation.requiredNonNull).isSubset(of: nonNullNames) else {
+            guard Set(tableExpectation.requiredNonNull) == nonNullNames else {
                 throw PortabilityError.invalidBackupSchema
             }
 
@@ -989,7 +1022,7 @@ final class BookAtlasSchemaValidator {
                 bindings: [.text(table)]
             ) { $0.string(at: 0) }.first ?? nil
             let normalizedSQL = Self.normalizedSQL(sql ?? "")
-            guard expectation.constraintFragments.allSatisfy({
+            guard tableExpectation.constraintFragments.allSatisfy({
                 normalizedSQL.contains(Self.normalizedSQL($0))
             }) else { throw PortabilityError.invalidBackupSchema }
 
@@ -1001,15 +1034,17 @@ final class BookAtlasSchemaValidator {
                     deleteAction: (row.string(at: 6) ?? "").uppercased()
                 )
             }
-            guard Set(expectation.foreignKeys).isSubset(of: Set(foreignKeys)) else {
+            guard Set(foreignKeys) == Set(tableExpectation.foreignKeys) else {
                 throw PortabilityError.invalidBackupSchema
             }
             try validateUniqueKeys(
                 database,
                 table: table,
-                expected: expectation.uniqueKeys
+                expected: tableExpectation.uniqueKeys
             )
         }
+        try validateIndexes(database, objects: objects, expected: expectation.indexes)
+        try validateTriggers(objects: objects, expected: expectation.triggers)
     }
 
     private func validateUniqueKeys(
@@ -1017,19 +1052,85 @@ final class BookAtlasSchemaValidator {
         table: String,
         expected: [[String]]
     ) throws {
-        guard !expected.isEmpty else { return }
         let indexes = try database.query("PRAGMA index_list(\(table))") { row in
-            (name: row.string(at: 1) ?? "", unique: row.integer(at: 2) == 1)
+            (
+                name: row.string(at: 1) ?? "",
+                unique: row.integer(at: 2) == 1,
+                origin: row.string(at: 3) ?? ""
+            )
         }
         var actual = Set<[String]>()
-        for index in indexes where index.unique {
+        for index in indexes where index.unique && index.origin == "u" {
             let columns = try database.query("PRAGMA index_info(\(index.name))") {
                 (order: Int($0.integer(at: 0)), name: $0.string(at: 2) ?? "")
             }.sorted { $0.order < $1.order }.map(\.name)
             actual.insert(columns)
         }
-        guard Set(expected).isSubset(of: actual) else {
+        guard Set(expected) == actual else {
             throw PortabilityError.invalidBackupSchema
+        }
+    }
+
+    private func validateIndexes(
+        _ database: SQLiteDatabase,
+        objects: [SchemaObject],
+        expected: [String: IndexExpectation]
+    ) throws {
+        let indexObjects = Dictionary(
+            uniqueKeysWithValues: objects
+                .filter { $0.type == "index" }
+                .map { ($0.name, $0) }
+        )
+        for (name, expectation) in expected {
+            guard let object = indexObjects[name],
+                  object.table == expectation.table
+            else { throw PortabilityError.invalidBackupSchema }
+            let listed = try database.query("PRAGMA index_list(\(expectation.table))") { row in
+                (
+                    name: row.string(at: 1) ?? "",
+                    unique: row.integer(at: 2) == 1,
+                    origin: row.string(at: 3) ?? "",
+                    partial: row.integer(at: 4) == 1
+                )
+            }.first { $0.name == name }
+            guard let listed,
+                  listed.unique == expectation.unique,
+                  listed.origin == "c",
+                  !listed.partial
+            else { throw PortabilityError.invalidBackupSchema }
+
+            let columns = try database.query("PRAGMA index_xinfo(\(name))") { row in
+                IndexColumn(
+                    order: Int(row.integer(at: 0)),
+                    name: row.string(at: 2),
+                    descending: row.integer(at: 3) == 1,
+                    collation: row.string(at: 4) ?? "",
+                    isKey: row.integer(at: 5) == 1
+                )
+            }
+                .filter(\.isKey)
+                .sorted { $0.order < $1.order }
+            guard columns.map(\.name) == expectation.columns.map(Optional.some),
+                  columns.map(\.descending) == expectation.descending,
+                  columns.map(\.collation) == expectation.collations
+            else { throw PortabilityError.invalidBackupSchema }
+        }
+    }
+
+    private func validateTriggers(
+        objects: [SchemaObject],
+        expected: [String: TriggerExpectation]
+    ) throws {
+        let triggerObjects = Dictionary(
+            uniqueKeysWithValues: objects
+                .filter { $0.type == "trigger" }
+                .map { ($0.name, $0) }
+        )
+        for (name, expectation) in expected {
+            guard let object = triggerObjects[name],
+                  object.table == expectation.table,
+                  Self.normalizedSQL(object.sql) == Self.normalizedSQL(expectation.sql)
+            else { throw PortabilityError.invalidBackupSchema }
         }
     }
 
@@ -1268,7 +1369,10 @@ final class BookAtlasSchemaValidator {
             primaryKey: ["id"],
             requiredNonNull: ["id", "name", "created_at", "updated_at"],
             uniqueKeys: [["name"]],
-            constraintFragments: ["CHECK (length(trim(name)) > 0)"]
+            constraintFragments: [
+                "name TEXT NOT NULL COLLATE NOCASE",
+                "CHECK (length(trim(name)) > 0)"
+            ]
         ),
         "book_tags": joinExpectation(
             primaryKey: ["book_id", "tag_id"],
@@ -1280,7 +1384,10 @@ final class BookAtlasSchemaValidator {
             primaryKey: ["id"],
             requiredNonNull: ["id", "name", "created_at", "updated_at"],
             uniqueKeys: [["name"]],
-            constraintFragments: ["CHECK (length(trim(name)) > 0)"]
+            constraintFragments: [
+                "name TEXT NOT NULL COLLATE NOCASE",
+                "CHECK (length(trim(name)) > 0)"
+            ]
         ),
         "book_collections_books": joinExpectation(
             primaryKey: ["collection_id", "book_id"],
@@ -1292,7 +1399,10 @@ final class BookAtlasSchemaValidator {
             primaryKey: ["id"],
             requiredNonNull: ["id", "name", "created_at", "updated_at"],
             uniqueKeys: [["name"]],
-            constraintFragments: ["CHECK (length(trim(name)) > 0)"]
+            constraintFragments: [
+                "name TEXT NOT NULL COLLATE NOCASE",
+                "CHECK (length(trim(name)) > 0)"
+            ]
         ),
         "book_sources": joinExpectation(
             primaryKey: ["book_id", "source_id"],
@@ -1395,6 +1505,133 @@ final class BookAtlasSchemaValidator {
         )
     ]
 
+    private static let backupManifestTable = TableExpectation(
+        columns: ["format_version", "schema_version", "application_version", "created_at"],
+        primaryKey: [],
+        requiredNonNull: [
+            "format_version", "schema_version", "application_version", "created_at"
+        ]
+    )
+
+    private static let versionOneIndexes: [String: IndexExpectation] = [
+        "idx_books_reading_status": IndexExpectation(
+            table: "books",
+            columns: ["reading_status"]
+        ),
+        "idx_books_title": IndexExpectation(table: "books", columns: ["title"]),
+        "idx_books_author": IndexExpectation(table: "books", columns: ["author"]),
+        "idx_books_isbn": IndexExpectation(table: "books", columns: ["isbn"]),
+        "idx_book_tags_tag_id": IndexExpectation(table: "book_tags", columns: ["tag_id"]),
+        "idx_collection_books_book_id": IndexExpectation(
+            table: "book_collections_books",
+            columns: ["book_id"]
+        ),
+        "idx_book_sources_source_id": IndexExpectation(
+            table: "book_sources",
+            columns: ["source_id"]
+        ),
+        "idx_external_links_book_id": IndexExpectation(
+            table: "external_links",
+            columns: ["book_id"]
+        ),
+        "idx_manual_relations_source": IndexExpectation(
+            table: "manual_book_relations",
+            columns: ["source_book_id"]
+        ),
+        "idx_manual_relations_target": IndexExpectation(
+            table: "manual_book_relations",
+            columns: ["target_book_id"]
+        )
+    ]
+
+    private static let versionThreeIndexes: [String: IndexExpectation] = [
+        "idx_books_original_title": IndexExpectation(
+            table: "books",
+            columns: ["original_title"]
+        ),
+        "idx_books_created_order": IndexExpectation(
+            table: "books",
+            columns: ["created_at", "id"]
+        ),
+        "idx_books_updated_order": IndexExpectation(
+            table: "books",
+            columns: ["updated_at", "id"]
+        ),
+        "idx_books_priority_order": IndexExpectation(
+            table: "books",
+            columns: ["priority", "id"]
+        )
+    ]
+
+    private static let versionFourIndexes: [String: IndexExpectation] = [
+        "idx_duplicate_keys_isbn": IndexExpectation(
+            table: "book_duplicate_keys",
+            columns: ["valid_isbn"]
+        ),
+        "idx_duplicate_keys_title_author": IndexExpectation(
+            table: "book_duplicate_keys",
+            columns: ["normalized_title", "normalized_author"]
+        ),
+        "idx_duplicate_keys_original_title": IndexExpectation(
+            table: "book_duplicate_keys",
+            columns: ["normalized_original_title"]
+        ),
+        "idx_duplicate_title_tokens_token": IndexExpectation(
+            table: "book_duplicate_title_tokens",
+            columns: ["token", "book_id"]
+        ),
+        "idx_ignored_duplicate_pairs_second": IndexExpectation(
+            table: "ignored_duplicate_pairs",
+            columns: ["second_book_id"]
+        )
+    ]
+
+    private static let versionedSchemas: [Int: SchemaExpectation] = {
+        let schemaOne = SchemaExpectation(
+            tables: versionOneTables,
+            indexes: versionOneIndexes,
+            triggers: [:],
+            views: []
+        )
+        var versionTwoTables = versionOneTables
+        var collections = versionTwoTables["book_collections"]!
+        collections.columns.append("description")
+        versionTwoTables["book_collections"] = collections
+        let schemaTwo = SchemaExpectation(
+            tables: versionTwoTables,
+            indexes: versionOneIndexes,
+            triggers: [:],
+            views: []
+        )
+        let indexesThroughThree = versionOneIndexes.merging(versionThreeIndexes) {
+            _, current in current
+        }
+        let schemaThree = SchemaExpectation(
+            tables: versionTwoTables,
+            indexes: indexesThroughThree,
+            triggers: [:],
+            views: []
+        )
+        let tablesThroughFour = versionTwoTables.merging(versionFourTables) {
+            _, current in current
+        }
+        let indexesThroughFour = indexesThroughThree.merging(versionFourIndexes) {
+            _, current in current
+        }
+        let schemaFour = SchemaExpectation(
+            tables: tablesThroughFour,
+            indexes: indexesThroughFour,
+            triggers: [
+                BookAtlasSchema.ignoredPairInvalidationTriggerName: TriggerExpectation(
+                    table: "books",
+                    sql: BookAtlasSchema.ignoredPairInvalidationTriggerSQL
+                )
+            ],
+            views: []
+        )
+        return [1: schemaOne, 2: schemaTwo, 3: schemaThree, 4: schemaFour]
+    }()
+
     private static func joinExpectation(
         primaryKey: [String],
         first: (String, String),
@@ -1445,6 +1682,55 @@ private struct TableExpectation {
         self.uniqueKeys = uniqueKeys
         self.constraintFragments = constraintFragments
     }
+}
+
+private struct SchemaExpectation {
+    var tables: [String: TableExpectation]
+    let indexes: [String: IndexExpectation]
+    let triggers: [String: TriggerExpectation]
+    let views: Set<String>
+}
+
+private struct SchemaObject {
+    let type: String
+    let name: String
+    let table: String
+    let sql: String
+}
+
+private struct IndexExpectation {
+    let table: String
+    let columns: [String]
+    let unique: Bool
+    let descending: [Bool]
+    let collations: [String]
+
+    init(
+        table: String,
+        columns: [String],
+        unique: Bool = false,
+        descending: [Bool]? = nil,
+        collations: [String]? = nil
+    ) {
+        self.table = table
+        self.columns = columns
+        self.unique = unique
+        self.descending = descending ?? Array(repeating: false, count: columns.count)
+        self.collations = collations ?? Array(repeating: "BINARY", count: columns.count)
+    }
+}
+
+private struct IndexColumn {
+    let order: Int
+    let name: String?
+    let descending: Bool
+    let collation: String
+    let isKey: Bool
+}
+
+private struct TriggerExpectation {
+    let table: String
+    let sql: String
 }
 
 private struct ForeignKeyDefinition: Hashable {
@@ -1630,7 +1916,8 @@ final class LibraryBackupCoordinator {
             )
             _ = try schemaValidator.validate(
                 database: database,
-                expectedVersion: repository.schemaVersion
+                expectedVersion: repository.schemaVersion,
+                allowsBackupManifest: true
             )
             try checkCancellation(cancellation)
             try database.close()
@@ -1703,7 +1990,8 @@ final class LibraryBackupCoordinator {
         try checkCancellation(cancellation)
         let validation = try schemaValidator.validate(
             database: database,
-            expectedVersion: rows[0].1
+            expectedVersion: rows[0].1,
+            allowsBackupManifest: true
         )
         try checkCancellation(cancellation)
         return BackupPreview(
@@ -1720,10 +2008,17 @@ final class LibraryBackupCoordinator {
         databaseURL: URL,
         repository: inout BookRepository,
         recoveryDirectory: URL,
+        control: RestoreOperationControl = RestoreOperationControl(),
         cancellation: RestoreCancellation = .never,
         progress: @escaping @Sendable (RestoreProgressPhase) -> Void = { _ in }
     ) throws -> BackupPreview {
-        progress(.inspecting)
+        defer { control.finish() }
+        func publish(_ phase: RestoreProgressPhase) throws {
+            try control.transition(to: phase)
+            progress(phase)
+        }
+
+        try publish(.inspecting)
         let preview = try inspect(backupURL, cancellation: cancellation)
         try checkCancellation(cancellation)
         let backupBytes = try resourceFileSize(backupURL)
@@ -1737,7 +2032,7 @@ final class LibraryBackupCoordinator {
             bytes: liveBytes + Self.diskSafetyReserveBytes
         )
 
-        progress(.creatingRecoveryCopy)
+        try publish(.creatingRecoveryCopy)
         try fileManager.createDirectory(at: recoveryDirectory, withIntermediateDirectories: true)
         let recoveryURL = recoveryDirectory.appendingPathComponent(
             "BookAtlas-before-restore-\(UUID().uuidString).\(Self.backupExtension)"
@@ -1775,7 +2070,7 @@ final class LibraryBackupCoordinator {
         }
 
         do {
-            progress(.staging)
+            try publish(.staging)
             try checkCancellation(cancellation)
             if let error = injectedSystemError(.stageRestore) { throw error }
             let source = try SQLiteDatabase(path: backupURL.path, readOnly: true)
@@ -1786,7 +2081,7 @@ final class LibraryBackupCoordinator {
             try source.close()
             try checkCancellation(cancellation)
 
-            progress(.migrating)
+            try publish(.migrating)
             let staged = try SQLiteDatabase(path: newURL.path)
             defer { try? staged.close() }
             try staged.execute("DROP TABLE \(Self.manifestTable)")
@@ -1805,7 +2100,7 @@ final class LibraryBackupCoordinator {
             )
             try checkCancellation(cancellation)
 
-            progress(.safeReplacement)
+            try publish(.safeReplacement)
             try repository.checkpointWAL()
             let state = RestoreState(
                 formatVersion: 1,
@@ -1831,7 +2126,7 @@ final class LibraryBackupCoordinator {
                 databaseURL,
                 expectedVersion: BookAtlasSchema.latestVersion
             )
-            progress(.reconnecting)
+            try publish(.reconnecting)
             try injected(.beforeReconnect)
             repository = try BookRepository(databaseURL: databaseURL)
             connectionClosed = false

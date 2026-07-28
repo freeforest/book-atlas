@@ -24,6 +24,22 @@ struct DatabaseMigration: @unchecked Sendable {
 
 enum BookAtlasSchema {
     static let latestVersion = 4
+    static let ignoredPairInvalidationTriggerName =
+        "invalidate_ignored_duplicate_pairs_after_identity_update"
+    static let ignoredPairInvalidationTriggerSQL = """
+        CREATE TRIGGER \(ignoredPairInvalidationTriggerName)
+        AFTER UPDATE OF title, original_title, author, isbn, publisher, publication_date ON books
+        WHEN OLD.title IS NOT NEW.title
+          OR OLD.original_title IS NOT NEW.original_title
+          OR OLD.author IS NOT NEW.author
+          OR OLD.isbn IS NOT NEW.isbn
+          OR OLD.publisher IS NOT NEW.publisher
+          OR OLD.publication_date IS NOT NEW.publication_date
+        BEGIN
+            DELETE FROM ignored_duplicate_pairs
+            WHERE first_book_id = NEW.id OR second_book_id = NEW.id;
+        END
+        """
 
     static let migrations: [DatabaseMigration] = [
         DatabaseMigration(
@@ -193,20 +209,7 @@ enum BookAtlasSchema {
                 )
                 """,
                 "CREATE INDEX idx_ignored_duplicate_pairs_second ON ignored_duplicate_pairs(second_book_id)",
-                """
-                CREATE TRIGGER invalidate_ignored_duplicate_pairs_after_identity_update
-                AFTER UPDATE OF title, original_title, author, isbn, publisher, publication_date ON books
-                WHEN OLD.title IS NOT NEW.title
-                  OR OLD.original_title IS NOT NEW.original_title
-                  OR OLD.author IS NOT NEW.author
-                  OR OLD.isbn IS NOT NEW.isbn
-                  OR OLD.publisher IS NOT NEW.publisher
-                  OR OLD.publication_date IS NOT NEW.publication_date
-                BEGIN
-                    DELETE FROM ignored_duplicate_pairs
-                    WHERE first_book_id = NEW.id OR second_book_id = NEW.id;
-                END
-                """
+                ignoredPairInvalidationTriggerSQL
             ],
             dataTransform: backfillDuplicateKeys
         )

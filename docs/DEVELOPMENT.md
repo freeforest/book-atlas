@@ -16,11 +16,11 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p7-final-build \
+  -derivedDataPath /tmp/bookatlas-p7-nogo2-verified-build \
   build
 ```
 
-The Prompt 7 Debug build and 107-test unit/integration suite are verified with Xcode 26.6 (build 17F113), Swift 6.3.3, and an arm64 Mac running macOS 26.5.2 (build 25F84). The command ad-hoc signs the Debug product for local execution. The final 17-test UI rerun remains pending because XCTest cannot initialize XCUIAutomation while the interactive macOS session is locked; two attempts produced zero executed UI test cases and the system-level `LocalAuthentication` error “System authentication is running.”
+The Prompt 7 second NO-GO closure Debug build, 114-test unit/integration suite, and 17-test UI suite are verified with Xcode 26.6 (build 17F113), Swift 6.3.3, and an arm64 Mac running macOS 26.5.2 (build 25F84). The command ad-hoc signs the Debug product for local execution. The UI suite ran in an unlocked interactive macOS session and successfully initialized XCUIAutomation.
 
 ## Unit tests
 
@@ -29,17 +29,17 @@ xcodebuild \
   -project BookAtlas.xcodeproj \
   -scheme BookAtlas \
   -configuration Debug \
-  -derivedDataPath /tmp/bookatlas-p7-final-unit \
+  -derivedDataPath /tmp/bookatlas-p7-nogo2-verified-unit \
   -destination 'platform=macOS,arch=arm64' \
   -only-testing:BookAtlasTests \
-  -resultBundlePath /tmp/bookatlas-p7-final-unit.xcresult \
+  -resultBundlePath /tmp/bookatlas-p7-nogo2-verified-unit.xcresult \
   test
 ```
 
-The suite contains 107 unit, integration, migration, rollback, state, and performance tests. Coverage includes:
+The suite contains 114 unit, integration, migration, rollback, state, and performance tests. Coverage includes:
 
 - domain validation, editor drafts, navigation, layout, and light/dark appearance smoke checks;
-- schema versions 1–4, duplicate-key backfill, new-store creation, data preservation, idempotence, rollback, and future-version rejection;
+- schema versions 1–4, duplicate-key backfill, new-store creation, data preservation, idempotence, rollback, future-version rejection, and exact per-version backup-schema object validation;
 - repository CRUD, relationships, cascades, transaction rollback, and in-memory isolation;
 - title/original-title/author/ISBN search, each structured filter, documented filter composition, filter clearing, and stable created/updated/priority sorting;
 - tag, collection, and source normalization, rename, deletion, membership removal, duplicate-safe and multiple associations, derived counts, transactional tag merge and rollback, filter cleanup, and organizer snapshot publication;
@@ -53,7 +53,7 @@ The suite contains 107 unit, integration, migration, rollback, state, and perfor
 - Prompt 6 Exact/Strong reuse during import against both the current library and earlier accepted rows in the same CSV, deterministic Exact/Strong batch order, organization forecasts that exclude skipped rows, execution-time revalidation, tag/list/source creation and deduplication, cancellation, injected fatal rollback, and post-execution redacted reports;
 - disk-backed import staging bound to source and mapping fingerprints, 20-row and 80-issue presentation bounds with explicit truncation, stale mapping-generation suppression, parsing/confirmed-import cancellation cleanup, and an isolated 84,354,813-byte near-limit input whose measured end-to-end resident-memory growth was 1,441,792 bytes and process peak growth was 21,921,792 bytes;
 - stable Markdown/CSV formats, multiline and empty values, Markdown metacharacter escaping, absolute-path omission, semantic CSV round trips, and formula guards for `=`, `+`, `-`, `@`, tab, and carriage return;
-- empty/populated online backups, uncheckpointed WAL data, path-free manifests, physical plus application-schema validation, every relationship/duplicate-index family, non-overwrite behavior, symlink/corrupt/missing-manifest/future/oversized rejection, schema-3 restore migration, 4 GiB and capacity preflights, Cocoa out-of-space mapping, recovery copies, cancellable staging, non-cancellable replacement state, three persistent process-interruption boundaries with startup recovery, replacement/reconnect injection, rollback, reopened writes, and controlled-work cleanup;
+- empty/populated online backups, uncheckpointed WAL data, path-free manifests, physical plus exact application-schema validation, schema 1–4 table/index/trigger/view whitelists, index structure and restored ignored-pair-trigger semantics, every relationship/duplicate-index family, non-overwrite behavior, symlink/corrupt/missing-manifest/future/oversized rejection, old-schema restore migration, 4 GiB and capacity preflights, Cocoa out-of-space mapping, recovery copies, coordinator-confirmed cancellable staging, atomic cancellation-versus-safe-replacement arbitration, delayed-phase suppression, non-cancellable replacement state, three persistent process-interruption boundaries with startup recovery, replacement/reconnect injection, rollback, reopened writes, and controlled-work cleanup;
 - fixed 1,000/5,000/10,000 portability baselines and an off-main-actor parsing responsiveness check.
 
 ## UI tests
@@ -63,20 +63,20 @@ xcodebuild \
   -project BookAtlas.xcodeproj \
   -scheme BookAtlas \
   -configuration Debug \
-  -derivedDataPath /tmp/bookatlas-p7-final-ui \
+  -derivedDataPath /tmp/bookatlas-p7-nogo2-verified-ui \
   -destination 'platform=macOS,arch=arm64' \
   -only-testing:BookAtlasUITests \
-  -resultBundlePath /tmp/bookatlas-p7-final-ui.xcresult \
+  -resultBundlePath /tmp/bookatlas-p7-nogo2-verified-ui.xcresult \
   test
 ```
 
-The suite contains 17 macOS UI tests. It retains all Prompt 5/6 paths and adds local import-preview counts, mapping, concrete fictional sample accessibility, restore replacement warning, explicit confirmation controls, an accessible inspection-progress panel with Escape cancellation, and an accessible safe-replacement state whose Cancel control is disabled and which ignores Escape. UI tests opt into an in-memory store and fixed fictional test-only launch seeds; they do not open a real file panel or user file. The complete suite must be rerun from an unlocked interactive session before independent re-review.
+The suite contains 17 macOS UI tests. It retains all Prompt 5/6 paths and adds local import-preview counts, mapping, concrete fictional sample accessibility, restore replacement warning, explicit confirmation controls, an accessible inspection-progress panel with Escape cancellation, and an accessible safe-replacement state whose Cancel control is disabled and which ignores Escape. UI tests opt into an in-memory store and fixed fictional test-only launch seeds; they do not open a real file panel or user file. The complete suite was run from an unlocked interactive session before handoff for independent re-review.
 
 ## Query baseline
 
 `LibraryQueryBenchmarkTests` generates fixed fictional records in a fresh in-memory store for each size and records query construction, bulk tag association, search, multi-filter, and sort durations separately. On the environment above, the recorded Prompt 5 evidence for 1,000/5,000/10,000 books was approximately 1.0/2.2/4.1 ms for search and 9.5/27.4/28.1 ms for the priority-sorted multi-filter query. These are environment-specific evidence, not pass/fail thresholds or performance promises.
 
-`DuplicateDetectionTests.testIndexedCandidateLookupRemainsBoundedAtTenThousandBooks` creates 10,000 fixed fictional records in one in-memory transaction, then performs an indexed Exact lookup. The final NO-GO closure full-suite run recorded `DUPLICATE_CANDIDATE_10000_SECONDS=0.180154` and enforces a one-second regression ceiling on the verified host. Exact and Strong indexed queries are uncapped and order by book UUID. Possible title-token lookup orders by book UUID, evaluates at most the first 250 raw index hits, requests a 251st row to detect truncation, and exposes that state in the review UI. The threshold is a local guard against accidental full-library/pairwise comparison, not a cross-device performance promise.
+`DuplicateDetectionTests.testIndexedCandidateLookupRemainsBoundedAtTenThousandBooks` creates 10,000 fixed fictional records in one in-memory transaction, then performs an indexed Exact lookup. The second NO-GO closure full-suite run recorded `DUPLICATE_CANDIDATE_10000_SECONDS=0.178801` and enforces a one-second regression ceiling on the verified host. Exact and Strong indexed queries are uncapped and order by book UUID. Possible title-token lookup orders by book UUID, evaluates at most the first 250 raw index hits, requests a 251st row to detect truncation, and exposes that state in the review UI. The threshold is a local guard against accidental full-library/pairwise comparison, not a cross-device performance promise.
 
 ## Portability baseline
 
@@ -84,9 +84,9 @@ The suite contains 17 macOS UI tests. It retains all Prompt 5/6 paths and adds l
 
 | Books | CSV parse | Preview | Import | Markdown | CSV export | Backup | Restore | End-to-end resident-memory growth |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1,000 | 0.0016 s | 0.7036 s | 0.6796 s | 0.0388 s | 0.0102 s | 0.6968 s | 1.2890 s | 0 B |
-| 5,000 | 0.0080 s | 3.5270 s | 3.4803 s | 0.1927 s | 0.0517 s | 3.5032 s | 6.4669 s | 13,746,176 B |
-| 10,000 | 0.0163 s | 7.1103 s | 7.0352 s | 0.3835 s | 0.1037 s | 7.0731 s | 13.1140 s | 56,164,352 B |
+| 1,000 | 0.0017 s | 0.6931 s | 0.6665 s | 0.0384 s | 0.0103 s | 0.7014 s | 1.2995 s | 0 B |
+| 5,000 | 0.0079 s | 3.4584 s | 3.4661 s | 0.1912 s | 0.0520 s | 3.5073 s | 6.4677 s | 13,713,408 B |
+| 10,000 | 0.0163 s | 6.9620 s | 6.8423 s | 0.3824 s | 0.1049 s | 7.0508 s | 13.0453 s | 56,098,816 B |
 
 These are local observations, not product promises. CSV parsing is measured through the production streaming URL entry point. Preview includes streaming to disk staging plus Exact/Strong evaluation against the formal library and the isolated earlier-batch index; confirmed import streams that staging and revalidates. The broader capped Possible rule remains available through manual duplicate review. The responsiveness test performs a 10,000-row streaming parse in a detached task while a main-actor expectation completes within one second.
 

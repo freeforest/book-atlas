@@ -24,14 +24,23 @@ final class PortabilityStore: ObservableObject {
     private var backupURL: URL?
     private var importErrorReport: ImportErrorReport?
     private var task: Task<Void, Never>?
-    private var operationGeneration: UInt64 = 0
+    private var restoreControl: RestoreOperationControl?
+    @Published private(set) var restoreCancellationPending = false
+    private(set) var operationGeneration: UInt64 = 0
 
     var canCancelRestore: Bool {
-        restorePhase?.allowsCancellation ?? (backupPreview != nil)
+        if restoreCancellationPending {
+            return false
+        }
+        if let restoreControl {
+            return restoreControl.canRequestCancellation
+        }
+        return restorePhase?.allowsCancellation ?? (backupPreview != nil)
     }
 
     var isSafelyReplacing: Bool {
-        restorePhase == .safeReplacement || restorePhase == .reconnecting
+        let authoritativePhase = restoreControl?.currentPhase ?? restorePhase
+        return authoritativePhase == .safeReplacement || authoritativePhase == .reconnecting
     }
 
     var hasImportErrorReport: Bool {
@@ -151,39 +160,68 @@ final class PortabilityStore: ObservableObject {
     }
 
     func cancelRestore() {
+        if let restoreControl {
+            switch restoreControl.requestCancellation() {
+            case .accepted:
+                restoreCancellationPending = true
+                statusMessage = "正在安全取消恢复…"
+            case let .rejected(authoritativePhase):
+                restorePhase = authoritativePhase
+            case .inactive:
+                break
+            }
+            return
+        }
+
         guard canCancelRestore else { return }
-        invalidateCurrentOperation()
-        task?.cancel()
+        if isWorking {
+            task?.cancel()
+            return
+        }
+
         backupPreview = nil
         backupURL = nil
         restorePhase = nil
         statusMessage = "已取消恢复；当前书库未更改。"
-        isWorking = false
     }
 
     func confirmRestore() {
         guard let catalog, let url = backupURL else { return }
+        let control = RestoreOperationControl()
+        restoreControl = control
+        restoreCancellationPending = false
         start(
             url: url,
             operation: { generation in
-                try await catalog.restoreBackup(at: url) { phase in
+                try await catalog.restoreBackup(at: url, control: control) { phase in
                     Task { @MainActor [weak self] in
                         guard let self,
                               self.operationGeneration == generation,
-                              self.isWorking
+                              self.isWorking,
+                              self.restoreControl === control
                         else { return }
                         self.restorePhase = phase
                     }
                 }
             },
             apply: { restored in
+                guard self.restoreControl === control else { return }
+                self.restoreControl = nil
+                self.restoreCancellationPending = false
                 self.backupPreview = nil
                 self.backupURL = nil
                 self.restorePhase = nil
                 self.libraryRevision &+= 1
                 self.statusMessage = "恢复完成并重新打开书库，共 \(restored.bookCount) 本书。"
             },
-            onFailure: { self.restorePhase = nil }
+            onFailure: {
+                guard self.restoreControl === control else { return }
+                self.restoreControl = nil
+                self.restoreCancellationPending = false
+                self.backupPreview = nil
+                self.backupURL = nil
+                self.restorePhase = nil
+            }
         )
     }
 
@@ -248,13 +286,22 @@ final class PortabilityStore: ObservableObject {
 
     func seedSafeReplacementForUITesting() {
         seedFictionalRestorePreviewForUITesting()
+        let control = RestoreOperationControl()
+        try? control.transition(to: .safeReplacement)
+        restoreControl = control
         restorePhase = .safeReplacement
         isWorking = true
     }
 
     func seedRestoreInspectionForUITesting() {
         restorePhase = .inspecting
-        isWorking = true
+        start(
+            operation: { _ in
+                try await Task.sleep(for: .seconds(60))
+            },
+            apply: { _ in },
+            onFailure: { self.restorePhase = nil }
+        )
     }
 
     private func prepareImport(mapping: CSVFieldMapping?) {

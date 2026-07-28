@@ -202,7 +202,7 @@ final class PortabilityStoreTests: XCTestCase {
         XCTAssertNil(store.backupPreview)
         XCTAssertNil(store.restorePhase)
         XCTAssertFalse(store.isWorking)
-        XCTAssertEqual(store.statusMessage, "已取消恢复；当前书库未更改。")
+        XCTAssertEqual(store.statusMessage, "已取消且书库未更改。")
         let completedRestoreCount = await catalog.completedRestoreCount()
         XCTAssertEqual(completedRestoreCount, 0)
     }
@@ -210,13 +210,91 @@ final class PortabilityStoreTests: XCTestCase {
     func testSafeReplacementStateCannotBeCancelled() {
         let store = PortabilityStore(catalog: nil)
         store.seedSafeReplacementForUITesting()
+        let generation = store.operationGeneration
 
         XCTAssertTrue(store.isSafelyReplacing)
         XCTAssertFalse(store.canCancelRestore)
         store.cancelRestore()
+        XCTAssertEqual(store.operationGeneration, generation)
         XCTAssertNotNil(store.backupPreview)
         XCTAssertEqual(store.restorePhase, .safeReplacement)
         XCTAssertTrue(store.isWorking)
+        XCTAssertNil(store.statusMessage)
+    }
+
+    func testCancellationAtUnpublishedSafeReplacementBoundaryCannotHideSuccessfulRestore() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("safe-race.bookatlasbackup")
+        try Data("fixed fictional backup placeholder".utf8).write(to: url)
+        let race = RestoreRaceProbe()
+        let catalog = PortabilityRaceCatalog(restoreMode: .safeBoundaryDelayed, restoreRace: race)
+        let store = PortabilityStore(catalog: catalog)
+
+        store.selectBackupForRestore(url)
+        await store.waitForPendingWork()
+        store.confirmRestore()
+        for _ in 0 ..< 10_000 where !race.hasEnteredSafeReplacement {
+            await Task.yield()
+        }
+        XCTAssertTrue(race.hasEnteredSafeReplacement)
+        XCTAssertNotEqual(
+            store.restorePhase,
+            .safeReplacement,
+            "The deterministic race keeps the safe phase callback unpublished"
+        )
+        let generation = store.operationGeneration
+
+        store.cancelRestore()
+        XCTAssertEqual(store.operationGeneration, generation)
+        XCTAssertEqual(store.restorePhase, .safeReplacement)
+        XCTAssertFalse(store.canCancelRestore)
+        XCTAssertNotEqual(store.statusMessage, "已取消且书库未更改。")
+        XCTAssertTrue(store.isWorking)
+
+        race.releaseSafeReplacement()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.libraryRevision, 1)
+        XCTAssertNil(store.restorePhase)
+        XCTAssertNil(store.backupPreview)
+        XCTAssertEqual(store.statusMessage, "恢复完成并重新打开书库，共 1 本书。")
+        XCTAssertNil(store.errorMessage)
+        let completedRestoreCount = await catalog.completedRestoreCount()
+        XCTAssertEqual(completedRestoreCount, 1)
+    }
+
+    func testStaleRestorePhaseCallbackCannotOverwriteFinalSuccessOrFailure() async throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("stale-phase.bookatlasbackup")
+        try Data("fixed fictional backup placeholder".utf8).write(to: url)
+
+        for mode in [RestoreRaceMode.staleAfterSuccess, .staleAfterFailure] {
+            let race = RestoreRaceProbe()
+            let catalog = PortabilityRaceCatalog(restoreMode: mode, restoreRace: race)
+            let store = PortabilityStore(catalog: catalog)
+            store.selectBackupForRestore(url)
+            await store.waitForPendingWork()
+            store.confirmRestore()
+            await store.waitForPendingWork()
+            for _ in 0 ..< 10_000 where !race.hasPublishedStalePhase {
+                await Task.yield()
+            }
+            for _ in 0 ..< 100 { await Task.yield() }
+
+            XCTAssertTrue(race.hasPublishedStalePhase)
+            XCTAssertNil(store.restorePhase)
+            XCTAssertFalse(store.isWorking)
+            if mode == .staleAfterSuccess {
+                XCTAssertEqual(store.libraryRevision, 1)
+                XCTAssertNotNil(store.statusMessage)
+                XCTAssertNil(store.errorMessage)
+            } else {
+                XCTAssertEqual(store.libraryRevision, 0)
+                XCTAssertNil(store.statusMessage)
+                XCTAssertNotNil(store.errorMessage)
+            }
+        }
     }
 
     private func temporaryDirectory() throws -> URL {
@@ -243,9 +321,17 @@ private actor PortabilityRaceCatalog: LibraryCataloging {
     private var discarded = 0
     private var completedRestores = 0
     private let mappingRace: MappingRaceProbe?
+    private let restoreMode: RestoreRaceMode
+    private let restoreRace: RestoreRaceProbe?
 
-    init(mappingRace: MappingRaceProbe? = nil) {
+    init(
+        mappingRace: MappingRaceProbe? = nil,
+        restoreMode: RestoreRaceMode = .cancellable,
+        restoreRace: RestoreRaceProbe? = nil
+    ) {
         self.mappingRace = mappingRace
+        self.restoreMode = restoreMode
+        self.restoreRace = restoreRace
     }
 
     func queryBooks(_ query: LibraryQuery) throws -> [Book] { [] }
@@ -318,17 +404,101 @@ private actor PortabilityRaceCatalog: LibraryCataloging {
 
     func restoreBackup(
         at url: URL,
+        control: RestoreOperationControl,
         progress: @escaping @Sendable (RestoreProgressPhase) -> Void
     ) throws -> BackupPreview {
-        progress(.staging)
-        while !Task.isCancelled {
-            Thread.sleep(forTimeInterval: 0.001)
+        defer { control.finish() }
+        switch restoreMode {
+        case .cancellable:
+            try control.transition(to: .staging)
+            progress(.staging)
+            while !control.isCancellationRequested {
+                Thread.sleep(forTimeInterval: 0.001)
+            }
+            throw PortabilityError.cancelled
+        case .safeBoundaryDelayed:
+            try control.transition(to: .staging)
+            progress(.staging)
+            try control.transition(to: .safeReplacement)
+            restoreRace?.enteredSafeReplacement()
+            while restoreRace?.canLeaveSafeReplacement != true {
+                Thread.sleep(forTimeInterval: 0.001)
+            }
+            progress(.safeReplacement)
+            try control.transition(to: .reconnecting)
+            progress(.reconnecting)
+            completedRestores += 1
+            return fictionalBackupPreview()
+        case .staleAfterSuccess:
+            completedRestores += 1
+            publishStalePhaseLater(progress)
+            return fictionalBackupPreview()
+        case .staleAfterFailure:
+            publishStalePhaseLater(progress)
+            throw PortabilityError.restoreFailed
         }
-        throw PortabilityError.cancelled
     }
 
     func discardedPreviewCount() -> Int { discarded }
     func completedRestoreCount() -> Int { completedRestores }
+
+    private func fictionalBackupPreview() -> BackupPreview {
+        BackupPreview(
+            formatVersion: 1,
+            schemaVersion: 4,
+            applicationVersion: "test",
+            createdAt: FictionalLibraryFixtures.timestamp,
+            bookCount: 1
+        )
+    }
+
+    private func publishStalePhaseLater(
+        _ progress: @escaping @Sendable (RestoreProgressPhase) -> Void
+    ) {
+        let race = restoreRace
+        DispatchQueue.global().asyncAfter(deadline: .now() + 0.03) {
+            progress(.staging)
+            race?.publishedStalePhase()
+        }
+    }
+}
+
+private enum RestoreRaceMode: Equatable, Sendable {
+    case cancellable
+    case safeBoundaryDelayed
+    case staleAfterSuccess
+    case staleAfterFailure
+}
+
+private final class RestoreRaceProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var enteredSafeReplacementValue = false
+    private var leaveSafeReplacementValue = false
+    private var publishedStalePhaseValue = false
+
+    var hasEnteredSafeReplacement: Bool {
+        lock.withLock { enteredSafeReplacementValue }
+    }
+
+    var canLeaveSafeReplacement: Bool {
+        lock.withLock { leaveSafeReplacementValue }
+    }
+
+    var hasPublishedStalePhase: Bool {
+        lock.withLock { publishedStalePhaseValue }
+    }
+
+    func enteredSafeReplacement() {
+        lock.withLock { enteredSafeReplacementValue = true }
+    }
+
+    func releaseSafeReplacement() {
+        lock.withLock { leaveSafeReplacementValue = true }
+    }
+
+    func publishedStalePhase() {
+        lock.withLock { publishedStalePhaseValue = true }
+    }
 }
 
 private final class MappingRaceProbe: @unchecked Sendable {

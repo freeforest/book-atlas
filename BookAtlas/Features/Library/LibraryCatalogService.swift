@@ -81,6 +81,7 @@ protocol LibraryCataloging: Actor {
     func inspectBackup(at url: URL) throws -> BackupPreview
     func restoreBackup(
         at url: URL,
+        control: RestoreOperationControl,
         progress: @escaping @Sendable (RestoreProgressPhase) -> Void
     ) throws -> BackupPreview
 }
@@ -205,6 +206,7 @@ extension LibraryCataloging {
     func inspectBackup(at url: URL) throws -> BackupPreview { throw PortabilityError.unsafeFile }
     func restoreBackup(
         at url: URL,
+        control: RestoreOperationControl,
         progress: @escaping @Sendable (RestoreProgressPhase) -> Void
     ) throws -> BackupPreview {
         throw PortabilityError.unsafeFile
@@ -577,6 +579,7 @@ actor LibraryCatalogService: LibraryCataloging {
 
     func restoreBackup(
         at url: URL,
+        control: RestoreOperationControl,
         progress: @escaping @Sendable (RestoreProgressPhase) -> Void
     ) throws -> BackupPreview {
         guard let databaseURL else { throw PortabilityError.unsafeFile }
@@ -590,9 +593,10 @@ actor LibraryCatalogService: LibraryCataloging {
             databaseURL: databaseURL,
             repository: &repository,
             recoveryDirectory: recoveryDirectory,
+            control: control,
             cancellation: RestoreCancellation(
                 isCancelled: {
-                    withUnsafeCurrentTask { $0?.isCancelled ?? false }
+                    control.isCancellationRequested
                 }
             ),
             progress: progress

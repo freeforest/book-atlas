@@ -457,6 +457,57 @@ enum RestoreProgressPhase: Equatable, Sendable {
     }
 }
 
+enum RestoreCancellationRequest: Equatable, Sendable {
+    case accepted
+    case rejected(RestoreProgressPhase)
+    case inactive
+}
+
+final class RestoreOperationControl: @unchecked Sendable {
+    private let lock = NSLock()
+    private var phase: RestoreProgressPhase = .inspecting
+    private var cancellationRequested = false
+    private var active = true
+
+    var currentPhase: RestoreProgressPhase {
+        lock.withLock { phase }
+    }
+
+    var canRequestCancellation: Bool {
+        lock.withLock { active && phase.allowsCancellation && !cancellationRequested }
+    }
+
+    var isCancellationRequested: Bool {
+        lock.withLock { cancellationRequested }
+    }
+
+    func requestCancellation() -> RestoreCancellationRequest {
+        lock.withLock {
+            guard active else { return .inactive }
+            guard phase.allowsCancellation else { return .rejected(phase) }
+            guard !cancellationRequested else { return .accepted }
+            cancellationRequested = true
+            return .accepted
+        }
+    }
+
+    func transition(to newPhase: RestoreProgressPhase) throws {
+        let accepted = lock.withLock {
+            guard active else { return false }
+            if !newPhase.allowsCancellation, cancellationRequested {
+                return false
+            }
+            phase = newPhase
+            return true
+        }
+        guard accepted else { throw PortabilityError.cancelled }
+    }
+
+    func finish() {
+        lock.withLock { active = false }
+    }
+}
+
 enum CSVFormulaSafety {
     static let dangerousPrefixes: Set<Character> = ["=", "+", "-", "@", "\t", "\r"]
 
