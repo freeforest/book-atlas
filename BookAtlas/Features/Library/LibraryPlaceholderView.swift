@@ -43,6 +43,11 @@ struct LibraryView: View {
                 }
                 .disabled(!store.hasSelection)
                 .accessibilityIdentifier("book-membership-button")
+                Button("检查重复书籍", systemImage: "square.on.square") {
+                    store.reviewSelectedBookForDuplicates()
+                }
+                .disabled(!store.hasSelection || store.isDuplicateOperationInProgress)
+                .accessibilityIdentifier("review-duplicates-button")
                 Button("新增书籍", systemImage: "plus", action: store.beginCreate)
                     .accessibilityIdentifier("new-book-button")
                 Button("编辑书籍", systemImage: "pencil", action: store.beginEdit)
@@ -55,6 +60,18 @@ struct LibraryView: View {
         }
         .sheet(item: $store.editorSession) { session in
             BookEditorSheet(session: session, store: store)
+        }
+        .sheet(
+            item: Binding(
+                get: { store.editorSession == nil ? store.duplicateReview : nil },
+                set: { review in
+                    if review == nil, store.editorSession == nil {
+                        store.cancelDuplicateReview()
+                    }
+                }
+            )
+        ) { review in
+            DuplicateReviewSheet(store: store, review: review)
         }
         .sheet(isPresented: $showsManagement) {
             CatalogManagementView(store: store)

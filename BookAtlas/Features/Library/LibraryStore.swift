@@ -6,6 +6,8 @@ enum LibraryUserFacingError: Error, Equatable {
     case loadFailed
     case saveFailed
     case deleteFailed
+    case duplicateReviewFailed
+    case mergeFailed
     case validation(BookEditorValidationError)
 
     var title: String {
@@ -18,6 +20,10 @@ enum LibraryUserFacingError: Error, Equatable {
             "无法保存书籍"
         case .deleteFailed:
             "无法删除书籍"
+        case .duplicateReviewFailed:
+            "无法检查重复书籍"
+        case .mergeFailed:
+            "无法合并书籍"
         case .validation:
             "请检查填写内容"
         }
@@ -33,6 +39,10 @@ enum LibraryUserFacingError: Error, Equatable {
             "未能保存本次修改，表单内容仍会保留。"
         case .deleteFailed:
             "未能删除这本书，现有记录未被更改。"
+        case .duplicateReviewFailed:
+            "暂时无法读取重复候选；书库内容未被更改。"
+        case .mergeFailed:
+            "合并未完成，相关书籍和关联均保持原状。"
         case let .validation(error):
             error.message
         }
@@ -52,6 +62,7 @@ struct BookEditorSession: Identifiable {
     }
 
     let id = UUID()
+    let proposedBookID = UUID()
     let mode: Mode
     let initialDraft: BookEditorDraft
 
@@ -75,6 +86,17 @@ struct BookEditorSession: Identifiable {
     }
 }
 
+enum DuplicateReviewSubject {
+    case newBook(editor: BookEditorDraft, proposedID: UUID)
+    case existingBook(Book)
+}
+
+struct DuplicateReviewSession: Identifiable {
+    let id = UUID()
+    let subject: DuplicateReviewSubject
+    let candidates: [DuplicateCandidate]
+}
+
 @MainActor
 final class LibraryStore: ObservableObject {
     @Published private(set) var loadingState: LibraryLoadingState = .loading
@@ -86,11 +108,17 @@ final class LibraryStore: ObservableObject {
     @Published var deletionCandidate: Book?
     @Published var saveRequestID = 0
     @Published var operationError: LibraryUserFacingError?
+    @Published var duplicateReview: DuplicateReviewSession?
+    @Published var selectedDuplicateID: UUID?
+    @Published var mergePreview: BookMergePreview?
+    @Published var mergeSelections = BookMergeSelections()
+    @Published var isDuplicateOperationInProgress = false
 
     let organizer: CatalogOrganizerStore
 
     private let catalog: (any LibraryCataloging)?
     private var queryTask: Task<Void, Never>?
+    private var duplicateTask: Task<Void, Never>?
     private var activeRequestID = UUID()
 
     init(catalog: (any LibraryCataloging)? = nil, initialError: LibraryUserFacingError? = nil) {
@@ -226,6 +254,7 @@ final class LibraryStore: ObservableObject {
 
     func beginCreate() {
         operationError = nil
+        clearDuplicateReview()
         deletionCandidate = nil
         editorSession = BookEditorSession(mode: .create)
     }
@@ -235,6 +264,7 @@ final class LibraryStore: ObservableObject {
             return
         }
         operationError = nil
+        clearDuplicateReview()
         deletionCandidate = nil
         editorSession = BookEditorSession(mode: .edit(selectedBook))
     }
@@ -247,6 +277,7 @@ final class LibraryStore: ObservableObject {
     }
 
     func cancelEditor() {
+        clearDuplicateReview()
         editorSession = nil
     }
 
@@ -262,6 +293,20 @@ final class LibraryStore: ObservableObject {
             let savedBook: Book
             switch session.mode {
             case .create:
+                let candidates = try await catalog.duplicateCandidates(
+                    for: draft,
+                    proposedID: session.proposedBookID,
+                    includingPossible: false
+                )
+                if !candidates.isEmpty {
+                    presentDuplicateReview(
+                        DuplicateReviewSession(
+                            subject: .newBook(editor: draft, proposedID: session.proposedBookID),
+                            candidates: candidates
+                        )
+                    )
+                    return .success(())
+                }
                 savedBook = try await catalog.createBook(from: draft)
             case let .edit(book):
                 savedBook = try await catalog.updateBook(book, from: draft)
@@ -274,6 +319,165 @@ final class LibraryStore: ObservableObject {
             return .failure(.validation(error))
         } catch {
             return .failure(.saveFailed)
+        }
+    }
+
+    func reviewSelectedBookForDuplicates() {
+        guard let selectedBook, let catalog else {
+            operationError = .databaseUnavailable
+            return
+        }
+        isDuplicateOperationInProgress = true
+        duplicateTask = Task { @MainActor [weak self] in
+            do {
+                let candidates = try await catalog.duplicateCandidates(
+                    for: selectedBook,
+                    includingPossible: true
+                )
+                self?.presentDuplicateReview(
+                    DuplicateReviewSession(subject: .existingBook(selectedBook), candidates: candidates)
+                )
+            } catch {
+                self?.operationError = .duplicateReviewFailed
+            }
+            self?.isDuplicateOperationInProgress = false
+        }
+    }
+
+    func cancelDuplicateReview() {
+        clearDuplicateReview()
+    }
+
+    func viewSelectedDuplicate() {
+        guard let selectedDuplicateID else {
+            return
+        }
+        clearDuplicateReview()
+        editorSession = nil
+        self.selectedBookID = selectedDuplicateID
+    }
+
+    func keepSelectedDuplicateIndependent(as disposition: DuplicatePairDisposition) {
+        guard let review = duplicateReview,
+              let selectedDuplicateID,
+              let catalog
+        else {
+            return
+        }
+        isDuplicateOperationInProgress = true
+        duplicateTask = Task { @MainActor [weak self] in
+            do {
+                switch review.subject {
+                case let .newBook(editor, proposedID):
+                    let saved = try await catalog.createBookKeepingIndependent(
+                        from: editor,
+                        proposedID: proposedID,
+                        candidateIDs: review.candidates.map(\.id),
+                        disposition: disposition
+                    )
+                    await self?.reloadBooks(selecting: saved.id)
+                    self?.organizer.load()
+                    self?.editorSession = nil
+                    self?.clearDuplicateReview()
+                case let .existingBook(book):
+                    try await catalog.ignoreDuplicatePair(
+                        book.id,
+                        selectedDuplicateID,
+                        disposition: disposition
+                    )
+                    let remaining = try await catalog.duplicateCandidates(
+                        for: book,
+                        includingPossible: true
+                    )
+                    if remaining.isEmpty {
+                        self?.clearDuplicateReview()
+                    } else {
+                        self?.presentDuplicateReview(
+                            DuplicateReviewSession(subject: .existingBook(book), candidates: remaining)
+                        )
+                    }
+                }
+            } catch {
+                self?.operationError = .duplicateReviewFailed
+            }
+            self?.isDuplicateOperationInProgress = false
+        }
+    }
+
+    func beginMergePreview() {
+        guard let review = duplicateReview,
+              let targetID = selectedDuplicateID,
+              let catalog
+        else {
+            return
+        }
+        isDuplicateOperationInProgress = true
+        duplicateTask = Task { @MainActor [weak self] in
+            do {
+                let preview: BookMergePreview
+                switch review.subject {
+                case let .newBook(editor, proposedID):
+                    preview = try await catalog.mergePreview(
+                        targetID: targetID,
+                        sourceEditor: editor,
+                        proposedSourceID: proposedID
+                    )
+                case let .existingBook(source):
+                    preview = try await catalog.mergePreview(targetID: targetID, sourceID: source.id)
+                }
+                self?.mergePreview = preview
+                self?.mergeSelections = preview.defaultSelections
+            } catch {
+                self?.operationError = .mergeFailed
+            }
+            self?.isDuplicateOperationInProgress = false
+        }
+    }
+
+    func setMergeChoice(_ choice: BookMergeValueChoice, for field: BookMergeField) {
+        mergeSelections[field] = choice
+    }
+
+    func cancelMergePreview() {
+        mergePreview = nil
+        mergeSelections = BookMergeSelections()
+    }
+
+    func confirmMerge() {
+        guard let review = duplicateReview,
+              let preview = mergePreview,
+              let catalog
+        else {
+            return
+        }
+        isDuplicateOperationInProgress = true
+        let selections = mergeSelections
+        duplicateTask = Task { @MainActor [weak self] in
+            do {
+                let result: BookMergeResult
+                switch review.subject {
+                case let .newBook(editor, proposedID):
+                    result = try await catalog.mergeNewBook(
+                        targetID: preview.target.id,
+                        sourceEditor: editor,
+                        proposedSourceID: proposedID,
+                        selections: selections
+                    )
+                case let .existingBook(source):
+                    result = try await catalog.mergeBooks(
+                        targetID: preview.target.id,
+                        sourceID: source.id,
+                        selections: selections
+                    )
+                }
+                await self?.reloadBooks(selecting: result.retainedBook.id)
+                self?.organizer.load()
+                self?.editorSession = nil
+                self?.clearDuplicateReview()
+            } catch {
+                self?.operationError = .mergeFailed
+            }
+            self?.isDuplicateOperationInProgress = false
         }
     }
 
@@ -317,6 +521,7 @@ final class LibraryStore: ObservableObject {
 
     func waitForPendingWork() async {
         await queryTask?.value
+        await duplicateTask?.value
         await organizer.waitForPendingWork()
     }
 
@@ -393,6 +598,20 @@ final class LibraryStore: ObservableObject {
         }
     }
 
+    private func presentDuplicateReview(_ review: DuplicateReviewSession) {
+        duplicateReview = review
+        selectedDuplicateID = review.candidates.first?.id
+        mergePreview = nil
+        mergeSelections = BookMergeSelections()
+    }
+
+    private func clearDuplicateReview() {
+        duplicateReview = nil
+        selectedDuplicateID = nil
+        mergePreview = nil
+        mergeSelections = BookMergeSelections()
+    }
+
     private nonisolated static func makeInMemoryCatalog(
         seedFictionalUITestBooks: Bool
     ) throws -> LibraryCatalogService {
@@ -403,7 +622,11 @@ final class LibraryStore: ObservableObject {
 
         let timestamp = Date(timeIntervalSince1970: 1_735_689_600)
         _ = try repository.create(
-            BookDraft(title: "A101", author: "Harbor Author"),
+            BookDraft(
+                title: "A101",
+                author: "Harbor Author",
+                isbn: "9780000000002"
+            ),
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!,
             at: timestamp
         )

@@ -2,7 +2,7 @@
 
 ## Status
 
-Prompt 3 turns the minimum library vocabulary into the committed production SQLite schema, and Prompt 5 activates its tags, collections, sources, and unified query surface. It remains deliberately smaller than the long-term conceptual model: contributors are stored as a validated author string, while editions, ordered contributors, ratings, series, and duplicate resolution remain future work.
+Prompt 3 established the production SQLite schema, Prompt 5 activated organization and unified queries, and Prompt 6 adds derived duplicate keys, ignored candidate pairs, and transactional record merging. The model remains deliberately smaller than a work/edition authority model: contributors are still an ordered free-form author string, and the app does not infer complete edition, translation, or series structure.
 
 ## Candidate concepts
 
@@ -48,8 +48,10 @@ The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is ac
 - Version 1 creates `books`, `tags`, `book_tags`, `book_collections`, `book_collections_books`, `recommendation_sources`, `book_sources`, `external_links`, and `manual_book_relations`.
 - Version 2 adds the optional `book_collections.description` field. Its existence provides a real, data-preserving forward-migration test rather than a disposable spike-only history.
 - Version 3 adds indexes for original-title lookup and deterministic created, updated, and priority orderings without rewriting book rows.
+- Version 4 adds `book_duplicate_keys`, `book_duplicate_title_tokens`, and `ignored_duplicate_pairs`; migration backfills derived keys/tokens for existing rows inside the version transaction.
 - IDs are UUID text primary keys. Join tables use composite primary keys; required names are case-insensitively unique; relevant foreign keys use `ON DELETE CASCADE`; and indexes cover book status, title, author, ISBN, and reverse joins.
 - ISBN is indexed but intentionally not globally unique: the user may keep different records that share an identifier.
+- Duplicate keys contain only derived ISBN/title/author/original-title values. Ignored pairs contain two canonical book UUIDs, one of `not_duplicate`, `separate_edition`, or `separate_translation`, and a timestamp. Identity-bearing edits invalidate affected ignored pairs.
 - Manual relations are directed, unique by source/target/kind, and reject self-relations in both domain validation and a database check.
 - Timestamps are UTC ISO-8601 strings with fractional seconds. Collection membership and all list queries use explicit deterministic orderings.
 - Migrations run one version at a time inside `BEGIN IMMEDIATE` transactions. Failures roll back and surface an error; the store never deletes or silently rebuilds an existing database.
@@ -72,13 +74,15 @@ The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is ac
 - User-entered strings, URLs, notes, paths, and identifiers are private by default.
 - Timestamps and sorting rules use a defined locale-independent representation in persistence.
 
-## Duplicate detection
+## Duplicate detection and merge
 
-No single field proves identity. Future detection may rank normalized identifiers and combinations of normalized title, contributors, publication data, and source information. It must present candidates, explain why they matched, avoid automatic destructive merging, and keep false-positive behavior testable.
+Valid equal ISBN values are Exact. Equal normalized title and ordered author text without explicit ISBN/original-title conflict is Strong. Possible candidates use centralized integer weights for title-token overlap, author, original title, publisher, nearby publication year, edition hints, and conflicting valid ISBN. Different valid ISBN values cannot become Exact or Strong. Every candidate exposes evidence and uncertainty, and no confidence level causes automatic deletion or merge.
+
+Merge retains the chosen target UUID, takes the earlier `createdAt`, writes the merge time to `updatedAt`, and uses explicit choices for conflicting scalar fields. Tags, collections, sources, and links are unioned; duplicate associations are removed; manual relations are redirected or deduplicated; self-relations and lossy relation-note conflicts stop the operation. The source book is deleted last in the same transaction. A successful merge therefore leaves one book identity for future graph projection; an explicit keep-separate choice leaves both identities.
 
 ## Schema evolution
 
-Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production migration registry starts with the version-1 schema above and appends the version-2 collection-description and version-3 query-index migrations.
+Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production registry currently ends at version 4.
 
 ## Test data
 

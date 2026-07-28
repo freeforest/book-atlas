@@ -5,7 +5,8 @@ import XCTest
 final class LibraryStoreTests: XCTestCase {
     func testStoreSelectsNewlyCreatedBookAndClearsSelectionAfterDelete() async throws {
         let repository = try BookRepository.inMemory()
-        let store = LibraryStore(catalog: LibraryCatalogService(repository: repository))
+        let service = LibraryCatalogService(repository: repository)
+        let store = LibraryStore(catalog: service)
         await store.waitForPendingWork()
 
         store.beginCreate()
@@ -101,6 +102,63 @@ final class LibraryStoreTests: XCTestCase {
 
         XCTAssertFalse(store.hasActiveFilters)
         XCTAssertEqual(store.books.map(\.id), [book.id])
+    }
+
+    func testCreateSaveRequiresReviewAndCancellationDoesNotChangeLibrary() async throws {
+        let repository = try BookRepository.inMemory()
+        let existing = try repository.create(
+            BookDraft(title: "《雾港档案》", author: "林雾"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let service = LibraryCatalogService(repository: repository)
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        store.beginCreate()
+        let session = try XCTUnwrap(store.editorSession)
+
+        guard case .success = await store.save(
+            BookEditorDraft(title: "雾港档案", author: "林雾"),
+            for: session
+        ) else {
+            return XCTFail("Expected save interception to present review")
+        }
+        XCTAssertEqual(store.duplicateReview?.candidates.map(\.id), [existing.id])
+        XCTAssertNotNil(store.editorSession)
+        let booksBeforeCancel = try await service.queryBooks(LibraryQuery())
+        XCTAssertEqual(booksBeforeCancel.count, 1)
+
+        store.cancelDuplicateReview()
+        XCTAssertNil(store.duplicateReview)
+        XCTAssertNotNil(store.editorSession)
+        let booksAfterCancel = try await service.queryBooks(LibraryQuery())
+        XCTAssertEqual(booksAfterCancel.count, 1)
+    }
+
+    func testKeepingNewCandidateAsSeparateEditionPersistsDecisionAndClosesEditor() async throws {
+        let repository = try BookRepository.inMemory()
+        let existing = try repository.create(
+            BookDraft(title: "《玻璃港》", author: "林雾"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let service = LibraryCatalogService(repository: repository)
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        store.beginCreate()
+        let session = try XCTUnwrap(store.editorSession)
+        _ = await store.save(
+            BookEditorDraft(title: "玻璃港", author: "林雾"),
+            for: session
+        )
+
+        store.keepSelectedDuplicateIndependent(as: .separateEdition)
+        await store.waitForPendingWork()
+
+        XCTAssertNil(store.editorSession)
+        XCTAssertNil(store.duplicateReview)
+        XCTAssertEqual(store.books.count, 2)
+        let created = try XCTUnwrap(store.books.first { $0.id != existing.id })
+        let candidates = try await service.duplicateCandidates(for: created, includingPossible: true)
+        XCTAssertTrue(candidates.isEmpty)
     }
 }
 

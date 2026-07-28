@@ -7,7 +7,7 @@ Provide safe foundational book management in a native macOS interface.
 ## Stage
 
 - Prompt 4: completed — library navigation, detail/edit flows, create/update/delete behavior, validation, empty/error states, keyboard use, and accessibility foundations.
-- Prompt 5: implementation and closure evidence complete — unified search, composable filters, stable sorting, tag/collection/source management, memberships, and repeatable query baselines. An independent review owns the final GO/NO-GO decision.
+- Prompt 5: completed and independently accepted — unified search, composable filters, stable sorting, tag/collection/source management, memberships, and repeatable query baselines.
 
 ## Completion record
 
@@ -30,4 +30,4 @@ Provide safe foundational book management in a native macOS interface.
 - Destructive actions are explicit and domain validation is visible.
 - Build and relevant tests pass with fictional data.
 - Bulk import, duplicate-book merge, graph, and external integrations stay out of scope.
-- Prompt 6 duplicate detection, ignored candidates, merge behavior, migrations, and review UI are absent; this plan does not authorize starting them.
+- Prompt 6 belongs to Milestone 3 and does not alter this accepted Milestone 2 completion record.

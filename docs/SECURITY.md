@@ -34,7 +34,8 @@ Apple frameworks are preferred. Before adding a dependency, record its need, sou
 
 Backups require a documented format/version, integrity checks, atomic destination writes, and failure recovery. Restore never silently overwrites a live library. Migrations are versioned, tested from representative fictional fixtures, and fail without corrupting the prior store.
 
+Book merges require an explicit preview and confirmation. Field changes, membership unions, link and relation migration, ignored-pair migration, and source deletion share one SQLite transaction; the source is deleted last. Self-relations and relation-note conflicts that cannot be preserved are rejected, and any failure rolls back the target and source records plus all associations.
+
 ## Reporting vulnerabilities
 
 Before a public release, add a repository security policy with a private reporting channel. Do not publish a personal address or placeholder channel before the maintainer chooses one.
-

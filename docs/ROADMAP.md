@@ -20,14 +20,14 @@ Exit condition: fictional library data can be stored and queried through tested 
 
 ### Milestone 2 — usable catalog
 
-- **Prompt 4:** book CRUD and the foundational macOS library interface.
-- **Prompt 5:** search, filtering, sorting, tags, lists, sources, and book memberships.
+- **Prompt 4:** completed book CRUD and the foundational macOS library interface.
+- **Prompt 5:** completed and independently accepted search, filtering, sorting, tags, lists, sources, and book memberships.
 
 Exit condition: a user can safely manage, search, filter, sort, and organize fictional test records with validation, deterministic query behavior, and accessibility basics.
 
 ### Milestone 3 — data hygiene
 
-- **Prompt 6:** explainable duplicate detection and user-confirmed transactional merging.
+- **Prompt 6:** implementation and closure evidence complete for explainable duplicate detection and user-confirmed transactional merging; independent review pending.
 
 Exit condition: duplicate candidates can be explained, reviewed, ignored, or merged without automatic destructive decisions.
 

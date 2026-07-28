@@ -18,6 +18,7 @@ enum SQLiteValue {
 
 final class SQLiteDatabase {
     private var handle: OpaquePointer?
+    private var transactionDepth = 0
 
     init(path: String) throws {
         var database: OpaquePointer?
@@ -91,13 +92,32 @@ final class SQLiteDatabase {
     }
 
     func transaction<T>(_ operation: () throws -> T) throws -> T {
-        try execute("BEGIN IMMEDIATE TRANSACTION")
+        let level = transactionDepth
+        let savepoint = "bookatlas_nested_\(level)"
+        if level == 0 {
+            try execute("BEGIN IMMEDIATE TRANSACTION")
+        } else {
+            try execute("SAVEPOINT \(savepoint)")
+        }
+        transactionDepth += 1
+
         do {
             let value = try operation()
-            try execute("COMMIT")
+            if level == 0 {
+                try execute("COMMIT")
+            } else {
+                try execute("RELEASE SAVEPOINT \(savepoint)")
+            }
+            transactionDepth = level
             return value
         } catch {
-            try? execute("ROLLBACK")
+            transactionDepth = level
+            if level == 0 {
+                try? execute("ROLLBACK")
+            } else {
+                try? execute("ROLLBACK TO SAVEPOINT \(savepoint)")
+                try? execute("RELEASE SAVEPOINT \(savepoint)")
+            }
             throw error
         }
     }

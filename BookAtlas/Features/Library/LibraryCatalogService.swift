@@ -10,6 +10,40 @@ protocol LibraryCataloging: Actor {
     func createBook(from editor: BookEditorDraft) throws -> Book
     func updateBook(_ book: Book, from editor: BookEditorDraft) throws -> Book
     func deleteBook(_ book: Book) throws
+    func duplicateCandidates(
+        for editor: BookEditorDraft,
+        proposedID: UUID,
+        includingPossible: Bool
+    ) throws -> [DuplicateCandidate]
+    func duplicateCandidates(for book: Book, includingPossible: Bool) throws -> [DuplicateCandidate]
+    func createBookKeepingIndependent(
+        from editor: BookEditorDraft,
+        proposedID: UUID,
+        candidateIDs: [UUID],
+        disposition: DuplicatePairDisposition
+    ) throws -> Book
+    func ignoreDuplicatePair(
+        _ firstBookID: UUID,
+        _ secondBookID: UUID,
+        disposition: DuplicatePairDisposition
+    ) throws
+    func mergePreview(targetID: UUID, sourceID: UUID) throws -> BookMergePreview
+    func mergePreview(
+        targetID: UUID,
+        sourceEditor: BookEditorDraft,
+        proposedSourceID: UUID
+    ) throws -> BookMergePreview
+    func mergeBooks(
+        targetID: UUID,
+        sourceID: UUID,
+        selections: BookMergeSelections
+    ) throws -> BookMergeResult
+    func mergeNewBook(
+        targetID: UUID,
+        sourceEditor: BookEditorDraft,
+        proposedSourceID: UUID,
+        selections: BookMergeSelections
+    ) throws -> BookMergeResult
 
     func catalogSnapshot() throws -> CatalogSnapshot
     func membership(for bookID: UUID) throws -> BookMembership
@@ -30,6 +64,54 @@ protocol LibraryCataloging: Actor {
 }
 
 extension LibraryCataloging {
+    func duplicateCandidates(
+        for editor: BookEditorDraft,
+        proposedID: UUID,
+        includingPossible: Bool
+    ) throws -> [DuplicateCandidate] {
+        []
+    }
+    func duplicateCandidates(for book: Book, includingPossible: Bool) throws -> [DuplicateCandidate] { [] }
+    func createBookKeepingIndependent(
+        from editor: BookEditorDraft,
+        proposedID: UUID,
+        candidateIDs: [UUID],
+        disposition: DuplicatePairDisposition
+    ) throws -> Book {
+        throw BookRepositoryError.entityNotFound
+    }
+    func ignoreDuplicatePair(
+        _ firstBookID: UUID,
+        _ secondBookID: UUID,
+        disposition: DuplicatePairDisposition
+    ) throws {
+        throw BookRepositoryError.entityNotFound
+    }
+    func mergePreview(targetID: UUID, sourceID: UUID) throws -> BookMergePreview {
+        throw BookMergeError.bookNotFound
+    }
+    func mergePreview(
+        targetID: UUID,
+        sourceEditor: BookEditorDraft,
+        proposedSourceID: UUID
+    ) throws -> BookMergePreview {
+        throw BookMergeError.bookNotFound
+    }
+    func mergeBooks(
+        targetID: UUID,
+        sourceID: UUID,
+        selections: BookMergeSelections
+    ) throws -> BookMergeResult {
+        throw BookMergeError.bookNotFound
+    }
+    func mergeNewBook(
+        targetID: UUID,
+        sourceEditor: BookEditorDraft,
+        proposedSourceID: UUID,
+        selections: BookMergeSelections
+    ) throws -> BookMergeResult {
+        throw BookMergeError.bookNotFound
+    }
     func catalogSnapshot() throws -> CatalogSnapshot { .empty }
     func membership(for bookID: UUID) throws -> BookMembership { .empty }
     func setAssociation(_ association: BookAssociation, included: Bool, bookID: UUID) throws {
@@ -88,6 +170,109 @@ actor LibraryCatalogService: LibraryCataloging {
 
     func deleteBook(_ book: Book) throws {
         try repository.deleteBook(id: book.id)
+    }
+
+    func duplicateCandidates(
+        for editor: BookEditorDraft,
+        proposedID: UUID,
+        includingPossible: Bool
+    ) throws -> [DuplicateCandidate] {
+        try repository.duplicateCandidates(
+            for: DuplicateProbe(id: proposedID, draft: editor.makeBookDraft()),
+            includingPossible: includingPossible
+        )
+    }
+
+    func duplicateCandidates(
+        for book: Book,
+        includingPossible: Bool
+    ) throws -> [DuplicateCandidate] {
+        try repository.duplicateCandidates(
+            for: DuplicateProbe(book: book),
+            includingPossible: includingPossible
+        )
+    }
+
+    func createBookKeepingIndependent(
+        from editor: BookEditorDraft,
+        proposedID: UUID,
+        candidateIDs: [UUID],
+        disposition: DuplicatePairDisposition
+    ) throws -> Book {
+        let draft = try editor.makeBookDraft()
+        return try repository.transaction {
+            let book = try repository.create(draft, id: proposedID, at: now())
+            for candidateID in Set(candidateIDs) where candidateID != book.id {
+                try repository.ignoreDuplicatePair(
+                    book.id,
+                    candidateID,
+                    disposition: disposition,
+                    at: now()
+                )
+            }
+            return book
+        }
+    }
+
+    func ignoreDuplicatePair(
+        _ firstBookID: UUID,
+        _ secondBookID: UUID,
+        disposition: DuplicatePairDisposition
+    ) throws {
+        try repository.ignoreDuplicatePair(
+            firstBookID,
+            secondBookID,
+            disposition: disposition,
+            at: now()
+        )
+    }
+
+    func mergePreview(targetID: UUID, sourceID: UUID) throws -> BookMergePreview {
+        try repository.mergePreview(targetID: targetID, sourceID: sourceID)
+    }
+
+    func mergePreview(
+        targetID: UUID,
+        sourceEditor: BookEditorDraft,
+        proposedSourceID: UUID
+    ) throws -> BookMergePreview {
+        let source = try Book(
+            id: proposedSourceID,
+            draft: sourceEditor.makeBookDraft(),
+            createdAt: now()
+        )
+        return try repository.mergePreview(targetID: targetID, transientSource: source)
+    }
+
+    func mergeBooks(
+        targetID: UUID,
+        sourceID: UUID,
+        selections: BookMergeSelections
+    ) throws -> BookMergeResult {
+        try repository.mergeBooks(
+            targetID: targetID,
+            sourceID: sourceID,
+            selections: selections,
+            at: now()
+        )
+    }
+
+    func mergeNewBook(
+        targetID: UUID,
+        sourceEditor: BookEditorDraft,
+        proposedSourceID: UUID,
+        selections: BookMergeSelections
+    ) throws -> BookMergeResult {
+        let draft = try sourceEditor.makeBookDraft()
+        return try repository.transaction {
+            _ = try repository.create(draft, id: proposedSourceID, at: now())
+            return try repository.mergeBooks(
+                targetID: targetID,
+                sourceID: proposedSourceID,
+                selections: selections,
+                at: now()
+            )
+        }
     }
 
     func catalogSnapshot() throws -> CatalogSnapshot {

@@ -231,6 +231,60 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testDuplicateSaveReviewSupportsFieldChoiceAndConfirmedMerge() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
+        replaceText(in: element("editor-title", in: app), with: "A101 Incoming")
+        replaceText(in: element("editor-author", in: app), with: "Harbor Author")
+        replaceText(in: element("editor-isbn", in: app), with: "978-0-00000-000-2")
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("duplicate-uncertainty", in: app).exists)
+        app.typeKey(.return, modifierFlags: [])
+        let titleChoice = element("merge-choice-title", in: app)
+        XCTAssertTrue(titleChoice.waitForExistence(timeout: 3))
+        titleChoice.click()
+        let sourceTitle = app.menuItems["来源记录：A101 Incoming"]
+        if sourceTitle.waitForExistence(timeout: 1) {
+            sourceTitle.click()
+        } else {
+            app.typeKey(.downArrow, modifierFlags: [])
+            app.typeKey(.return, modifierFlags: [])
+        }
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(app.staticTexts["确认合并这两条书籍记录？"].waitForExistence(timeout: 3))
+        let confirmMerge = element("confirm-book-merge", in: app)
+        XCTAssertTrue(confirmMerge.waitForExistence(timeout: 3))
+        confirmMerge.click()
+
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(
+            element("library-book-00000000-0000-0000-0000-000000000101", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            element("library-book-00000000-0000-0000-0000-000000000202", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(app.staticTexts["A101 Incoming"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testManualDuplicateReviewShowsEmptyStateAndSupportsEscape() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
+
+        element("review-duplicates-button", in: app).click()
+        XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["没有重复候选"].waitForExistence(timeout: 3))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("library-book-list", in: app).exists)
+    }
+
+    @MainActor
     func testDatabaseUnavailableUsesGenericErrorState() {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasForceUnavailableStore"]

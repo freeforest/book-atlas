@@ -116,6 +116,8 @@ enum CatalogNameNormalizer {
 
 enum ISBNNormalizer {
     static func normalize(_ value: String) -> String {
-        value.filter { !$0.isWhitespace && $0 != "-" }
+        value
+            .filter { !$0.isWhitespace && $0 != "-" }
+            .uppercased()
     }
 }

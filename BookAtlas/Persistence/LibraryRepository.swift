@@ -6,13 +6,24 @@ enum DatabaseMigrationError: Error, Equatable {
     case migrationFailed(version: Int)
 }
 
-struct DatabaseMigration: Equatable {
+struct DatabaseMigration: @unchecked Sendable {
     let version: Int
     let statements: [String]
+    let dataTransform: ((SQLiteDatabase) throws -> Void)?
+
+    init(
+        version: Int,
+        statements: [String],
+        dataTransform: ((SQLiteDatabase) throws -> Void)? = nil
+    ) {
+        self.version = version
+        self.statements = statements
+        self.dataTransform = dataTransform
+    }
 }
 
 enum BookAtlasSchema {
-    static let latestVersion = 3
+    static let latestVersion = 4
 
     static let migrations: [DatabaseMigration] = [
         DatabaseMigration(
@@ -139,6 +150,65 @@ enum BookAtlasSchema {
                 "CREATE INDEX idx_books_updated_order ON books(updated_at, id)",
                 "CREATE INDEX idx_books_priority_order ON books(priority, id)"
             ]
+        ),
+        DatabaseMigration(
+            version: 4,
+            statements: [
+                """
+                CREATE TABLE book_duplicate_keys (
+                    book_id TEXT PRIMARY KEY NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    valid_isbn TEXT,
+                    normalized_title TEXT NOT NULL,
+                    normalized_author TEXT NOT NULL,
+                    normalized_original_title TEXT
+                )
+                """,
+                "CREATE INDEX idx_duplicate_keys_isbn ON book_duplicate_keys(valid_isbn)",
+                """
+                CREATE INDEX idx_duplicate_keys_title_author
+                ON book_duplicate_keys(normalized_title, normalized_author)
+                """,
+                """
+                CREATE INDEX idx_duplicate_keys_original_title
+                ON book_duplicate_keys(normalized_original_title)
+                """,
+                """
+                CREATE TABLE book_duplicate_title_tokens (
+                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    token TEXT NOT NULL,
+                    PRIMARY KEY (book_id, token)
+                )
+                """,
+                "CREATE INDEX idx_duplicate_title_tokens_token ON book_duplicate_title_tokens(token, book_id)",
+                """
+                CREATE TABLE ignored_duplicate_pairs (
+                    first_book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    second_book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    disposition TEXT NOT NULL CHECK (
+                        disposition IN ('not_duplicate', 'separate_edition', 'separate_translation')
+                    ),
+                    created_at TEXT NOT NULL,
+                    CHECK (first_book_id < second_book_id),
+                    PRIMARY KEY (first_book_id, second_book_id)
+                )
+                """,
+                "CREATE INDEX idx_ignored_duplicate_pairs_second ON ignored_duplicate_pairs(second_book_id)",
+                """
+                CREATE TRIGGER invalidate_ignored_duplicate_pairs_after_identity_update
+                AFTER UPDATE OF title, original_title, author, isbn, publisher, publication_date ON books
+                WHEN OLD.title IS NOT NEW.title
+                  OR OLD.original_title IS NOT NEW.original_title
+                  OR OLD.author IS NOT NEW.author
+                  OR OLD.isbn IS NOT NEW.isbn
+                  OR OLD.publisher IS NOT NEW.publisher
+                  OR OLD.publication_date IS NOT NEW.publication_date
+                BEGIN
+                    DELETE FROM ignored_duplicate_pairs
+                    WHERE first_book_id = NEW.id OR second_book_id = NEW.id;
+                END
+                """
+            ],
+            dataTransform: backfillDuplicateKeys
         )
     ]
 }
@@ -169,6 +239,7 @@ final class DatabaseMigrator {
                     for statement in migration.statements {
                         try database.execute(statement)
                     }
+                    try migration.dataTransform?(database)
                     try database.execute(
                         "INSERT INTO schema_migrations (version, applied_at) VALUES (?, ?)",
                         bindings: [.integer(Int64(migration.version)), .text(StorageDateCodec.encode(Date()))]
@@ -230,15 +301,20 @@ final class BookRepository {
     }
 
     func insert(_ book: Book) throws {
-        try database.execute(
-            """
-            INSERT INTO books (
-                id, title, original_title, author, isbn, publisher, publication_date,
-                kind, reading_status, priority, note, created_at, updated_at, started_at, finished_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            bindings: bookBindings(book)
-        )
+        try database.transaction {
+            try database.execute(
+                """
+                INSERT INTO books (
+                    id, title, original_title, author, isbn, publisher, publication_date,
+                    kind, reading_status, priority, note, created_at, updated_at, started_at, finished_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                bindings: bookBindings(book)
+            )
+            if try database.schemaVersion() >= 4 {
+                try replaceDuplicateKeys(for: book, in: database)
+            }
+        }
     }
 
     func book(id: UUID) throws -> Book? {
@@ -250,24 +326,29 @@ final class BookRepository {
     }
 
     func update(_ book: Book) throws {
-        try database.execute(
-            """
-            UPDATE books SET
-                title = ?, original_title = ?, author = ?, isbn = ?, publisher = ?, publication_date = ?,
-                kind = ?, reading_status = ?, priority = ?, note = ?, updated_at = ?, started_at = ?, finished_at = ?
-            WHERE id = ?
-            """,
-            bindings: [
-                .text(book.title), nullable(book.originalTitle), .text(book.author), nullable(book.isbn),
-                nullable(book.publisher), nullable(book.publicationDate?.storageValue), .text(book.kind.rawValue),
-                .text(book.readingStatus.rawValue), nullable(book.priority.map { Int64($0.rawValue) }),
-                nullable(book.note), .text(StorageDateCodec.encode(book.updatedAt)),
-                nullable(book.startedAt.map(StorageDateCodec.encode)), nullable(book.finishedAt.map(StorageDateCodec.encode)),
-                .text(book.id.uuidString)
-            ]
-        )
-        guard try database.changes() == 1 else {
-            throw BookRepositoryError.bookNotFound
+        try database.transaction {
+            try database.execute(
+                """
+                UPDATE books SET
+                    title = ?, original_title = ?, author = ?, isbn = ?, publisher = ?, publication_date = ?,
+                    kind = ?, reading_status = ?, priority = ?, note = ?, updated_at = ?, started_at = ?, finished_at = ?
+                WHERE id = ?
+                """,
+                bindings: [
+                    .text(book.title), nullable(book.originalTitle), .text(book.author), nullable(book.isbn),
+                    nullable(book.publisher), nullable(book.publicationDate?.storageValue), .text(book.kind.rawValue),
+                    .text(book.readingStatus.rawValue), nullable(book.priority.map { Int64($0.rawValue) }),
+                    nullable(book.note), .text(StorageDateCodec.encode(book.updatedAt)),
+                    nullable(book.startedAt.map(StorageDateCodec.encode)), nullable(book.finishedAt.map(StorageDateCodec.encode)),
+                    .text(book.id.uuidString)
+                ]
+            )
+            guard try database.changes() == 1 else {
+                throw BookRepositoryError.bookNotFound
+            }
+            if try database.schemaVersion() >= 4 {
+                try replaceDuplicateKeys(for: book, in: database)
+            }
         }
     }
 
@@ -712,6 +793,455 @@ final class BookRepository {
         )
     }
 
+    func duplicateCandidates(
+        for probe: DuplicateProbe,
+        includingPossible: Bool = true
+    ) throws -> [DuplicateCandidate] {
+        let candidateIDs = try duplicateCandidateIDs(for: probe)
+        var candidates: [DuplicateCandidate] = []
+
+        for id in candidateIDs where id != probe.id {
+            guard let existing = try book(id: id) else {
+                continue
+            }
+            if let incomingID = probe.id,
+               try ignoredDuplicatePair(between: incomingID, and: existing.id) != nil
+            {
+                continue
+            }
+
+            let candidate = DuplicateDetectionEngine.evaluate(probe, against: existing)
+            guard candidate.confidence != .notDuplicate,
+                  includingPossible || candidate.confidence != .possible
+            else {
+                continue
+            }
+            candidates.append(candidate)
+        }
+
+        return candidates.sorted {
+            let lhsRank = duplicateConfidenceRank($0.confidence)
+            let rhsRank = duplicateConfidenceRank($1.confidence)
+            if lhsRank != rhsRank {
+                return lhsRank < rhsRank
+            }
+            if $0.score != $1.score {
+                return $0.score > $1.score
+            }
+            return $0.existingBook.id.uuidString < $1.existingBook.id.uuidString
+        }
+    }
+
+    func ignoreDuplicatePair(
+        _ firstBookID: UUID,
+        _ secondBookID: UUID,
+        disposition: DuplicatePairDisposition,
+        at date: Date
+    ) throws {
+        guard firstBookID != secondBookID else {
+            throw BookRepositoryError.invalidMerge
+        }
+        let pair = canonicalPair(firstBookID, secondBookID)
+        try database.transaction {
+            guard try entityExists(table: "books", id: pair.0),
+                  try entityExists(table: "books", id: pair.1)
+            else {
+                throw BookRepositoryError.bookNotFound
+            }
+            try database.execute(
+                """
+                INSERT INTO ignored_duplicate_pairs (
+                    first_book_id, second_book_id, disposition, created_at
+                ) VALUES (?, ?, ?, ?)
+                ON CONFLICT(first_book_id, second_book_id) DO UPDATE SET
+                    disposition = excluded.disposition,
+                    created_at = excluded.created_at
+                """,
+                bindings: [
+                    .text(pair.0.uuidString),
+                    .text(pair.1.uuidString),
+                    .text(disposition.rawValue),
+                    .text(StorageDateCodec.encode(date))
+                ]
+            )
+        }
+    }
+
+    func ignoredDuplicatePair(
+        between firstBookID: UUID,
+        and secondBookID: UUID
+    ) throws -> IgnoredDuplicatePair? {
+        guard firstBookID != secondBookID else {
+            return nil
+        }
+        let pair = canonicalPair(firstBookID, secondBookID)
+        return try database.query(
+            """
+            SELECT first_book_id, second_book_id, disposition, created_at
+            FROM ignored_duplicate_pairs
+            WHERE first_book_id = ? AND second_book_id = ?
+            """,
+            bindings: [.text(pair.0.uuidString), .text(pair.1.uuidString)],
+            row: decodeIgnoredPair
+        ).first
+    }
+
+    func ignoredDuplicatePairs() throws -> [IgnoredDuplicatePair] {
+        try database.query(
+            """
+            SELECT first_book_id, second_book_id, disposition, created_at
+            FROM ignored_duplicate_pairs
+            ORDER BY first_book_id, second_book_id
+            """,
+            row: decodeIgnoredPair
+        )
+    }
+
+    func mergePreview(targetID: UUID, sourceID: UUID) throws -> BookMergePreview {
+        guard targetID != sourceID else {
+            throw BookMergeError.sameBook
+        }
+        guard let target = try book(id: targetID),
+              let source = try book(id: sourceID)
+        else {
+            throw BookMergeError.bookNotFound
+        }
+        return try mergePreview(target: target, source: source, sourceIsPersisted: true)
+    }
+
+    func mergePreview(targetID: UUID, transientSource: Book) throws -> BookMergePreview {
+        guard targetID != transientSource.id else {
+            throw BookMergeError.sameBook
+        }
+        guard let target = try book(id: targetID) else {
+            throw BookMergeError.bookNotFound
+        }
+        return try mergePreview(target: target, source: transientSource, sourceIsPersisted: false)
+    }
+
+    func mergeBooks(
+        targetID: UUID,
+        sourceID: UUID,
+        selections: BookMergeSelections,
+        at mergeDate: Date
+    ) throws -> BookMergeResult {
+        guard targetID != sourceID else {
+            throw BookMergeError.sameBook
+        }
+
+        return try database.transaction {
+            guard let target = try book(id: targetID),
+                  let source = try book(id: sourceID)
+            else {
+                throw BookMergeError.bookNotFound
+            }
+
+            let preview = try mergePreview(target: target, source: source, sourceIsPersisted: true)
+            let relationMoves = try plannedRelationMoves(
+                sourceID: sourceID,
+                targetID: targetID
+            )
+            let merged = try BookMergePolicy.mergedBook(
+                preview: preview,
+                selections: selections,
+                at: mergeDate
+            )
+
+            try update(merged)
+            try copyMemberships(from: sourceID, to: targetID)
+            try moveExternalLinks(from: sourceID, to: targetID)
+            try applyRelationMoves(relationMoves)
+            try migrateIgnoredPairs(from: sourceID, to: targetID)
+
+            try database.execute(
+                "DELETE FROM books WHERE id = ?",
+                bindings: [.text(sourceID.uuidString)]
+            )
+            guard try database.changes() == 1 else {
+                throw BookMergeError.bookNotFound
+            }
+            return BookMergeResult(retainedBook: merged, removedBookID: sourceID)
+        }
+    }
+
+    private func duplicateCandidateIDs(for probe: DuplicateProbe) throws -> Set<UUID> {
+        var ids = Set<UUID>()
+
+        func appendIDs(_ sql: String, bindings: [SQLiteValue]) throws {
+            let values = try database.query(sql, bindings: bindings) { row in
+                row.string(at: 0).flatMap(UUID.init(uuidString:))
+            }
+            ids.formUnion(values.compactMap { $0 })
+        }
+
+        if let validISBN = DuplicateISBNNormalizer.validate(probe.isbn).validIdentifier {
+            try appendIDs(
+                """
+                SELECT book_id FROM book_duplicate_keys
+                WHERE valid_isbn = ?
+                LIMIT 250
+                """,
+                bindings: [.text(validISBN)]
+            )
+        }
+
+        let titleKey = DuplicateTextNormalizer.titleKey(probe.title)
+        let authorKey = DuplicateTextNormalizer.authorKey(probe.author)
+        try appendIDs(
+            """
+            SELECT book_id FROM book_duplicate_keys
+            WHERE normalized_title = ? AND normalized_author = ?
+            LIMIT 250
+            """,
+            bindings: [.text(titleKey), .text(authorKey)]
+        )
+
+        if let originalTitle = probe.originalTitle {
+            let originalKey = DuplicateTextNormalizer.titleKey(originalTitle)
+            if !originalKey.isEmpty {
+                try appendIDs(
+                    """
+                    SELECT book_id FROM book_duplicate_keys
+                    WHERE normalized_original_title = ?
+                    LIMIT 250
+                    """,
+                    bindings: [.text(originalKey)]
+                )
+            }
+        }
+
+        let tokens = DuplicateTextNormalizer.titleTokens(probe.title)
+            .sorted()
+            .prefix(32)
+        if !tokens.isEmpty {
+            try appendIDs(
+                """
+                SELECT DISTINCT book_id FROM book_duplicate_title_tokens
+                WHERE token IN (\(placeholders(count: tokens.count)))
+                LIMIT 250
+                """,
+                bindings: tokens.map(SQLiteValue.text)
+            )
+        }
+        return ids
+    }
+
+    private func mergePreview(
+        target: Book,
+        source: Book,
+        sourceIsPersisted: Bool
+    ) throws -> BookMergePreview {
+        let targetRelations = try manualRelations(forBookID: target.id)
+        let sourceRelations = sourceIsPersisted ? try manualRelations(forBookID: source.id) : []
+        let relationsByID = Dictionary(
+            (targetRelations + sourceRelations).map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let associations = BookMergeAssociationSummary(
+            targetTags: try tags(forBookID: target.id),
+            sourceTags: sourceIsPersisted ? try tags(forBookID: source.id) : [],
+            targetCollections: try collections(forBookID: target.id),
+            sourceCollections: sourceIsPersisted ? try collections(forBookID: source.id) : [],
+            targetSources: try sources(forBookID: target.id),
+            sourceSources: sourceIsPersisted ? try sources(forBookID: source.id) : [],
+            targetLinks: try externalLinks(forBookID: target.id),
+            sourceLinks: sourceIsPersisted ? try externalLinks(forBookID: source.id) : [],
+            manualRelations: relationsByID.values.sorted {
+                if $0.createdAt != $1.createdAt {
+                    return $0.createdAt < $1.createdAt
+                }
+                return $0.id.uuidString < $1.id.uuidString
+            }
+        )
+        return BookMergePolicy.preview(
+            target: target,
+            source: source,
+            associations: associations
+        )
+    }
+
+    private func copyMemberships(from sourceID: UUID, to targetID: UUID) throws {
+        try database.execute(
+            """
+            INSERT OR IGNORE INTO book_tags (book_id, tag_id)
+            SELECT ?, tag_id FROM book_tags WHERE book_id = ?
+            """,
+            bindings: [.text(targetID.uuidString), .text(sourceID.uuidString)]
+        )
+        try database.execute(
+            """
+            INSERT OR IGNORE INTO book_collections_books (collection_id, book_id)
+            SELECT collection_id, ? FROM book_collections_books WHERE book_id = ?
+            """,
+            bindings: [.text(targetID.uuidString), .text(sourceID.uuidString)]
+        )
+        try database.execute(
+            """
+            INSERT OR IGNORE INTO book_sources (book_id, source_id)
+            SELECT ?, source_id FROM book_sources WHERE book_id = ?
+            """,
+            bindings: [.text(targetID.uuidString), .text(sourceID.uuidString)]
+        )
+    }
+
+    private func moveExternalLinks(from sourceID: UUID, to targetID: UUID) throws {
+        for link in try externalLinks(forBookID: sourceID) {
+            let duplicate = try database.query(
+                """
+                SELECT id, book_id, kind, label, value, created_at, updated_at
+                FROM external_links
+                WHERE book_id = ? AND kind = ? AND value = ?
+                """,
+                bindings: [
+                    .text(targetID.uuidString),
+                    .text(link.kind.rawValue),
+                    .text(link.value)
+                ],
+                row: decodeExternalLink
+            ).first
+
+            if let duplicate {
+                if duplicate.label == nil, let sourceLabel = link.label {
+                    try database.execute(
+                        "UPDATE external_links SET label = ? WHERE id = ?",
+                        bindings: [.text(sourceLabel), .text(duplicate.id.uuidString)]
+                    )
+                }
+            } else {
+                try database.execute(
+                    "UPDATE external_links SET book_id = ? WHERE id = ?",
+                    bindings: [.text(targetID.uuidString), .text(link.id.uuidString)]
+                )
+                guard try database.changes() == 1 else {
+                    throw BookMergeError.mergeFailed
+                }
+            }
+        }
+    }
+
+    private func plannedRelationMoves(
+        sourceID: UUID,
+        targetID: UUID
+    ) throws -> [PlannedRelationMove] {
+        try manualRelations(forBookID: sourceID).map { relation in
+            let newSourceID = relation.sourceBookID == sourceID ? targetID : relation.sourceBookID
+            let newTargetID = relation.targetBookID == sourceID ? targetID : relation.targetBookID
+            guard newSourceID != newTargetID else {
+                throw BookMergeError.selfRelationConflict
+            }
+
+            let duplicate = try existingRelation(
+                sourceID: newSourceID,
+                targetID: newTargetID,
+                kind: relation.kind,
+                excluding: relation.id
+            )
+            if let duplicate,
+               let existingNote = duplicate.note,
+               let sourceNote = relation.note,
+               existingNote != sourceNote
+            {
+                throw BookMergeError.relationNoteConflict
+            }
+            return PlannedRelationMove(
+                relation: relation,
+                newSourceID: newSourceID,
+                newTargetID: newTargetID,
+                duplicate: duplicate
+            )
+        }
+    }
+
+    private func applyRelationMoves(_ moves: [PlannedRelationMove]) throws {
+        for move in moves {
+            if let duplicate = move.duplicate {
+                if duplicate.note == nil, let sourceNote = move.relation.note {
+                    try database.execute(
+                        "UPDATE manual_book_relations SET note = ? WHERE id = ?",
+                        bindings: [.text(sourceNote), .text(duplicate.id.uuidString)]
+                    )
+                }
+                try database.execute(
+                    "DELETE FROM manual_book_relations WHERE id = ?",
+                    bindings: [.text(move.relation.id.uuidString)]
+                )
+            } else {
+                try database.execute(
+                    """
+                    UPDATE manual_book_relations
+                    SET source_book_id = ?, target_book_id = ?
+                    WHERE id = ?
+                    """,
+                    bindings: [
+                        .text(move.newSourceID.uuidString),
+                        .text(move.newTargetID.uuidString),
+                        .text(move.relation.id.uuidString)
+                    ]
+                )
+                guard try database.changes() == 1 else {
+                    throw BookMergeError.mergeFailed
+                }
+            }
+        }
+    }
+
+    private func existingRelation(
+        sourceID: UUID,
+        targetID: UUID,
+        kind: ManualRelationKind,
+        excluding relationID: UUID
+    ) throws -> ManualBookRelation? {
+        try database.query(
+            """
+            SELECT id, source_book_id, target_book_id, relation_kind, note, created_at
+            FROM manual_book_relations
+            WHERE source_book_id = ? AND target_book_id = ?
+              AND relation_kind = ? AND id <> ?
+            LIMIT 1
+            """,
+            bindings: [
+                .text(sourceID.uuidString),
+                .text(targetID.uuidString),
+                .text(kind.rawValue),
+                .text(relationID.uuidString)
+            ],
+            row: decodeRelation
+        ).first
+    }
+
+    private func migrateIgnoredPairs(from sourceID: UUID, to targetID: UUID) throws {
+        let pairs = try database.query(
+            """
+            SELECT first_book_id, second_book_id, disposition, created_at
+            FROM ignored_duplicate_pairs
+            WHERE first_book_id = ? OR second_book_id = ?
+            """,
+            bindings: [.text(sourceID.uuidString), .text(sourceID.uuidString)],
+            row: decodeIgnoredPair
+        )
+
+        for pair in pairs {
+            let otherID = pair.firstBookID == sourceID ? pair.secondBookID : pair.firstBookID
+            guard otherID != targetID else {
+                continue
+            }
+            let migrated = canonicalPair(targetID, otherID)
+            try database.execute(
+                """
+                INSERT OR IGNORE INTO ignored_duplicate_pairs (
+                    first_book_id, second_book_id, disposition, created_at
+                ) VALUES (?, ?, ?, ?)
+                """,
+                bindings: [
+                    .text(migrated.0.uuidString),
+                    .text(migrated.1.uuidString),
+                    .text(pair.disposition.rawValue),
+                    .text(StorageDateCodec.encode(pair.createdAt))
+                ]
+            )
+        }
+    }
+
     private func list(readingStatus: ReadingStatus?, limit: Int) throws -> [Book] {
         let limit = try checkedLimit(limit)
         if let readingStatus {
@@ -866,6 +1396,124 @@ final class BookRepository {
             throw BookRepositoryError.invalidStoredRecord
         }
         return try ManualBookRelation(id: id, sourceBookID: sourceBookID, targetBookID: targetBookID, kind: kind, note: row.string(at: 4), createdAt: createdAt)
+    }
+
+    private func decodeIgnoredPair(_ row: SQLiteRow) throws -> IgnoredDuplicatePair {
+        guard let firstBookID = UUID(uuidString: row.string(at: 0) ?? ""),
+              let secondBookID = UUID(uuidString: row.string(at: 1) ?? ""),
+              let disposition = DuplicatePairDisposition(rawValue: row.string(at: 2) ?? ""),
+              let createdAt = StorageDateCodec.decode(row.string(at: 3))
+        else {
+            throw BookRepositoryError.invalidStoredRecord
+        }
+        return IgnoredDuplicatePair(
+            firstBookID: firstBookID,
+            secondBookID: secondBookID,
+            disposition: disposition,
+            createdAt: createdAt
+        )
+    }
+}
+
+private struct PlannedRelationMove {
+    let relation: ManualBookRelation
+    let newSourceID: UUID
+    let newTargetID: UUID
+    let duplicate: ManualBookRelation?
+}
+
+private struct DuplicateKeySource {
+    let id: UUID
+    let title: String
+    let originalTitle: String?
+    let author: String
+    let isbn: String?
+}
+
+private func backfillDuplicateKeys(_ database: SQLiteDatabase) throws {
+    let sources = try database.query(
+        "SELECT id, title, original_title, author, isbn FROM books ORDER BY id"
+    ) { row in
+        guard let id = UUID(uuidString: row.string(at: 0) ?? ""),
+              let title = row.string(at: 1),
+              let author = row.string(at: 3)
+        else {
+            throw BookRepositoryError.invalidStoredRecord
+        }
+        return DuplicateKeySource(
+            id: id,
+            title: title,
+            originalTitle: row.string(at: 2),
+            author: author,
+            isbn: row.string(at: 4)
+        )
+    }
+
+    for source in sources {
+        try replaceDuplicateKeys(for: source, in: database)
+    }
+}
+
+private func replaceDuplicateKeys(for book: Book, in database: SQLiteDatabase) throws {
+    try replaceDuplicateKeys(
+        for: DuplicateKeySource(
+            id: book.id,
+            title: book.title,
+            originalTitle: book.originalTitle,
+            author: book.author,
+            isbn: book.isbn
+        ),
+        in: database
+    )
+}
+
+private func replaceDuplicateKeys(
+    for source: DuplicateKeySource,
+    in database: SQLiteDatabase
+) throws {
+    let originalTitleKey = source.originalTitle.map(DuplicateTextNormalizer.titleKey)
+        .flatMap { $0.isEmpty ? nil : $0 }
+    try database.execute(
+        """
+        INSERT INTO book_duplicate_keys (
+            book_id, valid_isbn, normalized_title, normalized_author, normalized_original_title
+        ) VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(book_id) DO UPDATE SET
+            valid_isbn = excluded.valid_isbn,
+            normalized_title = excluded.normalized_title,
+            normalized_author = excluded.normalized_author,
+            normalized_original_title = excluded.normalized_original_title
+        """,
+        bindings: [
+            .text(source.id.uuidString),
+            nullable(DuplicateISBNNormalizer.validate(source.isbn).validIdentifier),
+            .text(DuplicateTextNormalizer.titleKey(source.title)),
+            .text(DuplicateTextNormalizer.authorKey(source.author)),
+            nullable(originalTitleKey)
+        ]
+    )
+    try database.execute(
+        "DELETE FROM book_duplicate_title_tokens WHERE book_id = ?",
+        bindings: [.text(source.id.uuidString)]
+    )
+    for token in DuplicateTextNormalizer.titleTokens(source.title).sorted() {
+        try database.execute(
+            "INSERT INTO book_duplicate_title_tokens (book_id, token) VALUES (?, ?)",
+            bindings: [.text(source.id.uuidString), .text(token)]
+        )
+    }
+}
+
+private func canonicalPair(_ first: UUID, _ second: UUID) -> (UUID, UUID) {
+    first.uuidString < second.uuidString ? (first, second) : (second, first)
+}
+
+private func duplicateConfidenceRank(_ confidence: DuplicateConfidence) -> Int {
+    switch confidence {
+    case .exact: 0
+    case .strong: 1
+    case .possible: 2
+    case .notDuplicate: 3
     }
 }
 

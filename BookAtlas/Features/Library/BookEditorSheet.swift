@@ -125,6 +125,9 @@ struct BookEditorSheet: View {
         } message: {
             Text("取消后，本次未保存的填写内容将被放弃。")
         }
+        .sheet(item: $store.duplicateReview) { review in
+            DuplicateReviewSheet(store: store, review: review)
+        }
     }
 
     private var isDirty: Bool {

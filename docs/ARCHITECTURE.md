@@ -2,7 +2,7 @@
 
 ## Current state
 
-The implemented Milestone 2 scope contains a production application shell, a testable library domain, one local SQLite persistence path, and a usable searchable catalog flow. Prompt 1 recorded accepted decisions, Prompt 2 added an App Sandbox-enabled SwiftUI shell, Prompt 3 added the migration registry and repository boundary, Prompt 4 added book CRUD presentation, and Prompt 5 added unified queries and catalog organization. Prompt 5 is awaiting an independent acceptance decision. Import/export, duplicate detection or merge, graph implementation, and external-link actions remain unimplemented.
+Prompt 5 has passed independent acceptance. Prompt 6 adds local deterministic duplicate normalization and evidence, indexed candidate retrieval, persistent keep-separate decisions, a review/field-selection UI, and one-transaction relationship-preserving merges. Prompt 6 closure evidence is awaiting independent review. Import/export, graph implementation, and external-link actions remain unimplemented.
 
 ## Intended shape
 
@@ -20,7 +20,9 @@ Dependencies should point from presentation and integrations toward explicit dom
 
 The production direction is direct SQLite through a small internal Swift store boundary; see [ADR-0002](DECISIONS/0002-direct-sqlite-persistence.md). `LibraryDomain.swift` contains entities and validation, `SQLiteDatabase.swift` is the focused SQLite wrapper, and `LibraryRepository.swift` owns all schema, migrations, CRUD, relationship, search, and transaction operations. SwiftUI imports none of that behavior.
 
-The production registry currently advances from version 1 (core tables), through version 2 (collection descriptions), to version 3 (query and ordering indexes). It records versions in `schema_migrations` and `PRAGMA user_version`, applies each migration transactionally, rejects future versions, and never rebuilds a database after an error. The application opens its one production database at the documented Application Support location; test launches use an in-memory repository. The actor-isolated `LibraryCatalogService` translates editor drafts and catalog actions into repository use cases, while feature-scoped stores own presentation state, stale-request replacement, debounce, selection, forms, confirmations, and generic errors. SwiftUI views do not execute SQL. Repeatable 1,000-, 5,000-, and 10,000-book baselines did not justify FTS5, so it remains deferred.
+The production registry currently advances from version 1 (core tables), through version 2 (collection descriptions), version 3 (query and ordering indexes), and version 4 (derived duplicate keys/tokens plus ignored-pair storage). Version 4 transactionally backfills existing books. The registry records versions in `schema_migrations` and `PRAGMA user_version`, rejects future versions, and never rebuilds a database after an error. The actor-isolated `LibraryCatalogService` translates editor drafts, review decisions, and merge choices into repository use cases; SwiftUI executes no SQL or merge rules.
+
+`DuplicateDetectionEngine` is separate from persistence and centralizes confidence levels, thresholds, integer weights, readable evidence, and uncertainty. `BookRepository` uses ISBN, normalized field, original-title, and token indexes to bound candidate evaluation. `BookMergePolicy` creates previews and applies explicit field choices. The repository owns the single merge transaction, membership unions, link/relation deduplication and redirection, ignored-pair migration, and source deletion last. See proposed [ADR-0007](DECISIONS/0007-deterministic-duplicate-resolution.md).
 
 ## Query contract
 
@@ -28,7 +30,7 @@ The production registry currently advances from version 1 (core tables), through
 
 ## State and concurrency
 
-UI state remains feature-sized: `LibraryStore` is scoped to the catalog screen and editor flow, while `CatalogOrganizerStore` owns metadata and membership presentation. SQLite reads and writes are serialized by an actor-backed service instead of running in SwiftUI or on the main actor. Future long-running import, export, backup, graph layout, and migration work must retain explicit background boundaries.
+UI state remains feature-sized: `LibraryStore` is scoped to the catalog, editor, duplicate review, and merge flow, while `CatalogOrganizerStore` owns metadata and membership presentation. SQLite reads and writes are serialized by an actor-backed service instead of running in SwiftUI or on the main actor. Future long-running import, export, backup, graph layout, and migration work must retain explicit background boundaries.
 
 ## Storage and sandboxing
 

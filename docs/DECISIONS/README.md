@@ -27,3 +27,4 @@ Keep ADRs concise. An ADR records a decision; implementation details belong in c
 - [ADR-0004: Bounded Canvas graph](0004-bounded-canvas-graph.md) — Accepted
 - [ADR-0005: External links and Apple Books](0005-external-links-and-apple-books.md) — Accepted
 - [ADR-0006: Sandboxed file access](0006-sandboxed-file-access.md) — Accepted
+- [ADR-0007: Deterministic duplicate resolution](0007-deterministic-duplicate-resolution.md) — Proposed
