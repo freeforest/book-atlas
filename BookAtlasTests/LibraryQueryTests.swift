@@ -81,13 +81,53 @@ final class LibraryQueryTests: XCTestCase {
         XCTAssertEqual(try repository.query(combined).map(\.id), [first.id])
     }
 
+    func testEachStructuredFilterCanBeAppliedIndependently() throws {
+        let matching = try repository.create(
+            BookDraft(title: "Aster Ledger", author: "Mira Vale", readingStatus: .reading),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        _ = try repository.create(
+            BookDraft(title: "Beacon Ledger", author: "Noa Reed", readingStatus: .read),
+            at: FictionalLibraryFixtures.timestamp.addingTimeInterval(1)
+        )
+        let tag = try repository.createTag(
+            try Tag(name: "Coastal", createdAt: FictionalLibraryFixtures.timestamp)
+        )
+        let collection = try repository.createCollection(
+            try BookCollection(name: "Research Shelf", createdAt: FictionalLibraryFixtures.timestamp)
+        )
+        let source = try repository.createSource(
+            try RecommendationSource(name: "North Review", createdAt: FictionalLibraryFixtures.timestamp)
+        )
+        try repository.attach(tagID: tag.id, toBookID: matching.id)
+        try repository.add(bookID: matching.id, toCollectionID: collection.id)
+        try repository.attach(sourceID: source.id, toBookID: matching.id)
+
+        XCTAssertEqual(
+            try repository.query(LibraryQuery(readingStatuses: [.reading])).map(\.id),
+            [matching.id]
+        )
+        XCTAssertEqual(
+            try repository.query(LibraryQuery(tagIDs: [tag.id])).map(\.id),
+            [matching.id]
+        )
+        XCTAssertEqual(
+            try repository.query(LibraryQuery(collectionIDs: [collection.id])).map(\.id),
+            [matching.id]
+        )
+        XCTAssertEqual(
+            try repository.query(LibraryQuery(sourceIDs: [source.id])).map(\.id),
+            [matching.id]
+        )
+    }
+
     func testSortingIsStableAndPriorityKeepsUnsetValuesLast() throws {
         let firstID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
         let secondID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
         let thirdID = UUID(uuidString: "00000000-0000-0000-0000-000000000003")!
         let timestamp = FictionalLibraryFixtures.timestamp
 
-        _ = try repository.create(
+        let second = try repository.create(
             BookDraft(title: "A", author: "Author", priority: BookPriority(rawValue: 2)),
             id: secondID,
             at: timestamp
@@ -102,12 +142,36 @@ final class LibraryQueryTests: XCTestCase {
             id: thirdID,
             at: timestamp.addingTimeInterval(10)
         )
+        try repository.update(
+            try second.applying(
+                BookDraft(title: "A Revised", author: "Author", priority: BookPriority(rawValue: 2)),
+                at: timestamp.addingTimeInterval(20)
+            )
+        )
 
         XCTAssertEqual(
             try repository.query(
                 LibraryQuery(sortField: .createdAt, sortDirection: .ascending)
             ).map(\.id),
             [firstID, secondID, thirdID]
+        )
+        XCTAssertEqual(
+            try repository.query(
+                LibraryQuery(sortField: .createdAt, sortDirection: .descending)
+            ).map(\.id),
+            [thirdID, firstID, secondID]
+        )
+        XCTAssertEqual(
+            try repository.query(
+                LibraryQuery(sortField: .updatedAt, sortDirection: .ascending)
+            ).map(\.id),
+            [firstID, thirdID, secondID]
+        )
+        XCTAssertEqual(
+            try repository.query(
+                LibraryQuery(sortField: .updatedAt, sortDirection: .descending)
+            ).map(\.id),
+            [secondID, thirdID, firstID]
         )
         XCTAssertEqual(
             try repository.query(

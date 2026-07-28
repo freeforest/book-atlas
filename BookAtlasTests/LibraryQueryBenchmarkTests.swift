@@ -13,7 +13,7 @@ final class LibraryQueryBenchmarkTests: XCTestCase {
             let insertionStart = ContinuousClock.now
             try repository.transaction {
                 for index in 0 ..< size {
-                    let book = try repository.create(
+                    _ = try repository.create(
                         BookDraft(
                             title: String(format: "Fictional Volume %05d", index),
                             originalTitle: String(format: "Archive %05d", index),
@@ -25,40 +25,60 @@ final class LibraryQueryBenchmarkTests: XCTestCase {
                         id: deterministicID(index),
                         at: FictionalLibraryFixtures.timestamp.addingTimeInterval(TimeInterval(index))
                     )
-                    if index.isMultiple(of: 10) {
-                        try repository.attach(tagID: tag.id, toBookID: book.id)
-                    }
                 }
             }
             let insertionDuration = insertionStart.duration(to: .now)
 
-            let searchStart = ContinuousClock.now
-            let searchResult = try repository.query(
-                LibraryQuery(searchText: "Volume 00042", limit: 100)
+            let associationStart = ContinuousClock.now
+            try repository.transaction {
+                for index in stride(from: 0, to: size, by: 10) {
+                    try repository.attach(tagID: tag.id, toBookID: deterministicID(index))
+                }
+            }
+            let associationDuration = associationStart.duration(to: .now)
+
+            let queryConstructionStart = ContinuousClock.now
+            let searchQuery = LibraryQuery(searchText: "Volume 00042", limit: 100)
+            let filterQuery = LibraryQuery(
+                readingStatuses: [.reading],
+                tagIDs: [tag.id],
+                sortField: .priority,
+                sortDirection: .descending,
+                limit: 100
             )
+            let sortQuery = LibraryQuery(
+                sortField: .createdAt,
+                sortDirection: .ascending,
+                limit: 100
+            )
+            let queryConstructionDuration = queryConstructionStart.duration(to: .now)
+
+            let searchStart = ContinuousClock.now
+            let searchResult = try repository.query(searchQuery)
             let searchDuration = searchStart.duration(to: .now)
 
             let filterStart = ContinuousClock.now
-            let filtered = try repository.query(
-                LibraryQuery(
-                    readingStatuses: [.reading],
-                    tagIDs: [tag.id],
-                    sortField: .priority,
-                    sortDirection: .descending,
-                    limit: 100
-                )
-            )
+            let filtered = try repository.query(filterQuery)
             let filterDuration = filterStart.duration(to: .now)
+
+            let sortStart = ContinuousClock.now
+            let sorted = try repository.query(sortQuery)
+            let sortDuration = sortStart.duration(to: .now)
 
             XCTAssertFalse(searchResult.isEmpty)
             XCTAssertLessThanOrEqual(filtered.count, 100)
+            XCTAssertEqual(sorted.count, min(size, 100))
             XCTContext.runActivity(named: "Baseline \(size) fictional books") { activity in
                 let attachment = XCTAttachment(
                     string: """
                     count=\(size)
                     insert=\(insertionDuration)
+                    query_construction=\(queryConstructionDuration)
+                    tag_associations=\(size / 10)
+                    tag_association_write=\(associationDuration)
                     search=\(searchDuration)
-                    combined_filter_sort=\(filterDuration)
+                    multi_filter=\(filterDuration)
+                    sort=\(sortDuration)
                     """
                 )
                 attachment.lifetime = .keepAlways

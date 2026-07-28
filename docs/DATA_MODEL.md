@@ -30,7 +30,7 @@ Where the user learned about or acquired a book. A source can have an optional u
 
 ### Relationship
 
-An explicit, user-maintained edge between two books, such as “inspired by,” “responds to,” or “read with.” Relationship types, directionality, uniqueness, deletion behavior, and graph projection rules must be defined in Prompt 3 and Prompt 8.
+An explicit, user-maintained edge between two books, such as “inspired by,” “responds to,” or “read with.” The current schema defines directed, unique, non-self relationships with cascading endpoint deletion. Prompt 8 must define the user-facing relationship vocabulary and graph projection rules before exposing this concept in the production UI.
 
 ### External link
 

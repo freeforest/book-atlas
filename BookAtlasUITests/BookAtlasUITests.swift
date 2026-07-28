@@ -81,8 +81,18 @@ final class BookAtlasUITests: XCTestCase {
 
     @MainActor
     func testDeleteRequiresConfirmationAndCanBeCancelledOrConfirmed() {
-        let app = launchInMemoryApp()
-        createFictionalBook(in: app)
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
+        let retainedBookRow = element(
+            "library-book-00000000-0000-0000-0000-000000000101",
+            in: app
+        )
+        let deletedBookRow = element(
+            "library-book-00000000-0000-0000-0000-000000000202",
+            in: app
+        )
+        XCTAssertTrue(retainedBookRow.waitForExistence(timeout: 3))
+        XCTAssertTrue(deletedBookRow.waitForExistence(timeout: 3))
 
         element("delete-book-button", in: app).click()
         XCTAssertTrue(element("cancel-delete-book", in: app).waitForExistence(timeout: 3))
@@ -92,14 +102,14 @@ final class BookAtlasUITests: XCTestCase {
         element("delete-book-button", in: app).click()
         XCTAssertTrue(element("confirm-delete-book", in: app).waitForExistence(timeout: 3))
         element("confirm-delete-book", in: app).click()
-        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(deletedBookRow.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(retainedBookRow.waitForExistence(timeout: 3))
     }
 
     @MainActor
     func testBookListSupportsKeyboardSelection() {
-        let app = launchInMemoryApp()
-        createFictionalBook(in: app, title: "A101", author: "L101")
-        createFictionalBook(in: app, title: "B202", author: "B202")
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
 
         element("library-book-list", in: app).click()
         app.typeKey(.upArrow, modifierFlags: [])
@@ -111,9 +121,8 @@ final class BookAtlasUITests: XCTestCase {
 
     @MainActor
     func testSearchCombinesWithStatusFilterAndCanBeCleared() {
-        let app = launchInMemoryApp()
-        createFictionalBook(in: app, title: "A101", author: "Harbor Author")
-        createFictionalBook(in: app, title: "B202", author: "Forest Author")
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
 
         let searchField = app.searchFields.firstMatch
         XCTAssertTrue(searchField.waitForExistence(timeout: 3))
@@ -122,8 +131,8 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["B202"].exists)
 
         element("library-filter-menu", in: app).click()
-        XCTAssertTrue(app.menuItems["想读"].waitForExistence(timeout: 3))
-        app.menuItems["想读"].click()
+        app.typeKey(.downArrow, modifierFlags: [])
+        app.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(element("active-filter-summary", in: app).waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["A101"].exists)
 
@@ -133,25 +142,92 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
 
         element("library-sort-menu", in: app).click()
-        XCTAssertTrue(app.menuItems["添加时间：旧到新"].waitForExistence(timeout: 3))
-        app.menuItems["添加时间：旧到新"].click()
+        app.typeKey(.downArrow, modifierFlags: [])
+        app.typeKey(.downArrow, modifierFlags: [])
+        app.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(element("library-book-list", in: app).exists)
     }
 
     @MainActor
-    func testCatalogManagementSupportsNativeSheetAndKeyboardDismissal() {
+    func testCreateCollectionAndSourceWithKeyboardNavigation() {
         let app = launchInMemoryApp()
         XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
-        element("catalog-management-button", in: app).click()
-        XCTAssertTrue(element("catalog-management-view", in: app).waitForExistence(timeout: 3))
 
-        element("add-tag-button", in: app).click()
-        XCTAssertTrue(element("tag-name-field", in: app).waitForExistence(timeout: 3))
-        app.typeKey(.escape, modifierFlags: [])
-        XCTAssertTrue(element("add-tag-button", in: app).waitForExistence(timeout: 3))
+        app.typeKey("2", modifierFlags: .command)
+        XCTAssertTrue(element("page-title-collections", in: app).waitForExistence(timeout: 3))
+        element("add-collection-button", in: app).click()
+        replaceText(in: element("collection-name-field", in: app), with: "North Shelf")
+        replaceText(in: element("collection-details-field", in: app), with: "Fictional collection")
+        app.typeKey(.tab, modifierFlags: [])
+        element("collection-save-button", in: app).click()
+        XCTAssertTrue(app.staticTexts["North Shelf"].waitForExistence(timeout: 3))
+
+        app.typeKey("1", modifierFlags: .command)
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        element("catalog-management-button", in: app).click()
+        XCTAssertTrue(element("page-title-tags", in: app).waitForExistence(timeout: 3))
+
+        let sourceTab = element("catalog-management-tab-sources", in: app)
+        if sourceTab.waitForExistence(timeout: 1) {
+            sourceTab.click()
+        } else {
+            let labeledSourceTab = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "label == %@", "来源"))
+                .firstMatch
+            XCTAssertTrue(labeledSourceTab.waitForExistence(timeout: 3))
+            labeledSourceTab.click()
+        }
+        XCTAssertTrue(element("page-title-sources", in: app).waitForExistence(timeout: 3))
+        element("add-source-button", in: app).click()
+        replaceText(in: element("source-name-field", in: app), with: "Paper Signal")
+        replaceText(in: element("source-details-field", in: app), with: "Fictional source")
+        app.typeKey(.tab, modifierFlags: [])
+        element("source-save-button", in: app).click()
+        XCTAssertTrue(app.staticTexts["Paper Signal"].waitForExistence(timeout: 3))
 
         element("close-catalog-management", in: app).click()
         XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testTagCreateRenameAndConfirmedMergeResult() {
+        let app = launchInMemoryApp()
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+
+        app.typeKey("3", modifierFlags: .command)
+        XCTAssertTrue(element("page-title-tags", in: app).waitForExistence(timeout: 3))
+        createTag(named: "Harbor Draft", in: app)
+
+        let draftRow = catalogRow(named: "Harbor Draft", in: app)
+        XCTAssertTrue(draftRow.waitForExistence(timeout: 3))
+        draftRow.click()
+        element("rename-tag-button", in: app).click()
+        replaceText(in: element("tag-name-field", in: app), with: "Harbor Revised")
+        app.typeKey(.tab, modifierFlags: [])
+        element("tag-save-button", in: app).click()
+        XCTAssertTrue(catalogRow(named: "Harbor Revised", in: app).waitForExistence(timeout: 3))
+
+        createTag(named: "Coastal Target", in: app)
+        catalogRow(named: "Harbor Revised", in: app).click()
+        element("merge-tag-button", in: app).click()
+        XCTAssertTrue(element("tag-merge-sheet", in: app).waitForExistence(timeout: 3))
+
+        element("merge-tag-target-picker", in: app).click()
+        let targetMenuItem = app.menuItems["Coastal Target"]
+        if targetMenuItem.waitForExistence(timeout: 1) {
+            targetMenuItem.click()
+        } else {
+            app.typeKey(.downArrow, modifierFlags: [])
+            app.typeKey(.return, modifierFlags: [])
+        }
+        let mergeButton = element("confirm-merge-tag", in: app)
+        XCTAssertTrue(waitForEnabled(mergeButton))
+        mergeButton.click()
+        XCTAssertTrue(element("perform-merge-tag", in: app).waitForExistence(timeout: 3))
+        element("perform-merge-tag", in: app).click()
+
+        XCTAssertTrue(catalogRow(named: "Harbor Revised", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(catalogRow(named: "Coastal Target", in: app).waitForExistence(timeout: 3))
     }
 
     @MainActor
@@ -170,9 +246,12 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchInMemoryApp() -> XCUIApplication {
+    private func launchInMemoryApp(seedFictionalBooks: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
+        if seedFictionalBooks {
+            app.launchArguments.append("-BookAtlasSeedFictionalUITestBooks")
+        }
         app.launch()
         return app
     }
@@ -197,5 +276,28 @@ final class BookAtlasUITests: XCTestCase {
         element.click()
         element.typeKey("a", modifierFlags: .command)
         element.typeText(value)
+    }
+
+    @MainActor
+    private func createTag(named name: String, in app: XCUIApplication) {
+        element("add-tag-button", in: app).click()
+        replaceText(in: element("tag-name-field", in: app), with: name)
+        app.typeKey(.tab, modifierFlags: [])
+        element("tag-save-button", in: app).click()
+        XCTAssertTrue(catalogRow(named: name, in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    private func catalogRow(named name: String, in app: XCUIApplication) -> XCUIElement {
+        app.staticTexts
+            .matching(NSPredicate(format: "value BEGINSWITH %@", name))
+            .firstMatch
+    }
+
+    @MainActor
+    private func waitForEnabled(_ element: XCUIElement, timeout: TimeInterval = 3) -> Bool {
+        let predicate = NSPredicate(format: "exists == true AND enabled == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 }

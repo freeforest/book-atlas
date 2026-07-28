@@ -18,7 +18,7 @@ Potentially private data includes books, contributors, tags, lists, sources, rat
 
 ## Storage
 
-The production database is expected in the app-specific Application Support directory. Sandbox access, backup locations, and retention behavior must be verified in later prompts. Permission bookmarks are private capability data and must never appear in repository fixtures or logs.
+The production database is stored at `Application Support/BookAtlas/book-atlas.sqlite` inside the app-specific Application Support directory. Tests use temporary or in-memory stores and do not discover a real library. Backup locations and retention behavior remain undefined until the later backup/restore stage. Permission bookmarks are private capability data and must never appear in repository fixtures or logs.
 
 ## Logging
 
@@ -34,4 +34,3 @@ Logs may include operation names, durations, counts, schema versions, and coarse
 ## User control
 
 The user must be able to inspect and edit records, explicitly initiate export and backup, cancel imports where practical, understand destructive consequences, and remove stored access to external files. Duplicate merging and restore operations require review and confirmation.
-

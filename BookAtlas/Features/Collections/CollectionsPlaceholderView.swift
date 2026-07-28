@@ -6,6 +6,5 @@ struct CollectionsPlaceholderView: View {
     var body: some View {
         CatalogManagementView(store: store, initialSection: .collections, showsSectionPicker: false)
             .navigationTitle("书单")
-            .accessibilityIdentifier("page-title-collections")
     }
 }

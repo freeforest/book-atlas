@@ -1,18 +1,17 @@
-# Milestone 3 — organization and hygiene
+# Milestone 3 — data hygiene
 
 ## Goal
 
-Make a larger library easy to organize and safely de-duplicate.
+Provide explainable, user-reviewed duplicate handling without automatic destructive decisions.
 
-## Stages
+## Stage
 
-- Prompt 5: search, filters, sorting, tags, lists, and source management.
-- Prompt 6: explainable duplicate candidate detection and user-reviewed transactional merging.
+- Prompt 6: planned, not started — explainable duplicate candidate detection, ignored-candidate handling, and user-reviewed transactional merging.
+
+Prompt 5 belongs to Milestone 2. Work in this milestone may begin only after the independent Prompt 5 acceptance review records its decision.
 
 ## Gates
 
-- Query semantics, normalization, stable sorting, and empty combinations are tested.
 - Duplicate signals are explainable; automatic destructive merging is prohibited.
 - Merge preserves required metadata and relationships or reports conflicts.
-- Performance claims use a fixed-seed fictional dataset and recorded environment.
-
+- Candidate review, ignore behavior, merge transactions, rollback, and any schema migration are tested with fixed fictional data.

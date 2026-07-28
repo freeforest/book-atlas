@@ -114,13 +114,17 @@ final class LibraryStore: ObservableObject {
         }
 
         do {
-            let repository: BookRepository
+            let catalog: LibraryCatalogService
             if arguments.contains("-BookAtlasUseInMemoryStore") || environment["XCTestConfigurationFilePath"] != nil {
-                repository = try BookRepository.inMemory()
+                catalog = try Self.makeInMemoryCatalog(
+                    seedFictionalUITestBooks: arguments.contains("-BookAtlasSeedFictionalUITestBooks")
+                )
             } else {
-                repository = try BookRepository(databaseURL: BookAtlasDatabaseLocation.defaultURL())
+                catalog = LibraryCatalogService(
+                    repository: try BookRepository(databaseURL: BookAtlasDatabaseLocation.defaultURL())
+                )
             }
-            return LibraryStore(catalog: LibraryCatalogService(repository: repository))
+            return LibraryStore(catalog: catalog)
         } catch {
             return LibraryStore(initialError: .databaseUnavailable)
         }
@@ -387,5 +391,27 @@ final class LibraryStore: ObservableObject {
         } else {
             values.insert(value)
         }
+    }
+
+    private nonisolated static func makeInMemoryCatalog(
+        seedFictionalUITestBooks: Bool
+    ) throws -> LibraryCatalogService {
+        let repository = try BookRepository.inMemory()
+        guard seedFictionalUITestBooks else {
+            return LibraryCatalogService(repository: repository)
+        }
+
+        let timestamp = Date(timeIntervalSince1970: 1_735_689_600)
+        _ = try repository.create(
+            BookDraft(title: "A101", author: "Harbor Author"),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!,
+            at: timestamp
+        )
+        _ = try repository.create(
+            BookDraft(title: "B202", author: "Forest Author"),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
+            at: timestamp.addingTimeInterval(1)
+        )
+        return LibraryCatalogService(repository: repository)
     }
 }

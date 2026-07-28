@@ -2,7 +2,7 @@
 
 ## Current state
 
-Milestone 2 contains a production application skeleton, a testable library domain, one local SQLite persistence path, and a usable searchable catalog flow. Prompt 1 recorded accepted decisions, Prompt 2 added an App Sandbox-enabled SwiftUI shell, Prompt 3 added the migration registry and repository boundary, Prompt 4 added book CRUD presentation, and Prompt 5 added unified queries and catalog organization. Import/export, duplicate merge, graph implementation, and external-link actions remain unimplemented.
+The implemented Milestone 2 scope contains a production application shell, a testable library domain, one local SQLite persistence path, and a usable searchable catalog flow. Prompt 1 recorded accepted decisions, Prompt 2 added an App Sandbox-enabled SwiftUI shell, Prompt 3 added the migration registry and repository boundary, Prompt 4 added book CRUD presentation, and Prompt 5 added unified queries and catalog organization. Prompt 5 is awaiting an independent acceptance decision. Import/export, duplicate detection or merge, graph implementation, and external-link actions remain unimplemented.
 
 ## Intended shape
 
@@ -32,7 +32,7 @@ UI state remains feature-sized: `LibraryStore` is scoped to the catalog screen a
 
 ## Storage and sandboxing
 
-The future production database location is `Application Support/BookAtlas/book-atlas.sqlite`. Temporary work belongs in system temporary storage and should be cleaned safely. Access outside the sandbox starts with a user-selected URL and, when long-term access is needed, uses a read-only, app-scoped security-scoped bookmark; see [ADR-0006](DECISIONS/0006-sandboxed-file-access.md).
+The production database location is `Application Support/BookAtlas/book-atlas.sqlite`; tests use temporary or in-memory stores. Temporary work belongs in system temporary storage and should be cleaned safely. Access outside the sandbox starts with a user-selected URL and, when long-term access is needed, uses a read-only, app-scoped security-scoped bookmark; see [ADR-0006](DECISIONS/0006-sandboxed-file-access.md).
 
 App Sandbox is the default. The verified experiment entitlement set is App Sandbox, user-selected read-only files, and app-scoped bookmarks. The application will not request the network client entitlement by default. Bookmark bytes, paths, and user file content must not appear in logs.
 

@@ -26,7 +26,7 @@ Book Atlas · 图书志 helps one person turn a growing personal bibliography in
 
 The planned first release includes a native macOS library interface, book CRUD, tags and lists, search/filter/sort, source tracking, duplicate review and merge, import/export, backup/restore, a bounded relationship graph, and only experimentally verified external-link behavior.
 
-Exact fields, persistence technology, supported import formats, graph limits, and integrations remain subject to the staged plans and ADRs.
+The current implementation provides the native library interface, book CRUD, tags, collections, source tracking, and search/filter/sort on the accepted direct-SQLite store. Additional fields, supported import formats, duplicate handling, graph behavior, and integrations remain subject to the later staged plans and ADRs.
 
 ## Non-goals
 
@@ -47,4 +47,3 @@ Book Atlas is not:
 - Private content stays on-device unless the user explicitly chooses a destination.
 - Tests cover domain rules, persistence migration, import parsing, duplicate handling, and restore safety.
 - Documentation states limitations instead of promising unverified system capabilities or fixed performance across all hardware and data sizes.
-
