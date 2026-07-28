@@ -160,6 +160,86 @@ final class LibraryStoreTests: XCTestCase {
         let candidates = try await service.duplicateCandidates(for: created, includingPossible: true)
         XCTAssertTrue(candidates.isEmpty)
     }
+
+    func testKeepingOneOfThreeCandidatesCreatesOnceAndLeavesOtherPairsForReview() async throws {
+        let repository = try BookRepository.inMemory()
+        let candidateIDs = [
+            UUID(uuidString: "00000000-0000-0000-0000-000000000311")!,
+            UUID(uuidString: "00000000-0000-0000-0000-000000000312")!,
+            UUID(uuidString: "00000000-0000-0000-0000-000000000313")!
+        ]
+        for id in candidateIDs {
+            _ = try repository.create(
+                BookDraft(title: "《三重港湾》", author: "林雾"),
+                id: id,
+                at: FictionalLibraryFixtures.timestamp
+            )
+        }
+        let service = LibraryCatalogService(repository: repository)
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        store.beginCreate()
+        let session = try XCTUnwrap(store.editorSession)
+        _ = await store.save(
+            BookEditorDraft(title: "三重港湾", author: "林雾"),
+            for: session
+        )
+        XCTAssertEqual(Set(try XCTUnwrap(store.duplicateReview).candidates.map(\.id)), Set(candidateIDs))
+
+        store.selectedDuplicateID = candidateIDs[1]
+        store.keepSelectedDuplicateIndependent(as: .separateTranslation)
+        await store.waitForPendingWork()
+
+        XCTAssertNotNil(store.selectedBook)
+        XCTAssertEqual(store.books.count, 4)
+        XCTAssertNil(store.editorSession)
+        XCTAssertEqual(store.duplicateReview?.origin, .createdBookContinuation)
+        XCTAssertEqual(
+            Set(try XCTUnwrap(store.duplicateReview).candidates.map(\.id)),
+            Set([candidateIDs[0], candidateIDs[2]])
+        )
+        XCTAssertFalse(try XCTUnwrap(store.duplicateReview).candidates.map(\.id).contains(candidateIDs[1]))
+
+        store.selectedDuplicateID = candidateIDs[0]
+        store.keepSelectedDuplicateIndependent(as: .notDuplicate)
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(store.books.count, 4, "Continuing review must not create the draft again")
+        XCTAssertEqual(store.duplicateReview?.candidates.map(\.id), [candidateIDs[2]])
+        XCTAssertFalse(try XCTUnwrap(store.duplicateReview).candidates.map(\.id).contains(candidateIDs[0]))
+    }
+
+    func testViewingExistingCandidateKeepsDraftAndReturnsToSameReview() async throws {
+        let repository = try BookRepository.inMemory()
+        let existing = try repository.create(
+            BookDraft(title: "《可返回的灯塔》", author: "沈遥"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let store = LibraryStore(catalog: LibraryCatalogService(repository: repository))
+        await store.waitForPendingWork()
+        store.beginCreate()
+        let session = try XCTUnwrap(store.editorSession)
+        let draft = BookEditorDraft(
+            title: "可返回的灯塔",
+            author: "沈遥",
+            note: "固定虚构草稿内容"
+        )
+        _ = await store.save(draft, for: session)
+        let reviewID = try XCTUnwrap(store.duplicateReview?.id)
+
+        store.viewSelectedDuplicate()
+
+        XCTAssertEqual(store.viewedDuplicateBook, existing)
+        XCTAssertEqual(store.editorSession?.id, session.id)
+        XCTAssertEqual(store.duplicateReview?.id, reviewID)
+
+        store.returnFromViewedDuplicate()
+
+        XCTAssertNil(store.viewedDuplicateBook)
+        XCTAssertEqual(store.editorSession?.id, session.id)
+        XCTAssertEqual(store.duplicateReview?.id, reviewID)
+        XCTAssertEqual(store.duplicateReview?.candidates.map(\.id), [existing.id])
+    }
 }
 
 private actor FailingCatalog: LibraryCataloging {

@@ -12,9 +12,9 @@ Book Atlas needs duplicate checks during manual creation and later data-cleanup 
 
 Use local deterministic normalization and centralized transparent rules. A matching valid ISBN is `exact`; equal normalized title and ordered author text without explicit ISBN/original-title conflict is `strong`; token, original-title, publisher, year, edition, and conflicting-ISBN evidence contributes to a documented integer score for `possible`. Different valid ISBN values never produce `exact` or `strong`.
 
-Candidate lookup first uses schema-version-4 derived-key and title-token indexes. It does not compare every pair in the library. User decisions to keep records separate store only a canonical pair of book UUIDs, a disposition, and a timestamp. Changes to identity-bearing fields invalidate affected decisions.
+Candidate lookup first uses schema-version-4 derived-key and title-token indexes. It does not compare every pair in the library and never relies on SQLite's undeclared row order. Exact ISBN, normalized title/author, and original-title lookups have no count cap and use `book_id ASC`. Possible token lookup uses `(token, book_id)` indexes, deterministic `book_id ASC`, and a 250-row review cap; it requests one extra row and exposes truncation through the service and review state. User decisions to keep records separate store only the selected canonical pair of book UUIDs, a disposition, and a timestamp. Changes to identity-bearing fields invalidate affected decisions.
 
-Merging always retains the chosen target UUID, requires a field-level preview and explicit confirmation, unions existing associations, redirects or deduplicates relations, rejects self-relations and lossy note conflicts, and deletes the source only after every migration succeeds in one SQLite transaction.
+Merging always retains the chosen target UUID, requires a field-level preview and explicit confirmation, shows concrete association outcomes, unions existing associations, redirects or deduplicates relations, rejects self-relations and lossy note conflicts, and deletes the source only after every migration succeeds in one SQLite transaction. Equal links with an empty target label can fill that label; equal labels deduplicate; different nonempty labels block the merge before mutation.
 
 ## Alternatives considered
 
@@ -36,6 +36,7 @@ Merging always retains the chosen target UUID, requires a field-level preview an
 - Deterministic heuristics have known false-positive and false-negative boundaries.
 - Author order is intentionally significant, and series/translation understanding remains limited.
 - Identity edits can make a previous ignore decision stale, so the pair is deliberately reconsidered.
+- A Possible token lookup can disclose that more than 250 ordered raw index hits exist; this bounds interactive work but means later Possible hits are not evaluated in that review pass.
 
 ## Privacy and security
 
@@ -43,4 +44,4 @@ No network, entitlement, dependency, file access, telemetry, or AI service is ad
 
 ## Validation
 
-Validation is provided by isolated normalization and rule tests, schema-version-4 migration/backfill/idempotence/failure tests, persistent-ignore tests, a 10,000-book indexed candidate baseline, merge relationship and rollback tests, full application unit tests, and macOS UI coverage for candidate review, cancellation, empty state, preview, and explicit confirmation. Exact commands and the verified environment are recorded in `docs/DEVELOPMENT.md`.
+Validation is provided by isolated normalization and rule tests, schema-version-4 migration/backfill/idempotence/failure tests, pair-specific multi-candidate ignore tests, deterministic lookups beyond 250 Exact/Strong matches, a 10,000-book indexed candidate baseline, link-label conflict and rollback tests, full application unit tests, and macOS UI coverage for candidate review, draft-preserving existing-record viewing, concrete accessible association preview, cancellation, empty state, and explicit confirmation. Exact commands and the verified environment are recorded in `docs/DEVELOPMENT.md`.

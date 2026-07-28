@@ -34,7 +34,7 @@ xcodebuild \
   test
 ```
 
-The suite contains 61 unit and integration tests. Coverage includes:
+The suite contains 66 unit and integration tests. Coverage includes:
 
 - domain validation, editor drafts, navigation, layout, and light/dark appearance smoke checks;
 - schema versions 1–4, duplicate-key backfill, new-store creation, data preservation, idempotence, rollback, and future-version rejection;
@@ -43,8 +43,9 @@ The suite contains 61 unit and integration tests. Coverage includes:
 - tag, collection, and source normalization, rename, deletion, membership removal, duplicate-safe and multiple associations, derived counts, transactional tag merge and rollback, filter cleanup, and organizer snapshot publication;
 - deterministic 1,000-, 5,000-, and 10,000-book query baselines.
 - ISBN-10/13 validation; conservative title/author normalization; Exact/Strong/Possible boundaries; version, translation, series, similar-title, and conflicting-ISBN cases;
-- ignored-pair creation, lookup, persistence after reopen, suppression, and identity-edit invalidation;
-- save interception, cancellation, keep-separate behavior, merge preview/defaults/field choices, association union/deduplication, relation redirection/rejection, source deletion last, and full transaction rollback;
+- ignored-pair creation, lookup, persistence after reopen, suppression, identity-edit invalidation, and pair-only handling across three simultaneous candidates without duplicate creation;
+- save interception, cancellation, draft-preserving existing-record viewing, keep-separate behavior, merge preview/defaults/field choices, concrete association outcomes, association union/deduplication, external-link label fill/equal/conflict cases, relation redirection/rejection, source deletion last, and full transaction rollback;
+- deterministic uncapped Exact/Strong retrieval beyond 250 matches; deterministic 250-hit Possible lookup with truncation surfaced to the review state;
 - an indexed 10,000-book duplicate-candidate lookup with a one-second regression ceiling on the verified host.
 
 ## UI tests
@@ -60,13 +61,13 @@ xcodebuild \
   test
 ```
 
-The suite contains 11 macOS UI tests. It covers the Prompt 5 paths plus duplicate save interception, readable evidence/uncertainty, Escape cancellation without saving, merge preview, explicit destructive confirmation, retained-record result, manual-cleanup empty state, and keyboard dismissal. UI tests opt into an in-memory store, and tests needing pre-existing books use a fixed fictional seed through a test-only launch argument.
+The suite contains 13 macOS UI tests. It covers the Prompt 5 paths plus duplicate save interception, readable evidence/uncertainty, draft-preserving existing-record viewing and return, Escape cancellation without saving, concrete accessible tag/list/source/link/relation preview, explicit destructive confirmation, retained-record result, manual-cleanup empty state, and keyboard dismissal. UI tests opt into an in-memory store, and tests needing pre-existing books or association previews use fixed fictional seeds through test-only launch arguments.
 
 ## Query baseline
 
 `LibraryQueryBenchmarkTests` generates fixed fictional records in a fresh in-memory store for each size and records query construction, bulk tag association, search, multi-filter, and sort durations separately. On the environment above, the recorded Prompt 5 evidence for 1,000/5,000/10,000 books was approximately 1.0/2.2/4.1 ms for search and 9.5/27.4/28.1 ms for the priority-sorted multi-filter query. These are environment-specific evidence, not pass/fail thresholds or performance promises.
 
-`DuplicateDetectionTests.testIndexedCandidateLookupRemainsBoundedAtTenThousandBooks` creates 10,000 fixed fictional records in one in-memory transaction, then performs an indexed Exact lookup. The final Prompt 6 full-suite run recorded `DUPLICATE_CANDIDATE_10000_SECONDS=0.179273` and enforces a one-second regression ceiling on the verified host. The threshold is a local guard against accidental full-library/pairwise comparison, not a cross-device performance promise.
+`DuplicateDetectionTests.testIndexedCandidateLookupRemainsBoundedAtTenThousandBooks` creates 10,000 fixed fictional records in one in-memory transaction, then performs an indexed Exact lookup. The final NO-GO closure full-suite run recorded `DUPLICATE_CANDIDATE_10000_SECONDS=0.192052` and enforces a one-second regression ceiling on the verified host. Exact and Strong indexed queries are uncapped and order by book UUID. Possible title-token lookup orders by book UUID, evaluates at most the first 250 raw index hits, requests a 251st row to detect truncation, and exposes that state in the review UI. The threshold is a local guard against accidental full-library/pairwise comparison, not a cross-device performance promise.
 
 ## Known limitations
 
@@ -78,4 +79,5 @@ The suite contains 11 macOS UI tests. It covers the Prompt 5 paths plus duplicat
 - Automated accessibility identifiers and keyboard paths are covered, but a complete manual VoiceOver audit is not part of Prompt 6 closure.
 - Release signing, notarization, and a final non-placeholder bundle identifier remain unconfigured.
 - Duplicate heuristics intentionally do not understand every contributor order, edition, translation, or series convention; every candidate remains user-reviewed.
+- A truncated Possible lookup does not yet provide pagination; the UI states that only the first 250 deterministic raw token hits were evaluated. Exact and Strong candidates are not truncated.
 - Prompt 6 does not add an import integration or graph UI. A successful merge leaves one persisted book ID for future graph projection, while explicitly retained records remain separate.

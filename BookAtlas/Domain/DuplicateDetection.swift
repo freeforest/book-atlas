@@ -227,6 +227,13 @@ struct DuplicateCandidate: Identifiable, Equatable, Sendable {
     var id: UUID { existingBook.id }
 }
 
+struct DuplicateCandidateSearchResult: Equatable, Sendable {
+    static let possibleLookupLimit = 250
+
+    let candidates: [DuplicateCandidate]
+    let possibleLookupWasTruncated: Bool
+}
+
 enum DuplicateRules {
     static let possibleThreshold = 6
     static let titleOverlapThreshold = 0.6

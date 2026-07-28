@@ -285,6 +285,103 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testViewingExistingDuplicateReturnsToUnchangedDraft() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
+        replaceText(in: element("editor-title", in: app), with: "A101 Recoverable Draft")
+        replaceText(in: element("editor-author", in: app), with: "Harbor Author")
+        replaceText(in: element("editor-isbn", in: app), with: "978-0-00000-000-2")
+
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3))
+        app.typeKey("o", modifierFlags: .command)
+        XCTAssertTrue(app.staticTexts["查看已有记录"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["A101"].exists)
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            element("duplicate-existing-back", in: app).waitForNonExistence(timeout: 3)
+        )
+        app.typeKey(.escape, modifierFlags: [])
+
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
+        XCTAssertEqual(
+            element("editor-title", in: app).value as? String,
+            "A101 Recoverable Draft"
+        )
+        XCTAssertEqual(element("editor-author", in: app).value as? String, "Harbor Author")
+    }
+
+    @MainActor
+    func testMergePreviewExposesConcreteAssociationsToAccessibility() {
+        let app = launchInMemoryApp(seedMergePreviewAssociations: true)
+        let sourceRow = element(
+            "library-book-00000000-0000-0000-0000-000000000402",
+            in: app
+        )
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 3))
+        sourceRow.click()
+        element("review-duplicates-button", in: app).click()
+        XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("duplicate-uncertainty", in: app).waitForExistence(timeout: 3))
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(app.staticTexts["合并预览"].waitForExistence(timeout: 3))
+
+        let targetTag = element(
+            "merge-tag-detail-00000000-0000-0000-0000-000000000411",
+            in: app
+        )
+        let sourceTag = element(
+            "merge-tag-detail-00000000-0000-0000-0000-000000000412",
+            in: app
+        )
+        XCTAssertTrue(targetTag.waitForExistence(timeout: 3))
+        XCTAssertTrue(sourceTag.waitForExistence(timeout: 3))
+        let targetTagText = accessibilityText(of: targetTag)
+        let sourceTagText = accessibilityText(of: sourceTag)
+        XCTAssertTrue(targetTagText.contains("保留标签"), targetTagText)
+        XCTAssertTrue(targetTagText.contains("保留"), targetTagText)
+        XCTAssertTrue(sourceTagText.contains("新增标签"), sourceTagText)
+        XCTAssertTrue(sourceTagText.contains("新增"), sourceTagText)
+
+        app.scrollViews.firstMatch.swipeUp()
+        let collection = element(
+            "merge-collection-detail-00000000-0000-0000-0000-000000000421",
+            in: app
+        )
+        let source = element(
+            "merge-source-detail-00000000-0000-0000-0000-000000000431",
+            in: app
+        )
+        let targetLink = element(
+            "merge-link-detail-00000000-0000-0000-0000-000000000441",
+            in: app
+        )
+        let sourceLink = element(
+            "merge-link-detail-00000000-0000-0000-0000-000000000442",
+            in: app
+        )
+        let relation = element(
+            "merge-relation-detail-00000000-0000-0000-0000-000000000451",
+            in: app
+        )
+        for association in [collection, source, targetLink, sourceLink, relation] {
+            XCTAssertTrue(association.waitForExistence(timeout: 3))
+        }
+        XCTAssertTrue(accessibilityText(of: collection).contains("虚构港湾书单"))
+        XCTAssertTrue(accessibilityText(of: source).contains("虚构纸页来源"))
+        XCTAssertTrue(accessibilityText(of: targetLink).contains("https://example.invalid/retained"))
+        XCTAssertTrue(accessibilityText(of: sourceLink).contains("https://example.invalid/incoming"))
+        let relationText = accessibilityText(of: relation)
+        XCTAssertTrue(relationText.contains("本书指向"), relationText)
+        XCTAssertTrue(relationText.contains("回应"), relationText)
+        XCTAssertTrue(relationText.contains("《虚构灯塔》"), relationText)
+        XCTAssertTrue(relationText.contains("有备注"), relationText)
+    }
+
+    @MainActor
     func testDatabaseUnavailableUsesGenericErrorState() {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasForceUnavailableStore"]
@@ -300,11 +397,17 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchInMemoryApp(seedFictionalBooks: Bool = false) -> XCUIApplication {
+    private func launchInMemoryApp(
+        seedFictionalBooks: Bool = false,
+        seedMergePreviewAssociations: Bool = false
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
         if seedFictionalBooks {
             app.launchArguments.append("-BookAtlasSeedFictionalUITestBooks")
+        }
+        if seedMergePreviewAssociations {
+            app.launchArguments.append("-BookAtlasSeedMergePreviewAssociations")
         }
         app.launch()
         return app
@@ -353,5 +456,12 @@ final class BookAtlasUITests: XCTestCase {
         let predicate = NSPredicate(format: "exists == true AND enabled == true")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func accessibilityText(of element: XCUIElement) -> String {
+        [element.label, element.value as? String ?? ""]
+            .filter { !$0.isEmpty }
+            .joined(separator: " ")
     }
 }

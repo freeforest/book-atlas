@@ -797,10 +797,23 @@ final class BookRepository {
         for probe: DuplicateProbe,
         includingPossible: Bool = true
     ) throws -> [DuplicateCandidate] {
-        let candidateIDs = try duplicateCandidateIDs(for: probe)
+        try duplicateCandidateSearch(
+            for: probe,
+            includingPossible: includingPossible
+        ).candidates
+    }
+
+    func duplicateCandidateSearch(
+        for probe: DuplicateProbe,
+        includingPossible: Bool = true
+    ) throws -> DuplicateCandidateSearchResult {
+        let lookup = try duplicateCandidateIDs(
+            for: probe,
+            includingPossible: includingPossible
+        )
         var candidates: [DuplicateCandidate] = []
 
-        for id in candidateIDs where id != probe.id {
+        for id in lookup.ids where id != probe.id {
             guard let existing = try book(id: id) else {
                 continue
             }
@@ -819,7 +832,7 @@ final class BookRepository {
             candidates.append(candidate)
         }
 
-        return candidates.sorted {
+        let sorted = candidates.sorted {
             let lhsRank = duplicateConfidenceRank($0.confidence)
             let rhsRank = duplicateConfidenceRank($1.confidence)
             if lhsRank != rhsRank {
@@ -830,6 +843,10 @@ final class BookRepository {
             }
             return $0.existingBook.id.uuidString < $1.existingBook.id.uuidString
         }
+        return DuplicateCandidateSearchResult(
+            candidates: sorted,
+            possibleLookupWasTruncated: lookup.possibleLookupWasTruncated
+        )
     }
 
     func ignoreDuplicatePair(
@@ -937,6 +954,9 @@ final class BookRepository {
             }
 
             let preview = try mergePreview(target: target, source: source, sourceIsPersisted: true)
+            guard !preview.associations.linkDetails.contains(where: { $0.outcome == .block }) else {
+                throw BookMergeError.externalLinkLabelConflict
+            }
             let relationMoves = try plannedRelationMoves(
                 sourceID: sourceID,
                 targetID: targetID
@@ -964,8 +984,12 @@ final class BookRepository {
         }
     }
 
-    private func duplicateCandidateIDs(for probe: DuplicateProbe) throws -> Set<UUID> {
+    private func duplicateCandidateIDs(
+        for probe: DuplicateProbe,
+        includingPossible: Bool
+    ) throws -> (ids: Set<UUID>, possibleLookupWasTruncated: Bool) {
         var ids = Set<UUID>()
+        var possibleLookupWasTruncated = false
 
         func appendIDs(_ sql: String, bindings: [SQLiteValue]) throws {
             let values = try database.query(sql, bindings: bindings) { row in
@@ -979,7 +1003,7 @@ final class BookRepository {
                 """
                 SELECT book_id FROM book_duplicate_keys
                 WHERE valid_isbn = ?
-                LIMIT 250
+                ORDER BY book_id ASC
                 """,
                 bindings: [.text(validISBN)]
             )
@@ -991,39 +1015,49 @@ final class BookRepository {
             """
             SELECT book_id FROM book_duplicate_keys
             WHERE normalized_title = ? AND normalized_author = ?
-            LIMIT 250
+            ORDER BY book_id ASC
             """,
             bindings: [.text(titleKey), .text(authorKey)]
         )
 
-        if let originalTitle = probe.originalTitle {
+        if includingPossible, let originalTitle = probe.originalTitle {
             let originalKey = DuplicateTextNormalizer.titleKey(originalTitle)
             if !originalKey.isEmpty {
                 try appendIDs(
                     """
                     SELECT book_id FROM book_duplicate_keys
                     WHERE normalized_original_title = ?
-                    LIMIT 250
+                    ORDER BY book_id ASC
                     """,
                     bindings: [.text(originalKey)]
                 )
             }
         }
 
-        let tokens = DuplicateTextNormalizer.titleTokens(probe.title)
-            .sorted()
-            .prefix(32)
-        if !tokens.isEmpty {
-            try appendIDs(
+        if includingPossible {
+            let tokens = DuplicateTextNormalizer.titleTokens(probe.title)
+                .sorted()
+                .prefix(32)
+            if !tokens.isEmpty {
+                let values = try database.query(
                 """
                 SELECT DISTINCT book_id FROM book_duplicate_title_tokens
                 WHERE token IN (\(placeholders(count: tokens.count)))
-                LIMIT 250
+                ORDER BY book_id ASC
+                LIMIT ?
                 """,
-                bindings: tokens.map(SQLiteValue.text)
-            )
+                    bindings: tokens.map(SQLiteValue.text) + [
+                        .integer(Int64(DuplicateCandidateSearchResult.possibleLookupLimit + 1))
+                    ]
+                ) { row in
+                    row.string(at: 0).flatMap(UUID.init(uuidString:))
+                }.compactMap { $0 }
+                possibleLookupWasTruncated =
+                    values.count > DuplicateCandidateSearchResult.possibleLookupLimit
+                ids.formUnion(values.prefix(DuplicateCandidateSearchResult.possibleLookupLimit))
+            }
         }
-        return ids
+        return (ids, possibleLookupWasTruncated)
     }
 
     private func mergePreview(
@@ -1031,33 +1065,204 @@ final class BookRepository {
         source: Book,
         sourceIsPersisted: Bool
     ) throws -> BookMergePreview {
+        let targetTags = try tags(forBookID: target.id)
+        let sourceTags = sourceIsPersisted ? try tags(forBookID: source.id) : []
+        let targetCollections = try collections(forBookID: target.id)
+        let sourceCollections = sourceIsPersisted ? try collections(forBookID: source.id) : []
+        let targetSources = try sources(forBookID: target.id)
+        let sourceSources = sourceIsPersisted ? try sources(forBookID: source.id) : []
+        let targetLinks = try externalLinks(forBookID: target.id)
+        let sourceLinks = sourceIsPersisted ? try externalLinks(forBookID: source.id) : []
         let targetRelations = try manualRelations(forBookID: target.id)
         let sourceRelations = sourceIsPersisted ? try manualRelations(forBookID: source.id) : []
         let relationsByID = Dictionary(
             (targetRelations + sourceRelations).map { ($0.id, $0) },
             uniquingKeysWith: { first, _ in first }
         )
-        let associations = BookMergeAssociationSummary(
-            targetTags: try tags(forBookID: target.id),
-            sourceTags: sourceIsPersisted ? try tags(forBookID: source.id) : [],
-            targetCollections: try collections(forBookID: target.id),
-            sourceCollections: sourceIsPersisted ? try collections(forBookID: source.id) : [],
-            targetSources: try sources(forBookID: target.id),
-            sourceSources: sourceIsPersisted ? try sources(forBookID: source.id) : [],
-            targetLinks: try externalLinks(forBookID: target.id),
-            sourceLinks: sourceIsPersisted ? try externalLinks(forBookID: source.id) : [],
-            manualRelations: relationsByID.values.sorted {
-                if $0.createdAt != $1.createdAt {
-                    return $0.createdAt < $1.createdAt
-                }
-                return $0.id.uuidString < $1.id.uuidString
+        let manualRelations = relationsByID.values.sorted {
+            if $0.createdAt != $1.createdAt {
+                return $0.createdAt < $1.createdAt
             }
+            return $0.id.uuidString < $1.id.uuidString
+        }
+        let associations = BookMergeAssociationSummary(
+            targetTags: targetTags,
+            sourceTags: sourceTags,
+            targetCollections: targetCollections,
+            sourceCollections: sourceCollections,
+            targetSources: targetSources,
+            sourceSources: sourceSources,
+            targetLinks: targetLinks,
+            sourceLinks: sourceLinks,
+            manualRelations: manualRelations,
+            tagDetails: namedAssociationDetails(
+                target: targetTags,
+                source: sourceTags,
+                id: \.id,
+                name: \.name
+            ),
+            collectionDetails: namedAssociationDetails(
+                target: targetCollections,
+                source: sourceCollections,
+                id: \.id,
+                name: \.name
+            ),
+            sourceDetails: namedAssociationDetails(
+                target: targetSources,
+                source: sourceSources,
+                id: \.id,
+                name: \.name
+            ),
+            linkDetails: externalLinkDetails(target: targetLinks, source: sourceLinks),
+            relationDetails: try relationDetails(
+                relations: manualRelations,
+                target: target,
+                source: source
+            )
         )
         return BookMergePolicy.preview(
             target: target,
             source: source,
             associations: associations
         )
+    }
+
+    private func namedAssociationDetails<Value>(
+        target: [Value],
+        source: [Value],
+        id: KeyPath<Value, UUID>,
+        name: KeyPath<Value, String>
+    ) -> [BookMergeNamedAssociationDetail] {
+        let targetIDs = Set(target.map { $0[keyPath: id] })
+        let retained = target.map {
+            BookMergeNamedAssociationDetail(
+                id: $0[keyPath: id],
+                name: $0[keyPath: name],
+                origin: .target,
+                outcome: .keep
+            )
+        }
+        let incoming = source.map {
+            BookMergeNamedAssociationDetail(
+                id: $0[keyPath: id],
+                name: $0[keyPath: name],
+                origin: .source,
+                outcome: targetIDs.contains($0[keyPath: id]) ? .deduplicate : .add
+            )
+        }
+        return retained + incoming
+    }
+
+    private func externalLinkDetails(
+        target: [ExternalLink],
+        source: [ExternalLink]
+    ) -> [BookMergeLinkDetail] {
+        let retained = target.map {
+            BookMergeLinkDetail(
+                id: $0.id,
+                kind: $0.kind,
+                label: $0.label,
+                value: $0.value,
+                origin: .target,
+                outcome: .keep
+            )
+        }
+        let incoming = source.map { link in
+            let duplicate = target.first {
+                $0.kind == link.kind && $0.value == link.value
+            }
+            let outcome: BookMergeAssociationOutcome
+            if let duplicate {
+                if duplicate.label == nil, link.label != nil {
+                    outcome = .fillMissingLabel
+                } else if let targetLabel = duplicate.label,
+                          let sourceLabel = link.label,
+                          targetLabel != sourceLabel
+                {
+                    outcome = .block
+                } else {
+                    outcome = .deduplicate
+                }
+            } else {
+                outcome = .add
+            }
+            return BookMergeLinkDetail(
+                id: link.id,
+                kind: link.kind,
+                label: link.label,
+                value: link.value,
+                origin: .source,
+                outcome: outcome
+            )
+        }
+        return retained + incoming
+    }
+
+    private func relationDetails(
+        relations: [ManualBookRelation],
+        target: Book,
+        source: Book
+    ) throws -> [BookMergeRelationDetail] {
+        try relations.map { relation in
+            let origin: BookMergeAssociationOrigin = (
+                relation.sourceBookID == source.id || relation.targetBookID == source.id
+            ) ? .source : .target
+            let relevantBookID = origin == .source ? source.id : target.id
+            let direction: BookMergeRelationDirection = (
+                relation.sourceBookID == relevantBookID
+            ) ? .outgoing : .incoming
+            let otherBookID = direction == .outgoing
+                ? relation.targetBookID
+                : relation.sourceBookID
+            let otherBookTitle: String
+            if otherBookID == target.id {
+                otherBookTitle = target.title
+            } else if otherBookID == source.id {
+                otherBookTitle = source.title
+            } else {
+                otherBookTitle = try book(id: otherBookID)?.title ?? "已删除书籍"
+            }
+
+            let newSourceID = relation.sourceBookID == source.id
+                ? target.id
+                : relation.sourceBookID
+            let newTargetID = relation.targetBookID == source.id
+                ? target.id
+                : relation.targetBookID
+            let outcome: BookMergeAssociationOutcome
+            if newSourceID == newTargetID {
+                outcome = .block
+            } else if origin == .target {
+                outcome = .keep
+            } else if let duplicate = try existingRelation(
+                sourceID: newSourceID,
+                targetID: newTargetID,
+                kind: relation.kind,
+                excluding: relation.id
+            ) {
+                if let existingNote = duplicate.note,
+                   let sourceNote = relation.note,
+                   existingNote != sourceNote
+                {
+                    outcome = .block
+                } else {
+                    outcome = .deduplicate
+                }
+            } else {
+                outcome = .add
+            }
+
+            return BookMergeRelationDetail(
+                id: relation.id,
+                direction: direction,
+                kind: relation.kind,
+                otherBookID: otherBookID,
+                otherBookTitle: otherBookTitle,
+                hasNote: relation.note != nil,
+                origin: origin,
+                outcome: outcome
+            )
+        }
     }
 
     private func copyMemberships(from sourceID: UUID, to targetID: UUID) throws {
@@ -1106,6 +1311,11 @@ final class BookRepository {
                         "UPDATE external_links SET label = ? WHERE id = ?",
                         bindings: [.text(sourceLabel), .text(duplicate.id.uuidString)]
                     )
+                } else if let targetLabel = duplicate.label,
+                          let sourceLabel = link.label,
+                          targetLabel != sourceLabel
+                {
+                    throw BookMergeError.externalLinkLabelConflict
                 }
             } else {
                 try database.execute(

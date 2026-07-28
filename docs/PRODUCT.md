@@ -26,7 +26,7 @@ Book Atlas · 图书志 helps one person turn a growing personal bibliography in
 
 The planned first release includes a native macOS library interface, book CRUD, tags and lists, search/filter/sort, source tracking, duplicate review and merge, import/export, backup/restore, a bounded relationship graph, and only experimentally verified external-link behavior.
 
-The current implementation provides the native library interface, book CRUD, tags, collections, source tracking, search/filter/sort, and deterministic duplicate review on the accepted direct-SQLite store. It can persist an explicit keep-separate decision or perform a field-reviewed, user-confirmed transactional merge. It does not claim automatic edition, translation, or series authority. Additional fields, supported import formats, graph behavior, and integrations remain subject to later staged plans and ADRs.
+The current implementation provides the native library interface, book CRUD, tags, collections, source tracking, search/filter/sort, and deterministic duplicate review on the accepted direct-SQLite store. A keep-separate choice applies only to the selected candidate pair; remaining candidates stay available for review without creating the draft twice. Viewing an existing candidate preserves the draft. Merge preview exposes concrete fields and associations, and a confirmed merge runs transactionally or is blocked when an association cannot be preserved without loss. It does not claim automatic edition, translation, or series authority. Additional fields, supported import formats, graph behavior, and integrations remain subject to later staged plans and ADRs.
 
 ## Non-goals
 

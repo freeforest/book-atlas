@@ -92,9 +92,18 @@ enum DuplicateReviewSubject {
 }
 
 struct DuplicateReviewSession: Identifiable {
+    enum Origin: Equatable {
+        case newDraft
+        case createdBookContinuation
+        case existingBook
+    }
+
     let id = UUID()
     let subject: DuplicateReviewSubject
     let candidates: [DuplicateCandidate]
+    let includingPossible: Bool
+    let origin: Origin
+    let possibleLookupWasTruncated: Bool
 }
 
 @MainActor
@@ -110,6 +119,7 @@ final class LibraryStore: ObservableObject {
     @Published var operationError: LibraryUserFacingError?
     @Published var duplicateReview: DuplicateReviewSession?
     @Published var selectedDuplicateID: UUID?
+    @Published var viewedDuplicateBook: Book?
     @Published var mergePreview: BookMergePreview?
     @Published var mergeSelections = BookMergeSelections()
     @Published var isDuplicateOperationInProgress = false
@@ -145,7 +155,8 @@ final class LibraryStore: ObservableObject {
             let catalog: LibraryCatalogService
             if arguments.contains("-BookAtlasUseInMemoryStore") || environment["XCTestConfigurationFilePath"] != nil {
                 catalog = try Self.makeInMemoryCatalog(
-                    seedFictionalUITestBooks: arguments.contains("-BookAtlasSeedFictionalUITestBooks")
+                    seedFictionalUITestBooks: arguments.contains("-BookAtlasSeedFictionalUITestBooks"),
+                    seedMergePreviewAssociations: arguments.contains("-BookAtlasSeedMergePreviewAssociations")
                 )
             } else {
                 catalog = LibraryCatalogService(
@@ -293,16 +304,19 @@ final class LibraryStore: ObservableObject {
             let savedBook: Book
             switch session.mode {
             case .create:
-                let candidates = try await catalog.duplicateCandidates(
+                let search = try await catalog.duplicateCandidateSearch(
                     for: draft,
                     proposedID: session.proposedBookID,
                     includingPossible: false
                 )
-                if !candidates.isEmpty {
+                if !search.candidates.isEmpty {
                     presentDuplicateReview(
                         DuplicateReviewSession(
                             subject: .newBook(editor: draft, proposedID: session.proposedBookID),
-                            candidates: candidates
+                            candidates: search.candidates,
+                            includingPossible: false,
+                            origin: .newDraft,
+                            possibleLookupWasTruncated: search.possibleLookupWasTruncated
                         )
                     )
                     return .success(())
@@ -330,12 +344,18 @@ final class LibraryStore: ObservableObject {
         isDuplicateOperationInProgress = true
         duplicateTask = Task { @MainActor [weak self] in
             do {
-                let candidates = try await catalog.duplicateCandidates(
+                let search = try await catalog.duplicateCandidateSearch(
                     for: selectedBook,
                     includingPossible: true
                 )
                 self?.presentDuplicateReview(
-                    DuplicateReviewSession(subject: .existingBook(selectedBook), candidates: candidates)
+                    DuplicateReviewSession(
+                        subject: .existingBook(selectedBook),
+                        candidates: search.candidates,
+                        includingPossible: true,
+                        origin: .existingBook,
+                        possibleLookupWasTruncated: search.possibleLookupWasTruncated
+                    )
                 )
             } catch {
                 self?.operationError = .duplicateReviewFailed
@@ -349,17 +369,22 @@ final class LibraryStore: ObservableObject {
     }
 
     func viewSelectedDuplicate() {
-        guard let selectedDuplicateID else {
+        guard let selectedDuplicateID,
+              let candidate = duplicateReview?.candidates.first(where: { $0.id == selectedDuplicateID })
+        else {
             return
         }
-        clearDuplicateReview()
-        editorSession = nil
-        self.selectedBookID = selectedDuplicateID
+        viewedDuplicateBook = candidate.existingBook
+    }
+
+    func returnFromViewedDuplicate() {
+        viewedDuplicateBook = nil
     }
 
     func keepSelectedDuplicateIndependent(as disposition: DuplicatePairDisposition) {
         guard let review = duplicateReview,
               let selectedDuplicateID,
+              review.candidates.contains(where: { $0.id == selectedDuplicateID }),
               let catalog
         else {
             return
@@ -372,28 +397,50 @@ final class LibraryStore: ObservableObject {
                     let saved = try await catalog.createBookKeepingIndependent(
                         from: editor,
                         proposedID: proposedID,
-                        candidateIDs: review.candidates.map(\.id),
+                        candidateID: selectedDuplicateID,
                         disposition: disposition
                     )
                     await self?.reloadBooks(selecting: saved.id)
                     self?.organizer.load()
                     self?.editorSession = nil
-                    self?.clearDuplicateReview()
+                    let search = try await catalog.duplicateCandidateSearch(
+                        for: saved,
+                        includingPossible: review.includingPossible
+                    )
+                    if search.candidates.isEmpty {
+                        self?.clearDuplicateReview()
+                    } else {
+                        self?.presentDuplicateReview(
+                            DuplicateReviewSession(
+                                subject: .existingBook(saved),
+                                candidates: search.candidates,
+                                includingPossible: review.includingPossible,
+                                origin: .createdBookContinuation,
+                                possibleLookupWasTruncated: search.possibleLookupWasTruncated
+                            )
+                        )
+                    }
                 case let .existingBook(book):
                     try await catalog.ignoreDuplicatePair(
                         book.id,
                         selectedDuplicateID,
                         disposition: disposition
                     )
-                    let remaining = try await catalog.duplicateCandidates(
+                    let search = try await catalog.duplicateCandidateSearch(
                         for: book,
-                        includingPossible: true
+                        includingPossible: review.includingPossible
                     )
-                    if remaining.isEmpty {
+                    if search.candidates.isEmpty {
                         self?.clearDuplicateReview()
                     } else {
                         self?.presentDuplicateReview(
-                            DuplicateReviewSession(subject: .existingBook(book), candidates: remaining)
+                            DuplicateReviewSession(
+                                subject: .existingBook(book),
+                                candidates: search.candidates,
+                                includingPossible: review.includingPossible,
+                                origin: review.origin,
+                                possibleLookupWasTruncated: search.possibleLookupWasTruncated
+                            )
                         )
                     }
                 }
@@ -601,6 +648,7 @@ final class LibraryStore: ObservableObject {
     private func presentDuplicateReview(_ review: DuplicateReviewSession) {
         duplicateReview = review
         selectedDuplicateID = review.candidates.first?.id
+        viewedDuplicateBook = nil
         mergePreview = nil
         mergeSelections = BookMergeSelections()
     }
@@ -608,33 +656,123 @@ final class LibraryStore: ObservableObject {
     private func clearDuplicateReview() {
         duplicateReview = nil
         selectedDuplicateID = nil
+        viewedDuplicateBook = nil
         mergePreview = nil
         mergeSelections = BookMergeSelections()
     }
 
     private nonisolated static func makeInMemoryCatalog(
-        seedFictionalUITestBooks: Bool
+        seedFictionalUITestBooks: Bool,
+        seedMergePreviewAssociations: Bool
     ) throws -> LibraryCatalogService {
         let repository = try BookRepository.inMemory()
-        guard seedFictionalUITestBooks else {
+        guard seedFictionalUITestBooks || seedMergePreviewAssociations else {
             return LibraryCatalogService(repository: repository)
         }
 
         let timestamp = Date(timeIntervalSince1970: 1_735_689_600)
-        _ = try repository.create(
-            BookDraft(
-                title: "A101",
-                author: "Harbor Author",
-                isbn: "9780000000002"
-            ),
-            id: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!,
+        if seedFictionalUITestBooks {
+            _ = try repository.create(
+                BookDraft(
+                    title: "A101",
+                    author: "Harbor Author",
+                    isbn: "9780000000002"
+                ),
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!,
+                at: timestamp
+            )
+            _ = try repository.create(
+                BookDraft(title: "B202", author: "Forest Author"),
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
+                at: timestamp.addingTimeInterval(1)
+            )
+        }
+        if seedMergePreviewAssociations {
+            try Self.seedMergePreviewAssociations(in: repository, at: timestamp)
+        }
+        return LibraryCatalogService(repository: repository)
+    }
+
+    private nonisolated static func seedMergePreviewAssociations(
+        in repository: BookRepository,
+        at timestamp: Date
+    ) throws {
+        let target = try repository.create(
+            BookDraft(title: "《关联港湾》", author: "林雾"),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000401")!,
             at: timestamp
         )
-        _ = try repository.create(
-            BookDraft(title: "B202", author: "Forest Author"),
-            id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
+        let source = try repository.create(
+            BookDraft(title: "关联港湾", author: "林雾"),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000402")!,
+            at: timestamp.addingTimeInterval(2)
+        )
+        let related = try repository.create(
+            BookDraft(title: "《虚构灯塔》", author: "沈遥"),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000403")!,
             at: timestamp.addingTimeInterval(1)
         )
-        return LibraryCatalogService(repository: repository)
+        let targetTag = try repository.createTag(
+            try Tag(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000411")!,
+                name: "保留标签",
+                createdAt: timestamp
+            )
+        )
+        let sourceTag = try repository.createTag(
+            try Tag(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000412")!,
+                name: "新增标签",
+                createdAt: timestamp
+            )
+        )
+        let collection = try repository.createCollection(
+            try BookCollection(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000421")!,
+                name: "虚构港湾书单",
+                createdAt: timestamp
+            )
+        )
+        let recommendation = try repository.createSource(
+            try RecommendationSource(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000431")!,
+                name: "虚构纸页来源",
+                createdAt: timestamp
+            )
+        )
+        try repository.attach(tagID: targetTag.id, toBookID: target.id)
+        try repository.attach(tagID: sourceTag.id, toBookID: source.id)
+        try repository.add(bookID: source.id, toCollectionID: collection.id)
+        try repository.attach(sourceID: recommendation.id, toBookID: source.id)
+        _ = try repository.addExternalLink(
+            try ExternalLink(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000441")!,
+                bookID: target.id,
+                kind: .web,
+                label: "保留书页",
+                value: "https://example.invalid/retained",
+                createdAt: timestamp
+            )
+        )
+        _ = try repository.addExternalLink(
+            try ExternalLink(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000442")!,
+                bookID: source.id,
+                kind: .web,
+                label: "新增书页",
+                value: "https://example.invalid/incoming",
+                createdAt: timestamp
+            )
+        )
+        _ = try repository.addManualRelation(
+            try ManualBookRelation(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000451")!,
+                sourceBookID: source.id,
+                targetBookID: related.id,
+                kind: .respondsTo,
+                note: "固定虚构关系备注",
+                createdAt: timestamp
+            )
+        )
     }
 }

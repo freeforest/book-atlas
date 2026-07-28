@@ -261,6 +261,65 @@ final class DuplicateDetectionTests: XCTestCase {
         XCTAssertLessThan(elapsed, 1.0, "Indexed candidate lookup should not scan all book pairs")
     }
 
+    func testExactAndStrongCandidateQueriesReturnAllMatchesBeyondTwoHundredFiftyDeterministically() throws {
+        let exactRepository = try BookRepository.inMemory()
+        let exactIDs = (1 ... 300).reversed().map(deterministicUUID)
+        try exactRepository.transaction {
+            for (index, id) in exactIDs.enumerated() {
+                _ = try exactRepository.create(
+                    BookDraft(
+                        title: "Exact Fiction \(index)",
+                        author: "Author \(index)",
+                        isbn: "9780000000002"
+                    ),
+                    id: id,
+                    at: FictionalLibraryFixtures.timestamp
+                )
+            }
+        }
+        let exactProbe = DuplicateProbe(
+            draft: BookDraft(
+                title: "Unrelated Exact Probe",
+                author: "Noa Reed",
+                isbn: "978-0-00000-000-2"
+            )
+        )
+        let firstExact = try exactRepository.duplicateCandidates(for: exactProbe)
+        let secondExact = try exactRepository.duplicateCandidates(for: exactProbe)
+        XCTAssertEqual(firstExact.count, 300)
+        XCTAssertEqual(firstExact.map(\.confidence), Array(repeating: .exact, count: 300))
+        XCTAssertEqual(firstExact.map(\.id), secondExact.map(\.id))
+        XCTAssertEqual(firstExact.map(\.id), exactIDs.sorted { $0.uuidString < $1.uuidString })
+        let cappedPossibleSearch = try exactRepository.duplicateCandidateSearch(
+            for: DuplicateProbe(
+                draft: BookDraft(title: "Exact Fiction", author: "Different Author")
+            ),
+            includingPossible: true
+        )
+        XCTAssertTrue(cappedPossibleSearch.possibleLookupWasTruncated)
+
+        let strongRepository = try BookRepository.inMemory()
+        let strongIDs = (301 ... 600).reversed().map(deterministicUUID)
+        try strongRepository.transaction {
+            for id in strongIDs {
+                _ = try strongRepository.create(
+                    BookDraft(title: "《确定性港湾》", author: "林雾"),
+                    id: id,
+                    at: FictionalLibraryFixtures.timestamp
+                )
+            }
+        }
+        let strongProbe = DuplicateProbe(
+            draft: BookDraft(title: "确定性港湾", author: "林雾")
+        )
+        let firstStrong = try strongRepository.duplicateCandidates(for: strongProbe)
+        let secondStrong = try strongRepository.duplicateCandidates(for: strongProbe)
+        XCTAssertEqual(firstStrong.count, 300)
+        XCTAssertEqual(firstStrong.map(\.confidence), Array(repeating: .strong, count: 300))
+        XCTAssertEqual(firstStrong.map(\.id), secondStrong.map(\.id))
+        XCTAssertEqual(firstStrong.map(\.id), strongIDs.sorted { $0.uuidString < $1.uuidString })
+    }
+
     private func fictionalBook(
         title: String,
         originalTitle: String? = nil,
@@ -280,5 +339,9 @@ final class DuplicateDetectionTests: XCTestCase {
             ),
             createdAt: FictionalLibraryFixtures.timestamp
         )
+    }
+
+    private func deterministicUUID(_ value: Int) -> UUID {
+        UUID(uuidString: String(format: "00000000-0000-0000-0000-%012X", value))!
     }
 }

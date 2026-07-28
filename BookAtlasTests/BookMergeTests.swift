@@ -136,6 +136,29 @@ final class BookMergeTests: XCTestCase {
         XCTAssertTrue(preview.conflictingFields.contains(.readingStatus))
         XCTAssertTrue(preview.conflictingFields.contains(.note))
         XCTAssertEqual(preview.associations.sourceTags.map(\.id), [sourceTag.id])
+        XCTAssertEqual(
+            preview.associations.tagDetails.first { $0.id == targetTag.id }?.outcome,
+            .keep
+        )
+        XCTAssertEqual(
+            preview.associations.tagDetails.first { $0.id == sourceTag.id }?.outcome,
+            .add
+        )
+        XCTAssertEqual(preview.associations.collectionDetails.first?.name, "港湾书单")
+        XCTAssertEqual(preview.associations.collectionDetails.first?.outcome, .add)
+        XCTAssertEqual(preview.associations.sourceDetails.first?.name, "虚构同好")
+        XCTAssertEqual(preview.associations.sourceDetails.first?.outcome, .add)
+        XCTAssertEqual(
+            preview.associations.linkDetails.first { $0.value.hasSuffix("/glass") && $0.origin == .source }?.outcome,
+            .fillMissingLabel
+        )
+        let relationDetails = preview.associations.relationDetails
+        XCTAssertEqual(relationDetails.count, 2)
+        XCTAssertEqual(Set(relationDetails.map(\.otherBookTitle)), ["《灯塔手册》"])
+        XCTAssertEqual(Set(relationDetails.map(\.direction)), [.outgoing])
+        XCTAssertEqual(Set(relationDetails.map(\.outcome)), [.keep, .deduplicate])
+        XCTAssertEqual(relationDetails.first { $0.origin == .source }?.hasNote, true)
+        XCTAssertFalse(preview.associations.hasBlockingConflict)
 
         var selections = preview.defaultSelections
         selections[.readingStatus] = .source
@@ -259,5 +282,95 @@ final class BookMergeTests: XCTestCase {
         XCTAssertEqual(try repository.tags(forBookID: source.id).map(\.id), [tag.id])
         XCTAssertEqual(try repository.externalLinks(forBookID: target.id), [])
         XCTAssertEqual(try repository.externalLinks(forBookID: source.id).count, 1)
+    }
+
+    func testMergeDeduplicatesIdenticalExternalLinkLabels() throws {
+        let repository = try BookRepository.inMemory()
+        let target = try repository.create(
+            BookDraft(title: "《同标港湾》", author: "林雾"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let source = try repository.create(
+            BookDraft(title: "同标港湾", author: "林雾"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        for bookID in [target.id, source.id] {
+            _ = try repository.addExternalLink(
+                try ExternalLink(
+                    bookID: bookID,
+                    kind: .web,
+                    label: "虚构书页",
+                    value: "https://example.invalid/same-label",
+                    createdAt: FictionalLibraryFixtures.timestamp
+                )
+            )
+        }
+
+        let preview = try repository.mergePreview(targetID: target.id, sourceID: source.id)
+        XCTAssertEqual(
+            preview.associations.linkDetails.first { $0.origin == .source }?.outcome,
+            .deduplicate
+        )
+        let result = try repository.mergeBooks(
+            targetID: target.id,
+            sourceID: source.id,
+            selections: preview.defaultSelections,
+            at: FictionalLibraryFixtures.timestamp.addingTimeInterval(2)
+        )
+
+        XCTAssertEqual(result.retainedBook.id, target.id)
+        let links = try repository.externalLinks(forBookID: target.id)
+        XCTAssertEqual(links.count, 1)
+        XCTAssertEqual(links[0].label, "虚构书页")
+    }
+
+    func testMergeBlocksDifferentNonemptyExternalLinkLabelsWithoutChangingEitherBook() throws {
+        let repository = try BookRepository.inMemory()
+        let target = try repository.create(
+            BookDraft(title: "《冲突港湾》", author: "林雾", note: "保留记录"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let source = try repository.create(
+            BookDraft(title: "冲突港湾", author: "林雾", note: "来源记录"),
+            at: FictionalLibraryFixtures.timestamp.addingTimeInterval(1)
+        )
+        let targetLink = try ExternalLink(
+            bookID: target.id,
+            kind: .web,
+            label: "目标标签",
+            value: "https://example.invalid/label-conflict",
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+        let sourceLink = try ExternalLink(
+            bookID: source.id,
+            kind: .web,
+            label: "来源标签",
+            value: "https://example.invalid/label-conflict",
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+        _ = try repository.addExternalLink(targetLink)
+        _ = try repository.addExternalLink(sourceLink)
+
+        let preview = try repository.mergePreview(targetID: target.id, sourceID: source.id)
+        XCTAssertTrue(preview.associations.hasBlockingConflict)
+        XCTAssertEqual(
+            preview.associations.linkDetails.first { $0.origin == .source }?.outcome,
+            .block
+        )
+
+        XCTAssertThrowsError(
+            try repository.mergeBooks(
+                targetID: target.id,
+                sourceID: source.id,
+                selections: preview.defaultSelections,
+                at: FictionalLibraryFixtures.timestamp.addingTimeInterval(2)
+            )
+        ) { error in
+            XCTAssertEqual(error as? BookMergeError, .externalLinkLabelConflict)
+        }
+        XCTAssertEqual(try repository.book(id: target.id), target)
+        XCTAssertEqual(try repository.book(id: source.id), source)
+        XCTAssertEqual(try repository.externalLinks(forBookID: target.id), [targetLink])
+        XCTAssertEqual(try repository.externalLinks(forBookID: source.id), [sourceLink])
     }
 }

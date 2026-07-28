@@ -8,7 +8,9 @@ struct DuplicateReviewSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let preview = store.mergePreview {
+            if let viewedBook = store.viewedDuplicateBook {
+                viewedExistingBook(viewedBook)
+            } else if let preview = store.mergePreview {
                 mergePreview(preview)
             } else {
                 candidateReview
@@ -59,8 +61,11 @@ struct DuplicateReviewSheet: View {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("重复书籍审阅")
                         .font(.title2.weight(.semibold))
-                    Text("候选由本机确定性规则生成，不会自动合并。")
+                    Text(review.origin == .createdBookContinuation
+                         ? "新书已创建；上一次决定只作用于所选候选，以下候选仍需逐项审阅。"
+                         : "候选由本机确定性规则生成，不会自动合并。")
                         .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("duplicate-review-status")
                 }
                 Spacer()
                 if store.isDuplicateOperationInProgress {
@@ -71,6 +76,19 @@ struct DuplicateReviewSheet: View {
             .padding()
 
             Divider()
+
+            if review.possibleLookupWasTruncated {
+                Label(
+                    "可能候选索引命中超过 250 条；本轮按记录 ID 确定排序显示前 250 条。精确与强候选不受此上限影响。",
+                    systemImage: "info.circle"
+                )
+                .font(.callout)
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("duplicate-possible-truncated")
+                Divider()
+            }
 
             if review.candidates.isEmpty {
                 ContentUnavailableView {
@@ -160,6 +178,36 @@ struct DuplicateReviewSheet: View {
         }
     }
 
+    private func viewedExistingBook(_ book: Book) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("查看已有记录")
+                        .font(.title2.weight(.semibold))
+                    Text("新增草稿与重复审阅仍保留；返回后可继续处理。")
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+            .padding()
+
+            Divider()
+            VStack(spacing: 0) {
+                BookDetailView(book: book)
+            }
+                .accessibilityIdentifier("duplicate-existing-preview")
+            Divider()
+
+            HStack {
+                Button("返回重复审阅", action: store.returnFromViewedDuplicate)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("duplicate-existing-back")
+                Spacer()
+            }
+            .padding()
+        }
+    }
+
     private func mergePreview(_ preview: BookMergePreview) -> some View {
         VStack(spacing: 0) {
             HStack {
@@ -195,26 +243,34 @@ struct DuplicateReviewSheet: View {
                 }
 
                 Section("将合并的关联") {
-                    LabeledContent(
-                        "标签",
-                        value: "\(preview.associations.targetTags.count) + \(preview.associations.sourceTags.count)"
+                    namedAssociationDetails(
+                        title: "标签",
+                        details: preview.associations.tagDetails,
+                        identifierPrefix: "merge-tag-detail"
                     )
-                    LabeledContent(
-                        "书单",
-                        value: "\(preview.associations.targetCollections.count) + \(preview.associations.sourceCollections.count)"
+                    namedAssociationDetails(
+                        title: "书单",
+                        details: preview.associations.collectionDetails,
+                        identifierPrefix: "merge-collection-detail"
                     )
-                    LabeledContent(
-                        "来源",
-                        value: "\(preview.associations.targetSources.count) + \(preview.associations.sourceSources.count)"
+                    namedAssociationDetails(
+                        title: "来源",
+                        details: preview.associations.sourceDetails,
+                        identifierPrefix: "merge-source-detail"
                     )
-                    LabeledContent(
-                        "外部链接",
-                        value: "\(preview.associations.targetLinks.count) + \(preview.associations.sourceLinks.count)"
-                    )
-                    LabeledContent("手动关系", value: "\(preview.associations.manualRelations.count)")
-                    Text("相同关联会去重；会产生自指或无法无损解决的关系冲突将阻止合并。")
+                    linkAssociationDetails(preview.associations.linkDetails)
+                    relationAssociationDetails(preview.associations.relationDetails)
+                    Text("每项均标明保留、新增、去重、补齐或阻止；阻止项必须先在原记录中解决。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if preview.associations.hasBlockingConflict {
+                        Label(
+                            "存在无法无损处理的关联冲突，当前合并已阻止。",
+                            systemImage: "exclamationmark.octagon.fill"
+                        )
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("merge-association-blocked")
+                    }
                 }
 
                 Section("时间与身份") {
@@ -235,10 +291,97 @@ struct DuplicateReviewSheet: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("merge-preview-confirm")
+                .disabled(preview.associations.hasBlockingConflict)
             }
             .padding()
         }
         .accessibilityIdentifier("book-merge-preview")
+    }
+
+    @ViewBuilder
+    private func namedAssociationDetails(
+        title: String,
+        details: [BookMergeNamedAssociationDetail],
+        identifierPrefix: String
+    ) -> some View {
+        GroupBox(title) {
+            if details.isEmpty {
+                Text("无")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(details) { detail in
+                        HStack {
+                            Text(
+                                "\(detail.origin.displayTitle) · \(detail.outcome.displayTitle)：\(detail.name)"
+                            )
+                            Spacer()
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("\(identifierPrefix)-\(detail.id.uuidString)")
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func linkAssociationDetails(_ details: [BookMergeLinkDetail]) -> some View {
+        GroupBox("外部链接") {
+            if details.isEmpty {
+                Text("无")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(details) { detail in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(
+                                "\(detail.origin.displayTitle) · \(detail.outcome.displayTitle)："
+                                    + "\(detail.label ?? "无标签")（\(detail.kind.displayTitle)）"
+                            )
+                            Text(detail.value)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("merge-link-detail-\(detail.id.uuidString)")
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func relationAssociationDetails(_ details: [BookMergeRelationDetail]) -> some View {
+        GroupBox("手动关系") {
+            if details.isEmpty {
+                Text("无")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(details) { detail in
+                        HStack {
+                            Text(
+                                "\(detail.origin.displayTitle) · \(detail.outcome.displayTitle)："
+                                    + "\(detail.direction.displayTitle) · \(detail.kind.displayTitle) · "
+                                    + "\(detail.otherBookTitle) · \(detail.hasNote ? "有备注" : "无备注")"
+                            )
+                            Spacer()
+                        }
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier("merge-relation-detail-\(detail.id.uuidString)")
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
     }
 
     private var selectedCandidate: DuplicateCandidate? {
@@ -246,7 +389,9 @@ struct DuplicateReviewSheet: View {
     }
 
     private func handleEscape() {
-        if store.mergePreview != nil {
+        if store.viewedDuplicateBook != nil {
+            store.returnFromViewedDuplicate()
+        } else if store.mergePreview != nil {
             store.cancelMergePreview()
         } else {
             store.cancelDuplicateReview()
@@ -304,6 +449,56 @@ private extension BookMergeField {
         case .note: "备注"
         case .startedAt: "开始阅读时间"
         case .finishedAt: "完成阅读时间"
+        }
+    }
+}
+
+private extension BookMergeAssociationOrigin {
+    var displayTitle: String {
+        switch self {
+        case .target: "保留记录"
+        case .source: "来源记录"
+        }
+    }
+}
+
+private extension BookMergeAssociationOutcome {
+    var displayTitle: String {
+        switch self {
+        case .keep: "保留"
+        case .add: "新增"
+        case .deduplicate: "去重"
+        case .fillMissingLabel: "去重并补齐标签"
+        case .block: "阻止合并"
+        }
+    }
+}
+
+private extension ExternalLinkKind {
+    var displayTitle: String {
+        switch self {
+        case .web: "网页"
+        case .localAuthorization: "本地授权"
+        }
+    }
+}
+
+private extension BookMergeRelationDirection {
+    var displayTitle: String {
+        switch self {
+        case .incoming: "指向本书"
+        case .outgoing: "本书指向"
+        }
+    }
+}
+
+private extension ManualRelationKind {
+    var displayTitle: String {
+        switch self {
+        case .related: "相关"
+        case .inspiredBy: "受其启发"
+        case .respondsTo: "回应"
+        case .companion: "伴读"
         }
     }
 }

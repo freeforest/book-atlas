@@ -27,7 +27,7 @@ Exit condition: a user can safely manage, search, filter, sort, and organize fic
 
 ### Milestone 3 — data hygiene
 
-- **Prompt 6:** implementation and closure evidence complete for explainable duplicate detection and user-confirmed transactional merging; independent review pending.
+- **Prompt 6:** implementation plus the current NO-GO closure fixes are complete for explainable duplicate detection and user-confirmed transactional merging; repeat independent review pending.
 
 Exit condition: duplicate candidates can be explained, reviewed, ignored, or merged without automatic destructive decisions.
 

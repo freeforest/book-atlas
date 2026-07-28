@@ -33,6 +33,51 @@ struct BookMergeSelections: Equatable, Sendable {
     }
 }
 
+enum BookMergeAssociationOrigin: String, Equatable, Sendable {
+    case target
+    case source
+}
+
+enum BookMergeAssociationOutcome: String, Equatable, Sendable {
+    case keep
+    case add
+    case deduplicate
+    case fillMissingLabel
+    case block
+}
+
+struct BookMergeNamedAssociationDetail: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let name: String
+    let origin: BookMergeAssociationOrigin
+    let outcome: BookMergeAssociationOutcome
+}
+
+struct BookMergeLinkDetail: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let kind: ExternalLinkKind
+    let label: String?
+    let value: String
+    let origin: BookMergeAssociationOrigin
+    let outcome: BookMergeAssociationOutcome
+}
+
+enum BookMergeRelationDirection: String, Equatable, Sendable {
+    case incoming
+    case outgoing
+}
+
+struct BookMergeRelationDetail: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let direction: BookMergeRelationDirection
+    let kind: ManualRelationKind
+    let otherBookID: UUID
+    let otherBookTitle: String
+    let hasNote: Bool
+    let origin: BookMergeAssociationOrigin
+    let outcome: BookMergeAssociationOutcome
+}
+
 struct BookMergeAssociationSummary: Equatable, Sendable {
     let targetTags: [Tag]
     let sourceTags: [Tag]
@@ -43,6 +88,16 @@ struct BookMergeAssociationSummary: Equatable, Sendable {
     let targetLinks: [ExternalLink]
     let sourceLinks: [ExternalLink]
     let manualRelations: [ManualBookRelation]
+    let tagDetails: [BookMergeNamedAssociationDetail]
+    let collectionDetails: [BookMergeNamedAssociationDetail]
+    let sourceDetails: [BookMergeNamedAssociationDetail]
+    let linkDetails: [BookMergeLinkDetail]
+    let relationDetails: [BookMergeRelationDetail]
+
+    var hasBlockingConflict: Bool {
+        linkDetails.contains { $0.outcome == .block }
+            || relationDetails.contains { $0.outcome == .block }
+    }
 }
 
 struct BookMergePreview: Identifiable, Equatable, Sendable {
@@ -65,6 +120,7 @@ enum BookMergeError: Error, Equatable {
     case bookNotFound
     case selfRelationConflict
     case relationNoteConflict
+    case externalLinkLabelConflict
     case mergeFailed
 }
 

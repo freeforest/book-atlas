@@ -16,10 +16,19 @@ protocol LibraryCataloging: Actor {
         includingPossible: Bool
     ) throws -> [DuplicateCandidate]
     func duplicateCandidates(for book: Book, includingPossible: Bool) throws -> [DuplicateCandidate]
+    func duplicateCandidateSearch(
+        for editor: BookEditorDraft,
+        proposedID: UUID,
+        includingPossible: Bool
+    ) throws -> DuplicateCandidateSearchResult
+    func duplicateCandidateSearch(
+        for book: Book,
+        includingPossible: Bool
+    ) throws -> DuplicateCandidateSearchResult
     func createBookKeepingIndependent(
         from editor: BookEditorDraft,
         proposedID: UUID,
-        candidateIDs: [UUID],
+        candidateID: UUID,
         disposition: DuplicatePairDisposition
     ) throws -> Book
     func ignoreDuplicatePair(
@@ -72,10 +81,33 @@ extension LibraryCataloging {
         []
     }
     func duplicateCandidates(for book: Book, includingPossible: Bool) throws -> [DuplicateCandidate] { [] }
+    func duplicateCandidateSearch(
+        for editor: BookEditorDraft,
+        proposedID: UUID,
+        includingPossible: Bool
+    ) throws -> DuplicateCandidateSearchResult {
+        DuplicateCandidateSearchResult(
+            candidates: try duplicateCandidates(
+                for: editor,
+                proposedID: proposedID,
+                includingPossible: includingPossible
+            ),
+            possibleLookupWasTruncated: false
+        )
+    }
+    func duplicateCandidateSearch(
+        for book: Book,
+        includingPossible: Bool
+    ) throws -> DuplicateCandidateSearchResult {
+        DuplicateCandidateSearchResult(
+            candidates: try duplicateCandidates(for: book, includingPossible: includingPossible),
+            possibleLookupWasTruncated: false
+        )
+    }
     func createBookKeepingIndependent(
         from editor: BookEditorDraft,
         proposedID: UUID,
-        candidateIDs: [UUID],
+        candidateID: UUID,
         disposition: DuplicatePairDisposition
     ) throws -> Book {
         throw BookRepositoryError.entityNotFound
@@ -183,6 +215,17 @@ actor LibraryCatalogService: LibraryCataloging {
         )
     }
 
+    func duplicateCandidateSearch(
+        for editor: BookEditorDraft,
+        proposedID: UUID,
+        includingPossible: Bool
+    ) throws -> DuplicateCandidateSearchResult {
+        try repository.duplicateCandidateSearch(
+            for: DuplicateProbe(id: proposedID, draft: editor.makeBookDraft()),
+            includingPossible: includingPossible
+        )
+    }
+
     func duplicateCandidates(
         for book: Book,
         includingPossible: Bool
@@ -193,16 +236,26 @@ actor LibraryCatalogService: LibraryCataloging {
         )
     }
 
+    func duplicateCandidateSearch(
+        for book: Book,
+        includingPossible: Bool
+    ) throws -> DuplicateCandidateSearchResult {
+        try repository.duplicateCandidateSearch(
+            for: DuplicateProbe(book: book),
+            includingPossible: includingPossible
+        )
+    }
+
     func createBookKeepingIndependent(
         from editor: BookEditorDraft,
         proposedID: UUID,
-        candidateIDs: [UUID],
+        candidateID: UUID,
         disposition: DuplicatePairDisposition
     ) throws -> Book {
         let draft = try editor.makeBookDraft()
         return try repository.transaction {
             let book = try repository.create(draft, id: proposedID, at: now())
-            for candidateID in Set(candidateIDs) where candidateID != book.id {
+            if candidateID != book.id {
                 try repository.ignoreDuplicatePair(
                     book.id,
                     candidateID,

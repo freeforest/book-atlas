@@ -36,3 +36,5 @@ Logs may include operation names, durations, counts, schema versions, and coarse
 The user must be able to inspect and edit records, explicitly initiate export and backup, cancel imports where practical, understand destructive consequences, and remove stored access to external files. Duplicate merging and restore operations require review and confirmation.
 
 Duplicate normalization, scoring, candidate lookup, ignore decisions, previews, and merges run entirely on-device. Ignore storage contains only two book UUIDs, a disposition, and a timestamp; it does not duplicate titles, authors, notes, URLs, or relationship contents. Duplicate and merge errors shown to users are generic and do not expose stored payloads.
+
+Merge preview renders concrete tags, collections, sources, external links, and relation details only in the local UI so the user can judge preservation outcomes. Those values are not emitted to logs. Test previews use fixed fictional records and `example.invalid` URLs in an isolated in-memory store.

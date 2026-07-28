@@ -4,9 +4,9 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-Prompt 5 passed independent acceptance. Prompt 6 implementation and closure evidence are now being prepared for independent review. The library supports local book CRUD, search/filter/sort, tags, collections, recommendation sources, explainable duplicate candidates, persistent keep-separate decisions, and explicitly confirmed transactional book merges.
+Prompt 5 passed independent acceptance. Prompt 6 implementation and NO-GO closure fixes are awaiting another independent review. The library supports local book CRUD, search/filter/sort, tags, collections, recommendation sources, explainable duplicate candidates, pair-specific persistent keep-separate decisions, concrete association previews, and explicitly confirmed transactional book merges.
 
-Prompt 6 uses deterministic local rules only; it does not automatically delete or merge candidates. Import/export, graph implementation, and external-link actions have not been added.
+Prompt 6 uses deterministic local rules only; it does not automatically delete or merge candidates. Viewing an existing duplicate does not discard the current draft, and a merge is blocked when equal external links carry conflicting nonempty labels. Import/export, graph implementation, and external-link actions have not been added.
 
 ## Product boundaries
 
