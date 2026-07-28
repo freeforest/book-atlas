@@ -8,6 +8,8 @@ enum SQLiteDatabaseError: Error, Equatable {
     case bindingFailed(Int32)
     case executionFailed(Int32)
     case unexpectedResult(Int32)
+    case backupFailed(Int32)
+    case closeFailed(Int32)
 }
 
 enum SQLiteValue {
@@ -20,12 +22,15 @@ final class SQLiteDatabase {
     private var handle: OpaquePointer?
     private var transactionDepth = 0
 
-    init(path: String) throws {
+    init(path: String, readOnly: Bool = false) throws {
         var database: OpaquePointer?
+        let flags = readOnly
+            ? SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
+            : SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX
         let result = sqlite3_open_v2(
             path,
             &database,
-            SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
+            flags,
             nil
         )
         guard result == SQLITE_OK, let database else {
@@ -36,13 +41,13 @@ final class SQLiteDatabase {
         }
 
         handle = database
-        try execute("PRAGMA foreign_keys = ON")
+        if !readOnly {
+            try execute("PRAGMA foreign_keys = ON")
+        }
     }
 
     deinit {
-        if let handle {
-            sqlite3_close_v2(handle)
-        }
+        try? close()
     }
 
     func execute(_ sql: String, bindings: [SQLiteValue] = []) throws {
@@ -82,6 +87,58 @@ final class SQLiteDatabase {
 
     func schemaVersion() throws -> Int {
         Int(try scalarInt("PRAGMA user_version") ?? 0)
+    }
+
+    func integrityCheck() throws -> Bool {
+        try query("PRAGMA integrity_check") { row in row.string(at: 0) }.first == "ok"
+    }
+
+    func journalMode() throws -> String {
+        try query("PRAGMA journal_mode") { row in row.string(at: 0) }
+            .compactMap { $0 }
+            .first ?? ""
+    }
+
+    func checkpointWAL() throws {
+        guard try journalMode().lowercased() == "wal" else { return }
+        _ = try query("PRAGMA wal_checkpoint(TRUNCATE)") { row in
+            (row.integer(at: 0), row.integer(at: 1), row.integer(at: 2))
+        }
+    }
+
+    func onlineBackup(to destinationPath: String) throws {
+        guard let sourceHandle = handle else { throw SQLiteDatabaseError.closed }
+        var destinationHandle: OpaquePointer?
+        let openResult = sqlite3_open_v2(
+            destinationPath,
+            &destinationHandle,
+            SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
+            nil
+        )
+        guard openResult == SQLITE_OK, let destinationHandle else {
+            if let destinationHandle { sqlite3_close_v2(destinationHandle) }
+            throw SQLiteDatabaseError.openFailed(openResult)
+        }
+        defer { sqlite3_close_v2(destinationHandle) }
+
+        guard let backup = sqlite3_backup_init(destinationHandle, "main", sourceHandle, "main") else {
+            throw SQLiteDatabaseError.backupFailed(sqlite3_errcode(destinationHandle))
+        }
+        let result = sqlite3_backup_step(backup, -1)
+        let finishResult = sqlite3_backup_finish(backup)
+        guard result == SQLITE_DONE, finishResult == SQLITE_OK else {
+            throw SQLiteDatabaseError.backupFailed(
+                finishResult == SQLITE_OK ? result : finishResult
+            )
+        }
+    }
+
+    func close() throws {
+        guard let handle else { return }
+        let result = sqlite3_close_v2(handle)
+        guard result == SQLITE_OK else { throw SQLiteDatabaseError.closeFailed(result) }
+        self.handle = nil
+        transactionDepth = 0
     }
 
     func changes() throws -> Int {

@@ -27,13 +27,13 @@ Exit condition: a user can safely manage, search, filter, sort, and organize fic
 
 ### Milestone 3 — data hygiene
 
-- **Prompt 6:** implementation plus the current NO-GO closure fixes are complete for explainable duplicate detection and user-confirmed transactional merging; repeat independent review pending.
+- **Prompt 6:** independently accepted explainable duplicate detection and user-confirmed transactional merging.
 
 Exit condition: duplicate candidates can be explained, reviewed, ignored, or merged without automatic destructive decisions.
 
 ### Milestone 4 — portability and exploration
 
-- **Prompt 7:** import, export, backup, and restore.
+- **Prompt 7:** implementation and local validation complete for import, export, backup, and restore; independent review pending.
 - **Prompt 8:** bounded local relationship graph.
 - **Prompt 9:** only the Apple Books and external-link behaviors proven by experiments.
 

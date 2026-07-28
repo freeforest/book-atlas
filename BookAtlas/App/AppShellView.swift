@@ -56,7 +56,9 @@ struct AppShellView: View {
         case .graph:
             GraphPlaceholderView()
         case .settings:
-            SettingsPlaceholderView()
+            DataPortabilityView(store: libraryStore.portability) {
+                libraryStore.refresh()
+            }
         }
     }
 }

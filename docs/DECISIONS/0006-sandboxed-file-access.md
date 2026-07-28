@@ -16,6 +16,8 @@ Use `NSOpenPanel` for explicit user selection. For long-lived access, create a r
 
 Prompt 3 or Prompt 7 will define the production storage record, migration, retention, user-visible repair flow, and test fixture policy for bookmark bytes.
 
+Prompt 7 later chose transient user-selected read/write access for explicit import, export, backup, and restore without retaining bookmarks. That extension is recorded in ADR-0008; this ADR continues to govern any future long-lived read-only file authorization.
+
 ## Alternatives considered
 
 - **Persisting absolute paths:** rejected because paths are not authorization and can leak private information.

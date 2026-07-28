@@ -289,6 +289,26 @@ final class BookRepository {
         (try? database.schemaVersion()) ?? 0
     }
 
+    func integrityCheck() throws -> Bool {
+        try database.integrityCheck()
+    }
+
+    func journalMode() throws -> String {
+        try database.journalMode()
+    }
+
+    func checkpointWAL() throws {
+        try database.checkpointWAL()
+    }
+
+    func onlineBackup(to destinationURL: URL) throws {
+        try database.onlineBackup(to: destinationURL.path)
+    }
+
+    func close() throws {
+        try database.close()
+    }
+
     func transaction<T>(_ operation: () throws -> T) throws -> T {
         try database.transaction(operation)
     }
@@ -361,6 +381,24 @@ final class BookRepository {
 
     func list(limit: Int = 100) throws -> [Book] {
         try list(readingStatus: nil, limit: limit)
+    }
+
+    func allBooks() throws -> [Book] {
+        try database.query(
+            "SELECT \(bookColumns) FROM books ORDER BY created_at ASC, id ASC",
+            row: decodeBook
+        )
+    }
+
+    func exportRecords() throws -> [ExportBookRecord] {
+        try allBooks().map { book in
+            ExportBookRecord(
+                book: book,
+                tags: try tags(forBookID: book.id).map(\.name),
+                collections: try collections(forBookID: book.id).map(\.name),
+                sources: try sources(forBookID: book.id).map(\.name)
+            )
+        }
     }
 
     func list(readingStatus: ReadingStatus, limit: Int = 100) throws -> [Book] {
@@ -1727,7 +1765,7 @@ private func duplicateConfidenceRank(_ confidence: DuplicateConfidence) -> Int {
     }
 }
 
-private enum StorageDateCodec {
+enum StorageDateCodec {
     private static func formatter() -> ISO8601DateFormatter {
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = TimeZone(secondsFromGMT: 0)

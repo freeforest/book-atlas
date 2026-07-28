@@ -157,7 +157,8 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(element("page-title-collections", in: app).waitForExistence(timeout: 3))
         element("add-collection-button", in: app).click()
         replaceText(in: element("collection-name-field", in: app), with: "North Shelf")
-        replaceText(in: element("collection-details-field", in: app), with: "Fictional collection")
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("Fictional collection")
         app.typeKey(.tab, modifierFlags: [])
         element("collection-save-button", in: app).click()
         XCTAssertTrue(app.staticTexts["North Shelf"].waitForExistence(timeout: 3))
@@ -180,7 +181,8 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(element("page-title-sources", in: app).waitForExistence(timeout: 3))
         element("add-source-button", in: app).click()
         replaceText(in: element("source-name-field", in: app), with: "Paper Signal")
-        replaceText(in: element("source-details-field", in: app), with: "Fictional source")
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("Fictional source")
         app.typeKey(.tab, modifierFlags: [])
         element("source-save-button", in: app).click()
         XCTAssertTrue(app.staticTexts["Paper Signal"].waitForExistence(timeout: 3))
@@ -236,8 +238,11 @@ final class BookAtlasUITests: XCTestCase {
         app.typeKey("n", modifierFlags: .command)
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
         replaceText(in: element("editor-title", in: app), with: "A101 Incoming")
-        replaceText(in: element("editor-author", in: app), with: "Harbor Author")
-        replaceText(in: element("editor-isbn", in: app), with: "978-0-00000-000-2")
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("Harbor Author")
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("978-0-00000-000-2")
 
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3))
@@ -290,8 +295,11 @@ final class BookAtlasUITests: XCTestCase {
         app.typeKey("n", modifierFlags: .command)
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
         replaceText(in: element("editor-title", in: app), with: "A101 Recoverable Draft")
-        replaceText(in: element("editor-author", in: app), with: "Harbor Author")
-        replaceText(in: element("editor-isbn", in: app), with: "978-0-00000-000-2")
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("Harbor Author")
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText("978-0-00000-000-2")
 
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3))
@@ -346,7 +354,6 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(sourceTagText.contains("新增标签"), sourceTagText)
         XCTAssertTrue(sourceTagText.contains("新增"), sourceTagText)
 
-        app.scrollViews.firstMatch.swipeUp()
         let collection = element(
             "merge-collection-detail-00000000-0000-0000-0000-000000000421",
             in: app
@@ -392,6 +399,42 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testImportPreviewExposesCountsMappingRowsAndKeyboardCancellation() {
+        let app = launchInMemoryApp(seedPortabilityPreview: true)
+        app.typeKey("5", modifierFlags: .command)
+
+        XCTAssertTrue(element("data-portability-page", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("import-preview", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("import-preview-counts", in: app).exists)
+        XCTAssertTrue(element("import-field-mapping", in: app).exists)
+        XCTAssertTrue(element("import-preview-row-0", in: app).exists)
+        XCTAssertTrue(element("confirm-import-button", in: app).exists)
+        XCTAssertTrue(
+            accessibilityText(of: element("import-preview-row-0", in: app))
+                .contains("虚构导入港湾")
+        )
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("import-preview", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("portability-status", in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testRestorePreviewExposesWarningAndKeyboardCancellation() {
+        let app = launchInMemoryApp(seedRestorePreview: true)
+        app.typeKey("5", modifierFlags: .command)
+
+        XCTAssertTrue(element("restore-preview", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("restore-preview-details", in: app).exists)
+        XCTAssertTrue(element("restore-replacement-warning", in: app).exists)
+        XCTAssertTrue(element("confirm-restore-button", in: app).exists)
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("restore-preview", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("portability-status", in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
@@ -399,7 +442,9 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     private func launchInMemoryApp(
         seedFictionalBooks: Bool = false,
-        seedMergePreviewAssociations: Bool = false
+        seedMergePreviewAssociations: Bool = false,
+        seedPortabilityPreview: Bool = false,
+        seedRestorePreview: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
@@ -408,6 +453,12 @@ final class BookAtlasUITests: XCTestCase {
         }
         if seedMergePreviewAssociations {
             app.launchArguments.append("-BookAtlasSeedMergePreviewAssociations")
+        }
+        if seedPortabilityPreview {
+            app.launchArguments.append("-BookAtlasSeedPortabilityPreview")
+        }
+        if seedRestorePreview {
+            app.launchArguments.append("-BookAtlasSeedRestorePreview")
         }
         app.launch()
         return app
@@ -422,7 +473,8 @@ final class BookAtlasUITests: XCTestCase {
         app.typeKey("n", modifierFlags: .command)
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
         replaceText(in: element("editor-title", in: app), with: title)
-        replaceText(in: element("editor-author", in: app), with: author)
+        app.typeKey(.tab, modifierFlags: [])
+        app.typeText(author)
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(element("book-detail-view", in: app).waitForExistence(timeout: 3))
     }

@@ -4,9 +4,9 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-Prompt 5 passed independent acceptance. Prompt 6 implementation and NO-GO closure fixes are awaiting another independent review. The library supports local book CRUD, search/filter/sort, tags, collections, recommendation sources, explainable duplicate candidates, pair-specific persistent keep-separate decisions, concrete association previews, and explicitly confirmed transactional book merges.
+Prompt 6 passed independent acceptance. Prompt 7 implementation is complete in the working tree and awaiting independent review. The library supports local book CRUD, search/filter/sort, organization, explainable duplicate review and transactional merging, plus user-selected CSV import, Markdown/CSV export, and versioned full-database backup and restore.
 
-Prompt 6 uses deterministic local rules only; it does not automatically delete or merge candidates. Viewing an existing duplicate does not discard the current draft, and a merge is blocked when equal external links carry conflicting nonempty labels. Import/export, graph implementation, and external-link actions have not been added.
+Import previews and field mapping do not write the library. Confirmed imports reuse Prompt 6 duplicate rules and never overwrite or automatically merge candidates. Backups use SQLite's online backup API and restore requires validation, preview, explicit confirmation, a verified recovery copy, and rollback. Prompt 8 graph implementation and external-link actions have not been added.
 
 ## Product boundaries
 
@@ -27,6 +27,7 @@ The planned Xcode project and Swift module are both `BookAtlas`, the display nam
 - [Security](docs/SECURITY.md)
 - [Roadmap and prompt order](docs/ROADMAP.md)
 - [Architecture decisions](docs/DECISIONS/README.md)
+- [Portability format specification](docs/FORMATS/PORTABILITY.md)
 - [Milestone plans](docs/PLANS/README.md)
 
 ## Repository data policy

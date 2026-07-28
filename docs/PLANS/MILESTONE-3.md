@@ -6,7 +6,7 @@ Provide explainable, user-reviewed duplicate handling without automatic destruct
 
 ## Stage
 
-- Prompt 6: implementation plus the current NO-GO closure fixes are complete; repeat independent acceptance review pending — explainable duplicate candidates, pair-specific ignored decisions, concrete association previews, and user-reviewed transactional merging.
+- Prompt 6: independently accepted — explainable duplicate candidates, pair-specific ignored decisions, concrete association previews, and user-reviewed transactional merging.
 
 Prompt 5 belongs to Milestone 2 and passed independent acceptance before Prompt 6 work began.
 
@@ -24,4 +24,4 @@ Prompt 5 belongs to Milestone 2 and passed independent acceptance before Prompt 
 - A keep-separate decision writes only the selected pair; a new record is created once and any remaining candidates continue against that saved identity. Viewing a candidate preserves the original draft.
 - Exact and Strong indexed lookups are deterministic and uncapped. Possible token lookup is deterministically capped at 250 raw index hits and exposes truncation to the review UI.
 - Merge retains the selected target identity, exposes scalar conflicts and concrete association outcomes, unions/deduplicates every existing association table, redirects safe relations, rejects self/lossy/link-label conflicts, and deletes the source last in one transaction.
-- The implementation adds no dependency, network path, entitlement, import flow, graph UI, AI model, or automatic destructive action.
+- The accepted implementation added no dependency, network path, entitlement, import flow, graph UI, AI model, or automatic destructive action. Prompt 7's later user-selected file entitlement is recorded separately in ADR-0008.

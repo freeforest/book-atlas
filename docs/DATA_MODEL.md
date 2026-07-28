@@ -2,7 +2,7 @@
 
 ## Status
 
-Prompt 3 established the production SQLite schema, Prompt 5 activated organization and unified queries, and Prompt 6 adds derived duplicate keys, ignored candidate pairs, and transactional record merging. The model remains deliberately smaller than a work/edition authority model: contributors are still an ordered free-form author string, and the app does not infer complete edition, translation, or series structure.
+Prompt 3 established the production SQLite schema, Prompt 5 activated organization and unified queries, and Prompt 6 added derived duplicate keys, ignored candidate pairs, and transactional record merging. Prompt 7 adds versioned interchange and snapshot formats without changing the production schema. The model remains deliberately smaller than a work/edition authority model.
 
 ## Candidate concepts
 
@@ -85,6 +85,8 @@ Merge retains the chosen target UUID, takes the earlier `createdAt`, writes the 
 ## Schema evolution
 
 Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production registry currently ends at version 4.
+
+Prompt 7 backups record both backup format version 1 and the actual schema version. Restore accepts supported schemas 1–4, stages and migrates older snapshots through the same registry, and rejects future schemas. CSV and Markdown format versions are independent of SQLite schema version; see `docs/FORMATS/PORTABILITY.md`.
 
 ## Test data
 

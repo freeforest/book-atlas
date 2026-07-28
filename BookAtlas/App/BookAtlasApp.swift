@@ -55,6 +55,38 @@ struct BookAtlasCommands: Commands {
             .disabled(selection != .library || !libraryStore.hasSelection)
         }
 
+        CommandMenu("数据") {
+            Button("导入 CSV…") {
+                selection = .settings
+                libraryStore.portability.request(.importCSV)
+            }
+            .keyboardShortcut("i", modifiers: .command)
+
+            Button("导出 CSV…") {
+                selection = .settings
+                libraryStore.portability.request(.exportCSV)
+            }
+            .keyboardShortcut("e", modifiers: [.command, .shift])
+
+            Button("导出 Markdown…") {
+                selection = .settings
+                libraryStore.portability.request(.exportMarkdown)
+            }
+
+            Divider()
+
+            Button("创建完整备份…") {
+                selection = .settings
+                libraryStore.portability.request(.backup)
+            }
+            .keyboardShortcut("b", modifiers: [.command, .shift])
+
+            Button("从备份恢复…") {
+                selection = .settings
+                libraryStore.portability.request(.restore)
+            }
+        }
+
         CommandMenu("导航") {
             ForEach(Array(AppSection.allCases.enumerated()), id: \.element) {
                 index, section in

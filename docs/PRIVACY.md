@@ -18,7 +18,7 @@ Potentially private data includes books, contributors, tags, lists, sources, rat
 
 ## Storage
 
-The production database is stored at `Application Support/BookAtlas/book-atlas.sqlite` inside the app-specific Application Support directory. Tests use temporary or in-memory stores and do not discover a real library. Backup locations and retention behavior remain undefined until the later backup/restore stage. Permission bookmarks are private capability data and must never appear in repository fixtures or logs.
+The production database is stored at `Application Support/BookAtlas/book-atlas.sqlite` inside the app-specific Application Support directory. Tests use temporary or in-memory stores and do not discover a real library. User-requested exports and backups go only to a selected destination. Restore retains a verified UUID-named recovery copy under the app's `Recovery Copies` directory and does not silently delete it. Prompt 7 stores no security-scoped bookmark.
 
 ## Logging
 
@@ -38,3 +38,5 @@ The user must be able to inspect and edit records, explicitly initiate export an
 Duplicate normalization, scoring, candidate lookup, ignore decisions, previews, and merges run entirely on-device. Ignore storage contains only two book UUIDs, a disposition, and a timestamp; it does not duplicate titles, authors, notes, URLs, or relationship contents. Duplicate and merge errors shown to users are generic and do not expose stored payloads.
 
 Merge preview renders concrete tags, collections, sources, external links, and relation details only in the local UI so the user can judge preservation outcomes. Those values are not emitted to logs. Test previews use fixed fictional records and `example.invalid` URLs in an isolated in-memory store.
+
+Import previews render selected-file content only in the local UI. Error reports omit raw rows and values. Markdown removes recognizable local absolute paths, CSV formula guards dangerous leading characters, and full backups intentionally contain private library data in an unencrypted SQLite snapshot; the user is responsible for protecting the selected destination.

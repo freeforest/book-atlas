@@ -125,6 +125,7 @@ final class LibraryStore: ObservableObject {
     @Published var isDuplicateOperationInProgress = false
 
     let organizer: CatalogOrganizerStore
+    let portability: PortabilityStore
 
     private let catalog: (any LibraryCataloging)?
     private var queryTask: Task<Void, Never>?
@@ -134,6 +135,7 @@ final class LibraryStore: ObservableObject {
     init(catalog: (any LibraryCataloging)? = nil, initialError: LibraryUserFacingError? = nil) {
         self.catalog = catalog
         organizer = CatalogOrganizerStore(catalog: catalog)
+        portability = PortabilityStore(catalog: catalog)
         if let initialError {
             loadingState = .failed(initialError)
         } else if catalog == nil {
@@ -159,11 +161,20 @@ final class LibraryStore: ObservableObject {
                     seedMergePreviewAssociations: arguments.contains("-BookAtlasSeedMergePreviewAssociations")
                 )
             } else {
+                let databaseURL = try BookAtlasDatabaseLocation.defaultURL()
                 catalog = LibraryCatalogService(
-                    repository: try BookRepository(databaseURL: BookAtlasDatabaseLocation.defaultURL())
+                    repository: try BookRepository(databaseURL: databaseURL),
+                    databaseURL: databaseURL
                 )
             }
-            return LibraryStore(catalog: catalog)
+            let store = LibraryStore(catalog: catalog)
+            if arguments.contains("-BookAtlasSeedPortabilityPreview") {
+                store.portability.seedFictionalPreviewForUITesting()
+            }
+            if arguments.contains("-BookAtlasSeedRestorePreview") {
+                store.portability.seedFictionalRestorePreviewForUITesting()
+            }
+            return store
         } catch {
             return LibraryStore(initialError: .databaseUnavailable)
         }

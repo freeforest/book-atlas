@@ -1,6 +1,6 @@
 # ADR-0007: Deterministic duplicate resolution
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-28
 - Owners: Project maintainers
 

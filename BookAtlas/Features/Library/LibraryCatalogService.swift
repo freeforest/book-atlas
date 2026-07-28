@@ -70,6 +70,14 @@ protocol LibraryCataloging: Actor {
     func createSource(name: String, details: String?) throws -> RecommendationSource
     func renameSource(_ source: RecommendationSource, name: String, details: String?) throws -> RecommendationSource
     func deleteSource(_ source: RecommendationSource) throws
+    func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview
+    func executeImport(_ preview: ImportPreview) throws -> ImportResult
+    func exportCSV(to url: URL) throws
+    func exportMarkdown(to url: URL) throws
+    func exportImportErrors(_ issues: [ImportIssue], to url: URL) throws
+    func createBackup(at url: URL) throws -> BackupResult
+    func inspectBackup(at url: URL) throws -> BackupPreview
+    func restoreBackup(at url: URL) throws -> BackupPreview
 }
 
 extension LibraryCataloging {
@@ -175,14 +183,37 @@ extension LibraryCataloging {
         throw BookRepositoryError.entityNotFound
     }
     func deleteSource(_ source: RecommendationSource) throws { throw BookRepositoryError.entityNotFound }
+    func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview {
+        throw PortabilityError.unsafeFile
+    }
+    func executeImport(_ preview: ImportPreview) throws -> ImportResult {
+        throw PortabilityError.unsafeFile
+    }
+    func exportCSV(to url: URL) throws { throw PortabilityError.unsafeFile }
+    func exportMarkdown(to url: URL) throws { throw PortabilityError.unsafeFile }
+    func exportImportErrors(_ issues: [ImportIssue], to url: URL) throws {
+        throw PortabilityError.unsafeFile
+    }
+    func createBackup(at url: URL) throws -> BackupResult { throw PortabilityError.unsafeFile }
+    func inspectBackup(at url: URL) throws -> BackupPreview { throw PortabilityError.unsafeFile }
+    func restoreBackup(at url: URL) throws -> BackupPreview { throw PortabilityError.unsafeFile }
 }
 
 actor LibraryCatalogService: LibraryCataloging {
-    private let repository: BookRepository
+    private var repository: BookRepository
+    private let databaseURL: URL?
+    private let recoveryDirectory: URL?
     private let now: @Sendable () -> Date
 
-    init(repository: BookRepository, now: @escaping @Sendable () -> Date = Date.init) {
+    init(
+        repository: BookRepository,
+        databaseURL: URL? = nil,
+        recoveryDirectory: URL? = nil,
+        now: @escaping @Sendable () -> Date = Date.init
+    ) {
         self.repository = repository
+        self.databaseURL = databaseURL
+        self.recoveryDirectory = recoveryDirectory
         self.now = now
     }
 
@@ -459,6 +490,75 @@ actor LibraryCatalogService: LibraryCataloging {
 
     func deleteSource(_ source: RecommendationSource) throws {
         try repository.deleteSource(id: source.id)
+    }
+
+    func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview {
+        let coordinator = LibraryImportCoordinator()
+        let document = try coordinator.parse(url: url)
+        return try coordinator.preview(
+            document: document,
+            mapping: mapping ?? CSVFieldMapping.inferred(from: document.headers),
+            repository: repository
+        )
+    }
+
+    func executeImport(_ preview: ImportPreview) throws -> ImportResult {
+        try LibraryImportCoordinator().execute(
+            preview: preview,
+            repository: repository,
+            at: now(),
+            cancellation: ImportCancellation(
+                isCancelled: {
+                    withUnsafeCurrentTask { task in
+                        task?.isCancelled ?? false
+                    }
+                }
+            )
+        )
+    }
+
+    func exportCSV(to url: URL) throws {
+        try LibraryExportCoordinator(now: now).exportCSV(repository: repository, to: url)
+    }
+
+    func exportMarkdown(to url: URL) throws {
+        try LibraryExportCoordinator(now: now).exportMarkdown(repository: repository, to: url)
+    }
+
+    func exportImportErrors(_ issues: [ImportIssue], to url: URL) throws {
+        try LibraryExportCoordinator(now: now).exportErrorReport(issues, to: url)
+    }
+
+    func createBackup(at url: URL) throws -> BackupResult {
+        try backupCoordinator().backup(repository: repository, to: url)
+    }
+
+    func inspectBackup(at url: URL) throws -> BackupPreview {
+        try backupCoordinator().inspect(url)
+    }
+
+    func restoreBackup(at url: URL) throws -> BackupPreview {
+        guard let databaseURL else { throw PortabilityError.unsafeFile }
+        let recoveryDirectory = self.recoveryDirectory
+            ?? databaseURL.deletingLastPathComponent().appendingPathComponent(
+                "Recovery Copies",
+                isDirectory: true
+            )
+        return try backupCoordinator().restore(
+            backupURL: url,
+            databaseURL: databaseURL,
+            repository: &repository,
+            recoveryDirectory: recoveryDirectory
+        )
+    }
+
+    private func backupCoordinator() -> LibraryBackupCoordinator {
+        LibraryBackupCoordinator(
+            applicationVersion: Bundle.main.object(
+                forInfoDictionaryKey: "CFBundleShortVersionString"
+            ) as? String ?? "development",
+            now: now
+        )
     }
 
     private func ensureUnique(
