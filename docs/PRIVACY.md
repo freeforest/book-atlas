@@ -18,7 +18,7 @@ Potentially private data includes books, contributors, tags, lists, sources, rat
 
 ## Storage
 
-The production database is stored at `Application Support/BookAtlas/book-atlas.sqlite` inside the app-specific Application Support directory. Tests use temporary or in-memory stores and do not discover a real library. User-requested exports and backups go only to a selected destination. Restore retains a verified UUID-named recovery copy under the app's `Recovery Copies` directory and does not silently delete it. Prompt 7 stores no security-scoped bookmark.
+The production database is stored at `Application Support/BookAtlas/book-atlas.sqlite` inside the app-specific Application Support directory. Tests use temporary or in-memory stores and do not discover a real library. User-requested exports and backups go only to a selected destination. Restore retains a verified UUID-named recovery copy under the app's `Recovery Copies` directory and does not silently delete it. A process-interruption marker contains only a format version, schema version, token, and randomized relative filenames—never the selected backup path or library contents—and is removed after recovery. Prompt 7 stores no security-scoped bookmark.
 
 ## Logging
 
@@ -39,4 +39,4 @@ Duplicate normalization, scoring, candidate lookup, ignore decisions, previews, 
 
 Merge preview renders concrete tags, collections, sources, external links, and relation details only in the local UI so the user can judge preservation outcomes. Those values are not emitted to logs. Test previews use fixed fictional records and `example.invalid` URLs in an isolated in-memory store.
 
-Import previews render selected-file content only in the local UI. Error reports omit raw rows and values. Markdown removes recognizable local absolute paths, CSV formula guards dangerous leading characters, and full backups intentionally contain private library data in an unencrypted SQLite snapshot; the user is responsible for protecting the selected destination.
+Import previews render at most 20 selected-file rows only in the local UI; the full staged import remains in an app-controlled temporary directory and is removed on success, cancellation, failure, or replacement by a newer mapping. Confirmed execution may retain structured issue staging that omits raw rows and values; an error-report CSV is generated only after the user chooses where to save, and issue staging is deleted when discarded or exported. Markdown removes recognizable local absolute paths, CSV formula guards dangerous leading characters, and full backups intentionally contain private library data in an unencrypted SQLite snapshot; the user is responsible for protecting the selected destination.

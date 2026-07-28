@@ -72,12 +72,17 @@ protocol LibraryCataloging: Actor {
     func deleteSource(_ source: RecommendationSource) throws
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview
     func executeImport(_ preview: ImportPreview) throws -> ImportResult
+    func discardImport(_ preview: ImportPreview)
     func exportCSV(to url: URL) throws
     func exportMarkdown(to url: URL) throws
-    func exportImportErrors(_ issues: [ImportIssue], to url: URL) throws
+    func exportImportErrors(_ report: ImportErrorReport, to url: URL) throws
+    func discardImportErrors(_ report: ImportErrorReport)
     func createBackup(at url: URL) throws -> BackupResult
     func inspectBackup(at url: URL) throws -> BackupPreview
-    func restoreBackup(at url: URL) throws -> BackupPreview
+    func restoreBackup(
+        at url: URL,
+        progress: @escaping @Sendable (RestoreProgressPhase) -> Void
+    ) throws -> BackupPreview
 }
 
 extension LibraryCataloging {
@@ -189,14 +194,21 @@ extension LibraryCataloging {
     func executeImport(_ preview: ImportPreview) throws -> ImportResult {
         throw PortabilityError.unsafeFile
     }
+    func discardImport(_ preview: ImportPreview) {}
     func exportCSV(to url: URL) throws { throw PortabilityError.unsafeFile }
     func exportMarkdown(to url: URL) throws { throw PortabilityError.unsafeFile }
-    func exportImportErrors(_ issues: [ImportIssue], to url: URL) throws {
+    func exportImportErrors(_ report: ImportErrorReport, to url: URL) throws {
         throw PortabilityError.unsafeFile
     }
+    func discardImportErrors(_ report: ImportErrorReport) {}
     func createBackup(at url: URL) throws -> BackupResult { throw PortabilityError.unsafeFile }
     func inspectBackup(at url: URL) throws -> BackupPreview { throw PortabilityError.unsafeFile }
-    func restoreBackup(at url: URL) throws -> BackupPreview { throw PortabilityError.unsafeFile }
+    func restoreBackup(
+        at url: URL,
+        progress: @escaping @Sendable (RestoreProgressPhase) -> Void
+    ) throws -> BackupPreview {
+        throw PortabilityError.unsafeFile
+    }
 }
 
 actor LibraryCatalogService: LibraryCataloging {
@@ -493,12 +505,15 @@ actor LibraryCatalogService: LibraryCataloging {
     }
 
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview {
-        let coordinator = LibraryImportCoordinator()
-        let document = try coordinator.parse(url: url)
-        return try coordinator.preview(
-            document: document,
-            mapping: mapping ?? CSVFieldMapping.inferred(from: document.headers),
-            repository: repository
+        try LibraryImportCoordinator().prepare(
+            url: url,
+            mapping: mapping,
+            repository: repository,
+            cancellation: ImportCancellation(
+                isCancelled: {
+                    withUnsafeCurrentTask { $0?.isCancelled ?? false }
+                }
+            )
         )
     }
 
@@ -517,6 +532,10 @@ actor LibraryCatalogService: LibraryCataloging {
         )
     }
 
+    func discardImport(_ preview: ImportPreview) {
+        LibraryImportCoordinator().discard(preview)
+    }
+
     func exportCSV(to url: URL) throws {
         try LibraryExportCoordinator(now: now).exportCSV(repository: repository, to: url)
     }
@@ -525,19 +544,41 @@ actor LibraryCatalogService: LibraryCataloging {
         try LibraryExportCoordinator(now: now).exportMarkdown(repository: repository, to: url)
     }
 
-    func exportImportErrors(_ issues: [ImportIssue], to url: URL) throws {
-        try LibraryExportCoordinator(now: now).exportErrorReport(issues, to: url)
+    func exportImportErrors(_ report: ImportErrorReport, to url: URL) throws {
+        try LibraryExportCoordinator(now: now).exportErrorReport(report, to: url)
+    }
+
+    func discardImportErrors(_ report: ImportErrorReport) {
+        LibraryExportCoordinator(now: now).discardErrorReport(report)
     }
 
     func createBackup(at url: URL) throws -> BackupResult {
-        try backupCoordinator().backup(repository: repository, to: url)
+        try backupCoordinator().backup(
+            repository: repository,
+            to: url,
+            cancellation: RestoreCancellation(
+                isCancelled: {
+                    withUnsafeCurrentTask { $0?.isCancelled ?? false }
+                }
+            )
+        )
     }
 
     func inspectBackup(at url: URL) throws -> BackupPreview {
-        try backupCoordinator().inspect(url)
+        try backupCoordinator().inspect(
+            url,
+            cancellation: RestoreCancellation(
+                isCancelled: {
+                    withUnsafeCurrentTask { $0?.isCancelled ?? false }
+                }
+            )
+        )
     }
 
-    func restoreBackup(at url: URL) throws -> BackupPreview {
+    func restoreBackup(
+        at url: URL,
+        progress: @escaping @Sendable (RestoreProgressPhase) -> Void
+    ) throws -> BackupPreview {
         guard let databaseURL else { throw PortabilityError.unsafeFile }
         let recoveryDirectory = self.recoveryDirectory
             ?? databaseURL.deletingLastPathComponent().appendingPathComponent(
@@ -548,7 +589,13 @@ actor LibraryCatalogService: LibraryCataloging {
             backupURL: url,
             databaseURL: databaseURL,
             repository: &repository,
-            recoveryDirectory: recoveryDirectory
+            recoveryDirectory: recoveryDirectory,
+            cancellation: RestoreCancellation(
+                isCancelled: {
+                    withUnsafeCurrentTask { $0?.isCancelled ?? false }
+                }
+            ),
+            progress: progress
         )
     }
 

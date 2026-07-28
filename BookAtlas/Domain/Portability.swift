@@ -84,6 +84,13 @@ struct CSVDocument: Equatable, Sendable {
     let wasTruncated: Bool
 }
 
+struct CSVStreamSummary: Equatable, Sendable {
+    let headers: [String]
+    let recordCount: Int
+    let hadByteOrderMark: Bool
+    let contentFingerprint: String
+}
+
 final class StreamingCSVParser {
     private let limits: CSVParserLimits
     private let fileManager: FileManager
@@ -94,6 +101,37 @@ final class StreamingCSVParser {
     }
 
     func parse(url: URL) throws -> CSVDocument {
+        _ = try validatedFileValues(url)
+        guard let stream = InputStream(url: url) else { throw CSVParserError.notRegularFile }
+        return try parse(stream: stream, cancellation: { false }, onRecord: nil).document
+    }
+
+    func parse(data: Data) throws -> CSVDocument {
+        guard data.count <= limits.maximumFileBytes else { throw CSVParserError.fileTooLarge }
+        return try parse(
+            stream: InputStream(data: data),
+            cancellation: { false },
+            onRecord: nil
+        ).document
+    }
+
+    func stream(
+        url: URL,
+        cancellation: @escaping @Sendable () -> Bool = { false },
+        onHeader: @escaping ([String]) throws -> Void = { _ in },
+        onRecord: @escaping (CSVRecord) throws -> Void
+    ) throws -> CSVStreamSummary {
+        _ = try validatedFileValues(url)
+        guard let stream = InputStream(url: url) else { throw CSVParserError.notRegularFile }
+        return try parse(
+            stream: stream,
+            cancellation: cancellation,
+            onHeader: onHeader,
+            onRecord: onRecord
+        ).summary
+    }
+
+    private func validatedFileValues(_ url: URL) throws -> URLResourceValues {
         let values = try url.resourceValues(forKeys: [
             .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey
         ])
@@ -102,20 +140,21 @@ final class StreamingCSVParser {
         guard (values.fileSize ?? 0) <= limits.maximumFileBytes else {
             throw CSVParserError.fileTooLarge
         }
-        guard let stream = InputStream(url: url) else { throw CSVParserError.notRegularFile }
-        return try parse(stream: stream)
+        return values
     }
 
-    func parse(data: Data) throws -> CSVDocument {
-        guard data.count <= limits.maximumFileBytes else { throw CSVParserError.fileTooLarge }
-        return try parse(stream: InputStream(data: data))
-    }
-
-    private func parse(stream: InputStream) throws -> CSVDocument {
+    private func parse(
+        stream: InputStream,
+        cancellation: @escaping @Sendable () -> Bool,
+        onHeader: (([String]) throws -> Void)? = nil,
+        onRecord: ((CSVRecord) throws -> Void)?
+    ) throws -> (document: CSVDocument, summary: CSVStreamSummary) {
         stream.open()
         defer { stream.close() }
 
-        var rows: [CSVRecord] = []
+        var headers: [String]?
+        var records: [CSVRecord] = []
+        var recordCount = 0
         var row: [String] = []
         var field = Data()
         var quoted = false
@@ -126,6 +165,7 @@ final class StreamingCSVParser {
         var prefix = Data()
         var hadBOM = false
         var sawAnyByte = false
+        var fingerprint: UInt64 = 14_695_981_039_346_656_037
 
         func decodedField() throws -> String {
             guard field.count <= limits.maximumFieldBytes else {
@@ -148,13 +188,24 @@ final class StreamingCSVParser {
 
         func finishRow() throws {
             try finishField()
-            if !(row.count == 1 && row[0].isEmpty && rows.isEmpty) {
-                rows.append(CSVRecord(lineNumber: recordStartLine, values: row))
+            if !(row.count == 1 && row[0].isEmpty && headers == nil) {
+                if headers == nil {
+                    headers = row
+                    try onHeader?(row)
+                } else {
+                    recordCount += 1
+                    guard recordCount <= limits.maximumRows else {
+                        throw CSVParserError.tooManyRows
+                    }
+                    let record = CSVRecord(lineNumber: recordStartLine, values: row)
+                    if let onRecord {
+                        try onRecord(record)
+                    } else {
+                        records.append(record)
+                    }
+                }
             }
             row.removeAll(keepingCapacity: true)
-            if rows.count > limits.maximumRows + 1 {
-                throw CSVParserError.tooManyRows
-            }
             recordStartLine = physicalLine
         }
 
@@ -214,10 +265,12 @@ final class StreamingCSVParser {
 
         var buffer = [UInt8](repeating: 0, count: 64 * 1_024)
         while stream.hasBytesAvailable {
+            if cancellation() { throw PortabilityError.cancelled }
             let count = stream.read(&buffer, maxLength: buffer.count)
             if count < 0 { throw stream.streamError ?? CSVParserError.notRegularFile }
             if count == 0 { break }
             for byte in buffer.prefix(count) {
+                fingerprint = (fingerprint ^ UInt64(byte)) &* 1_099_511_628_211
                 if prefix.count < 3 {
                     prefix.append(byte)
                     if prefix.count == 3 {
@@ -241,15 +294,23 @@ final class StreamingCSVParser {
         if !field.isEmpty || !row.isEmpty || quoteWasClosed {
             try finishRow()
         }
-        guard let header = rows.first, !header.values.allSatisfy(\.isEmpty) else {
+        guard let headers, !headers.allSatisfy(\.isEmpty) else {
             throw CSVParserError.missingHeader
         }
-        let records = Array(rows.dropFirst())
-        return CSVDocument(
-            headers: header.values,
-            records: records,
+        let summary = CSVStreamSummary(
+            headers: headers,
+            recordCount: recordCount,
             hadByteOrderMark: hadBOM,
-            wasTruncated: false
+            contentFingerprint: String(fingerprint, radix: 16)
+        )
+        return (
+            CSVDocument(
+                headers: headers,
+                records: records,
+                hadByteOrderMark: hadBOM,
+                wasTruncated: false
+            ),
+            summary
         )
     }
 }
@@ -276,6 +337,31 @@ struct PreparedImportRow: Equatable, Sendable {
     let sources: [String]
     let issues: [ImportIssue]
     let duplicateCandidates: [DuplicateCandidate]
+    let duplicateMatches: [ImportDuplicateMatch]
+}
+
+enum ImportDuplicateScope: Equatable, Sendable {
+    case existingLibrary
+    case currentBatch(earlierLine: Int)
+}
+
+struct ImportDuplicateMatch: Equatable, Sendable {
+    let scope: ImportDuplicateScope
+    let confidence: DuplicateConfidence
+}
+
+struct ImportStagingReference: Equatable, Sendable {
+    let directoryURL: URL
+    let recordsURL: URL
+    let token: UUID
+    let sourceFingerprint: String
+    let mappingFingerprint: String
+    let rowCount: Int
+}
+
+struct ImportErrorReport: Equatable, Sendable {
+    let fileURL: URL
+    let issueCount: Int
 }
 
 struct ImportPreview: Equatable, Sendable {
@@ -291,8 +377,9 @@ struct ImportPreview: Equatable, Sendable {
     let mapping: CSVFieldMapping
     let availableHeaders: [String]
     let wasTruncated: Bool
-    let preparedRows: [PreparedImportRow]
     let issues: [ImportIssue]
+    let issuesWereTruncated: Bool
+    let staging: ImportStagingReference
 }
 
 enum ImportDuplicatePolicy: String, CaseIterable, Sendable {
@@ -305,6 +392,7 @@ struct ImportResult: Equatable, Sendable {
     let warnings: Int
     let failed: Int
     let duplicateRows: Int
+    let errorReport: ImportErrorReport?
 }
 
 struct ExportBookRecord: Equatable, Sendable {
@@ -339,12 +427,34 @@ enum PortabilityError: Error, Equatable {
     case unsupportedSchemaVersion(Int)
     case invalidManifest
     case corruptDatabase
+    case invalidBackupSchema
+    case backupTooLarge
     case backupFailed
     case insufficientDiskSpace
+    case staleImportPreview
     case replacementFailed
     case restoreInterrupted
     case restoreFailed
     case reconnectFailed
+    case recoveryRequired
+}
+
+enum RestoreProgressPhase: Equatable, Sendable {
+    case inspecting
+    case creatingRecoveryCopy
+    case staging
+    case migrating
+    case safeReplacement
+    case reconnecting
+
+    var allowsCancellation: Bool {
+        switch self {
+        case .inspecting, .creatingRecoveryCopy, .staging, .migrating:
+            true
+        case .safeReplacement, .reconnecting:
+            false
+        }
+    }
 }
 
 enum CSVFormulaSafety {

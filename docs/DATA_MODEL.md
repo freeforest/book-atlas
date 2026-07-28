@@ -86,7 +86,7 @@ Merge retains the chosen target UUID, takes the earlier `createdAt`, writes the 
 
 Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production registry currently ends at version 4.
 
-Prompt 7 backups record both backup format version 1 and the actual schema version. Restore accepts supported schemas 1–4, stages and migrates older snapshots through the same registry, and rejects future schemas. CSV and Markdown format versions are independent of SQLite schema version; see `docs/FORMATS/PORTABILITY.md`.
+Prompt 7 backups record both backup format version 1 and the actual schema version. Restore accepts supported schemas 1–4, stages and migrates older snapshots through the same registry, and rejects future schemas. Before inspection can become a restore preview, the backup must have migration history equal to `user_version`, every required table/column/key/constraint, no `foreign_key_check` result, and domain-decodable books, organizations, joins, links, relations, duplicate indexes, and ignored pairs. The validator runs again after migration and on the installed file before reconnect. Prompt 7 keeps the production schema at version 4; its import staging metadata and recovery marker are temporary operation formats, not schema tables. CSV and Markdown format versions are independent of SQLite schema version; see `docs/FORMATS/PORTABILITY.md`.
 
 ## Test data
 

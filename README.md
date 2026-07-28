@@ -4,9 +4,9 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-Prompt 6 passed independent acceptance. Prompt 7 implementation is complete in the working tree and awaiting independent review. The library supports local book CRUD, search/filter/sort, organization, explainable duplicate review and transactional merging, plus user-selected CSV import, Markdown/CSV export, and versioned full-database backup and restore.
+Prompt 6 passed independent acceptance. Prompt 7 NO-GO closure implementation is complete in the working tree; its final full UI rerun and independent re-review are pending. The library supports local book CRUD, search/filter/sort, organization, explainable duplicate review and transactional merging, plus user-selected CSV import, Markdown/CSV export, and versioned full-database backup and restore.
 
-Import previews and field mapping do not write the library. Confirmed imports reuse Prompt 6 duplicate rules and never overwrite or automatically merge candidates. Backups use SQLite's online backup API and restore requires validation, preview, explicit confirmation, a verified recovery copy, and rollback. Prompt 8 graph implementation and external-link actions have not been added.
+Import previews and field mapping use bounded temporary disk staging and do not write the library. They identify Exact/Strong duplicates against the current library and earlier batch rows; confirmed import rechecks and never overwrites or automatically merges candidates. Backups use SQLite's online backup API and restore requires physical plus application-schema validation, preview, explicit confirmation, a verified recovery copy, and process-interruption-safe rollback/restart recovery. Prompt 8 graph implementation and external-link actions have not been added.
 
 ## Product boundaries
 

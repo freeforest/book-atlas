@@ -1,3 +1,4 @@
+import SQLite3
 import XCTest
 @testable import BookAtlas
 
@@ -72,6 +73,76 @@ final class BackupRestoreTests: XCTestCase {
         let coordinator = LibraryBackupCoordinator()
         _ = try coordinator.backup(repository: repository, to: backupURL)
         XCTAssertEqual(try coordinator.inspect(backupURL).bookCount, 1)
+    }
+
+    func testSchemaValidationReadsEveryPersistedRelationshipFamilyAndDuplicateIndex() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sourceURL = directory.appendingPathComponent("complete-source.sqlite")
+        let source = try BookRepository(databaseURL: sourceURL)
+        let first = try source.create(
+            BookDraft(title: "《完整关系甲》", author: "虚构作者甲"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let second = try source.create(
+            BookDraft(title: "《完整关系乙》", author: "虚构作者乙"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let tag = try source.createTag(FictionalLibraryFixtures.tag())
+        let collection = try source.createCollection(FictionalLibraryFixtures.collection())
+        let recommendation = try source.createSource(FictionalLibraryFixtures.source())
+        try source.attach(tagID: tag.id, toBookID: first.id)
+        try source.add(bookID: first.id, toCollectionID: collection.id)
+        try source.attach(sourceID: recommendation.id, toBookID: first.id)
+        try source.addExternalLink(try ExternalLink(
+            bookID: first.id,
+            kind: .web,
+            label: "虚构详情",
+            value: "https://example.invalid/complete",
+            createdAt: FictionalLibraryFixtures.timestamp
+        ))
+        try source.addManualRelation(try ManualBookRelation(
+            sourceBookID: first.id,
+            targetBookID: second.id,
+            kind: .related,
+            note: "固定虚构备注",
+            createdAt: FictionalLibraryFixtures.timestamp
+        ))
+        try source.ignoreDuplicatePair(
+            first.id,
+            second.id,
+            disposition: .notDuplicate,
+            at: FictionalLibraryFixtures.timestamp
+        )
+
+        let backupURL = directory.appendingPathComponent("complete.bookatlasbackup")
+        let coordinator = LibraryBackupCoordinator()
+        _ = try coordinator.backup(repository: source, to: backupURL)
+        XCTAssertEqual(try coordinator.inspect(backupURL).bookCount, 2)
+
+        let liveURL = directory.appendingPathComponent("restored.sqlite")
+        var live = try BookRepository(databaseURL: liveURL)
+        _ = try coordinator.restore(
+            backupURL: backupURL,
+            databaseURL: liveURL,
+            repository: &live,
+            recoveryDirectory: directory.appendingPathComponent("recovery")
+        )
+        XCTAssertEqual(try live.tags(forBookID: first.id).map(\.name), [tag.name])
+        XCTAssertEqual(
+            try live.collections(forBookID: first.id).map(\.name),
+            [collection.name]
+        )
+        XCTAssertEqual(
+            try live.sources(forBookID: first.id).map(\.name),
+            [recommendation.name]
+        )
+        XCTAssertEqual(try live.externalLinks(forBookID: first.id).count, 1)
+        XCTAssertEqual(try live.manualRelations(forBookID: first.id).count, 1)
+        XCTAssertEqual(
+            try live.ignoredDuplicatePair(between: first.id, and: second.id)?.disposition,
+            .notDuplicate
+        )
     }
 
     func testRestoreCreatesRecoveryCopyReplacesDataAndReopensConnection() throws {
@@ -227,6 +298,86 @@ final class BackupRestoreTests: XCTestCase {
         }
     }
 
+    func testApplicationSchemaValidationRejectsStructurallyIncompleteAndInvalidBackupsBeforeClosingLiveLibrary() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let valid = try makeBackup(
+            in: directory,
+            title: "《完整结构基准》",
+            filename: "valid-schema.bookatlasbackup"
+        )
+        let cases: [(String, (SQLiteDatabase) throws -> Void)] = [
+            ("missing-core-table", { database in
+                try database.execute("DROP TABLE manual_book_relations")
+            }),
+            ("missing-required-column", { database in
+                try database.execute("ALTER TABLE books DROP COLUMN note")
+            }),
+            ("invalid-domain-enum", { database in
+                try database.execute("PRAGMA ignore_check_constraints = ON")
+                try database.execute("UPDATE books SET reading_status = 'impossible_state'")
+            }),
+            ("invalid-uuid", { database in
+                try database.execute(
+                    """
+                    INSERT INTO tags (id, name, created_at, updated_at)
+                    VALUES ('not-a-uuid', '虚构非法标识标签', ?, ?)
+                    """,
+                    bindings: [
+                        .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp)),
+                        .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp))
+                    ]
+                )
+            }),
+            ("foreign-key-orphan", { database in
+                try database.execute("PRAGMA foreign_keys = OFF")
+                try database.execute(
+                    "INSERT INTO book_tags (book_id, tag_id) VALUES (?, ?)",
+                    bindings: [
+                        .text("00000000-0000-0000-0000-000000009901"),
+                        .text("00000000-0000-0000-0000-000000009902")
+                    ]
+                )
+            }),
+            ("migration-history-mismatch", { database in
+                try database.execute("DELETE FROM schema_migrations WHERE version = 4")
+            })
+        ]
+
+        for (name, mutate) in cases {
+            let backup = directory.appendingPathComponent("\(name).bookatlasbackup")
+            try FileManager.default.copyItem(at: valid, to: backup)
+            let database = try SQLiteDatabase(path: backup.path)
+            try mutate(database)
+            XCTAssertTrue(try database.integrityCheck(), "\(name) must remain physically valid")
+            XCTAssertEqual(try database.schemaVersion(), 4)
+            try database.close()
+
+            let liveURL = directory.appendingPathComponent("\(name)-live.sqlite")
+            var live = try BookRepository(databaseURL: liveURL)
+            _ = try live.create(BookDraft(title: "《原库 \(name)》", author: "虚构守护者"))
+            var didClose = false
+            let coordinator = LibraryBackupCoordinator(injectFailure: { point in
+                if point == .afterConnectionClose { didClose = true }
+            })
+
+            XCTAssertThrowsError(
+                try coordinator.restore(
+                    backupURL: backup,
+                    databaseURL: liveURL,
+                    repository: &live,
+                    recoveryDirectory: directory.appendingPathComponent("\(name)-recovery")
+                ),
+                name
+            ) {
+                XCTAssertEqual($0 as? PortabilityError, .invalidBackupSchema, name)
+            }
+            XCTAssertFalse(didClose, "\(name) reached the close boundary")
+            XCTAssertEqual(try live.allBooks().map(\.title), ["《原库 \(name)》"])
+            _ = try live.create(BookDraft(title: "《仍可写 \(name)》", author: "虚构守护者"))
+        }
+    }
+
     func testReconnectFailureHasExplicitErrorAfterOriginalIsPutBack() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -274,6 +425,207 @@ final class BackupRestoreTests: XCTestCase {
             XCTAssertEqual($0 as? PortabilityError, .insufficientDiskSpace)
         }
         XCTAssertEqual(try live.allBooks().map(\.title), ["《空间不足时保留》"])
+    }
+
+    func testInterruptedReplacementProtocolRecoversDeterministicallyAtEveryPersistentBoundary() throws {
+        let scenarios: [(RestoreInjectionPoint, String)] = [
+            (.afterConnectionClose, "《中断前原库》"),
+            (.afterOriginalPreparedForReplacement, "《中断前原库》"),
+            (.afterReplacement, "《中断后新库》")
+        ]
+
+        for (point, expectedTitle) in scenarios {
+            let directory = try temporaryDirectory()
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let liveURL = directory.appendingPathComponent("live.sqlite")
+            var live = try BookRepository(databaseURL: liveURL)
+            _ = try live.create(BookDraft(title: "《中断前原库》", author: "虚构守护者"))
+            let backup = try makeBackup(
+                in: directory,
+                title: "《中断后新库》",
+                filename: "incoming.bookatlasbackup"
+            )
+            let recoveryDirectory = directory.appendingPathComponent("recovery")
+            let interrupted = LibraryBackupCoordinator(simulatedTerminationPoint: point)
+
+            XCTAssertThrowsError(
+                try interrupted.restore(
+                    backupURL: backup,
+                    databaseURL: liveURL,
+                    repository: &live,
+                    recoveryDirectory: recoveryDirectory
+                )
+            ) {
+                XCTAssertEqual($0 as? PortabilityError, .restoreInterrupted)
+            }
+            XCTAssertTrue(
+                FileManager.default.fileExists(
+                    atPath: directory
+                        .appendingPathComponent(LibraryBackupCoordinator.restoreStateFilename).path
+                )
+            )
+
+            let restarted = LibraryBackupCoordinator()
+            try restarted.recoverInterruptedRestore(databaseURL: liveURL)
+            let reopened = try BookRepository(databaseURL: liveURL)
+            XCTAssertEqual(try reopened.allBooks().map(\.title), [expectedTitle])
+            _ = try reopened.create(BookDraft(title: "《重启后可写》", author: "虚构守护者"))
+            XCTAssertEqual(
+                try FileManager.default.contentsOfDirectory(
+                    at: recoveryDirectory,
+                    includingPropertiesForKeys: nil
+                ).count,
+                1
+            )
+            let leftovers = try FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil
+            ).map(\.lastPathComponent)
+            XCTAssertFalse(leftovers.contains(LibraryBackupCoordinator.restoreStateFilename))
+            XCTAssertFalse(leftovers.contains { $0.hasPrefix(".book-atlas-restore-old-") })
+            XCTAssertFalse(leftovers.contains { $0.hasPrefix(".book-atlas-restore-new-") })
+        }
+    }
+
+    func testCancellationBeforeSafeReplacementLeavesLiveLibraryOpenAndUnchanged() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let liveURL = directory.appendingPathComponent("live.sqlite")
+        var live = try BookRepository(databaseURL: liveURL)
+        _ = try live.create(BookDraft(title: "《取消时保留》", author: "虚构守护者"))
+        let backup = try makeBackup(
+            in: directory,
+            title: "《不应安装》",
+            filename: "cancel.bookatlasbackup"
+        )
+        let cancellation = CancellationProbe()
+        let phases = RestorePhaseProbe()
+
+        XCTAssertThrowsError(
+            try LibraryBackupCoordinator().restore(
+                backupURL: backup,
+                databaseURL: liveURL,
+                repository: &live,
+                recoveryDirectory: directory.appendingPathComponent("recovery"),
+                cancellation: RestoreCancellation(isCancelled: { cancellation.value }),
+                progress: { phase in
+                    phases.append(phase)
+                    if phase == .staging { cancellation.cancel() }
+                }
+            )
+        ) {
+            XCTAssertEqual($0 as? PortabilityError, .cancelled)
+        }
+        XCTAssertTrue(phases.contains(.creatingRecoveryCopy))
+        XCTAssertTrue(phases.contains(.staging))
+        XCTAssertFalse(phases.contains(.safeReplacement))
+        XCTAssertEqual(try live.allBooks().map(\.title), ["《取消时保留》"])
+        _ = try live.create(BookDraft(title: "《取消后可写》", author: "虚构守护者"))
+        XCTAssertFalse(
+            try FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil
+            ).contains {
+                $0.lastPathComponent.hasPrefix(".book-atlas-restore-new-")
+                    || $0.lastPathComponent == LibraryBackupCoordinator.restoreStateFilename
+            }
+        )
+    }
+
+    func testOversizedBackupAndRealWriteSpaceErrorsAreMappedBeforeReplacement() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let oversized = directory.appendingPathComponent("oversized.bookatlasbackup")
+        XCTAssertTrue(FileManager.default.createFile(atPath: oversized.path, contents: nil))
+        let handle = try FileHandle(forWritingTo: oversized)
+        try handle.truncate(atOffset: UInt64(LibraryBackupCoordinator.maximumBackupBytes + 1))
+        try handle.close()
+        XCTAssertThrowsError(try LibraryBackupCoordinator().inspect(oversized)) {
+            XCTAssertEqual($0 as? PortabilityError, .backupTooLarge)
+        }
+
+        let errors: [(String, Error)] = [
+            ("cocoa", NSError(
+                domain: NSCocoaErrorDomain,
+                code: CocoaError.Code.fileWriteOutOfSpace.rawValue
+            )),
+            ("posix", NSError(domain: NSPOSIXErrorDomain, code: Int(ENOSPC))),
+            ("sqlite", SQLiteDatabaseError.executionFailed(SQLITE_FULL))
+        ]
+        for (name, injectedError) in errors {
+            let scenario = directory.appendingPathComponent(name, isDirectory: true)
+            try FileManager.default.createDirectory(
+                at: scenario,
+                withIntermediateDirectories: true
+            )
+            let liveURL = scenario.appendingPathComponent("live.sqlite")
+            var live = try BookRepository(databaseURL: liveURL)
+            _ = try live.create(BookDraft(title: "《空间错误原库》", author: "虚构守护者"))
+            let backup = try makeBackup(
+                in: scenario,
+                title: "《空间错误目标》",
+                filename: "space-error.bookatlasbackup"
+            )
+            let coordinator = LibraryBackupCoordinator(injectedSystemError: { operation in
+                operation == .stageRestore ? injectedError : nil
+            })
+            XCTAssertThrowsError(
+                try coordinator.restore(
+                    backupURL: backup,
+                    databaseURL: liveURL,
+                    repository: &live,
+                    recoveryDirectory: scenario.appendingPathComponent("recovery")
+                ),
+                name
+            ) {
+                XCTAssertEqual($0 as? PortabilityError, .insufficientDiskSpace, name)
+            }
+            XCTAssertEqual(try live.allBooks().map(\.title), ["《空间错误原库》"], name)
+            _ = try live.create(
+                BookDraft(title: "《空间错误后仍可写》", author: "虚构守护者")
+            )
+            let leftovers = try FileManager.default.contentsOfDirectory(
+                at: scenario,
+                includingPropertiesForKeys: nil
+            ).map(\.lastPathComponent)
+            XCTAssertFalse(
+                leftovers.contains { $0.hasPrefix(".book-atlas-restore-new-") },
+                name
+            )
+            XCTAssertFalse(
+                leftovers.contains(LibraryBackupCoordinator.restoreStateFilename),
+                name
+            )
+            XCTAssertEqual(
+                try FileManager.default.contentsOfDirectory(
+                    at: scenario.appendingPathComponent("recovery"),
+                    includingPropertiesForKeys: nil
+                ).count,
+                1,
+                "\(name) keeps one verified recovery copy"
+            )
+        }
+    }
+
+    func testCapacityPreflightRejectsBackupBeforeCreatingTemporarySnapshot() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try BookRepository(
+            databaseURL: directory.appendingPathComponent("library.sqlite")
+        )
+        _ = try repository.create(BookDraft(title: "《容量预检》", author: "虚构守护者"))
+        let destination = directory.appendingPathComponent("no-space.bookatlasbackup")
+        let coordinator = LibraryBackupCoordinator(availableCapacity: { _ in 0 })
+        XCTAssertThrowsError(try coordinator.backup(repository: repository, to: destination)) {
+            XCTAssertEqual($0 as? PortabilityError, .insufficientDiskSpace)
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: destination.path))
+        XCTAssertFalse(
+            try FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: nil
+            ).contains { $0.lastPathComponent.hasPrefix(".bookatlas-backup-") }
+        )
     }
 
     func testRestoreMigratesSchemaThreeBackupToCurrentSchemaFour() throws {
@@ -328,5 +680,31 @@ final class BackupRestoreTests: XCTestCase {
         )
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
         return url
+    }
+}
+
+private final class CancellationProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var cancelled = false
+
+    var value: Bool {
+        lock.withLock { cancelled }
+    }
+
+    func cancel() {
+        lock.withLock { cancelled = true }
+    }
+}
+
+private final class RestorePhaseProbe: @unchecked Sendable {
+    private let lock = NSLock()
+    private var phases: [RestoreProgressPhase] = []
+
+    func append(_ phase: RestoreProgressPhase) {
+        lock.withLock { phases.append(phase) }
+    }
+
+    func contains(_ phase: RestoreProgressPhase) -> Bool {
+        lock.withLock { phases.contains(phase) }
     }
 }

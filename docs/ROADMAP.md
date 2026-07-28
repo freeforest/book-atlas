@@ -33,7 +33,7 @@ Exit condition: duplicate candidates can be explained, reviewed, ignored, or mer
 
 ### Milestone 4 — portability and exploration
 
-- **Prompt 7:** implementation and local validation complete for import, export, backup, and restore; independent review pending.
+- **Prompt 7:** NO-GO closure implementation plus build/unit validation complete for bounded staged import, export, application-schema-validated backup, and interruption-safe restore; final full UI rerun and independent re-review pending.
 - **Prompt 8:** bounded local relationship graph.
 - **Prompt 9:** only the Apple Books and external-link behaviors proven by experiments.
 

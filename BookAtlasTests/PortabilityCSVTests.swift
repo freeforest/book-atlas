@@ -97,6 +97,13 @@ final class PortabilityCSVTests: XCTestCase {
         XCTAssertEqual(preview.newTagCount, 1)
         XCTAssertEqual(preview.newCollectionCount, 1)
         XCTAssertEqual(preview.newSourceCount, 1)
+        XCTAssertEqual(
+            preview.sampleRows[0].duplicateMatches.first?.scope,
+            .existingLibrary
+        )
+        XCTAssertTrue(
+            preview.sampleRows[0].issues.contains { $0.code == "duplicate_existing_library" }
+        )
         XCTAssertEqual(try repository.allBooks().count, 1, "Preview must not write")
     }
 
@@ -114,7 +121,7 @@ final class PortabilityCSVTests: XCTestCase {
         )
         XCTAssertTrue(preview.wasTruncated)
         XCTAssertEqual(preview.sampleRows.count, 20)
-        XCTAssertEqual(preview.preparedRows.count, 21)
+        XCTAssertEqual(preview.staging.rowCount, 21)
         XCTAssertTrue(try repository.allBooks().isEmpty)
     }
 
@@ -147,6 +154,155 @@ final class PortabilityCSVTests: XCTestCase {
         XCTAssertEqual(try repository.tags(forBookID: imported.id).count, 1)
         XCTAssertEqual(try repository.collections(forBookID: imported.id).count, 1)
         XCTAssertEqual(try repository.sources(forBookID: imported.id).count, 1)
+    }
+
+    func testPreviewDetectsExactAndStrongDuplicatesWithinCurrentBatchInDeterministicOrder() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try BookRepository.inMemory()
+        let csvURL = directory.appendingPathComponent("batch-duplicates.csv")
+        try Data(
+            """
+            format_version,title,author,isbn,tags,collections,sources
+            bookatlas-csv/1,《ISBN 基准》,虚构甲,978-0-306-40615-7,保留标签,保留书单,保留来源
+            bookatlas-csv/1,《ISBN 变化标题》,虚构乙,9780306406157,跳过标签,跳过书单,跳过来源
+            bookatlas-csv/1,《强匹配港湾》,虚构丙,,第二标签,第二书单,第二来源
+            bookatlas-csv/1,强匹配港湾,虚构丙,,另一个跳过标签,另一个跳过书单,另一个跳过来源
+            bookatlas-csv/1,《完全不同》,虚构丁,,第三标签,第三书单,第三来源
+            """.utf8
+        ).write(to: csvURL)
+        let coordinator = LibraryImportCoordinator()
+        let preview = try coordinator.prepare(
+            url: csvURL,
+            mapping: nil,
+            repository: repository
+        )
+
+        XCTAssertEqual(preview.totalRows, 5)
+        XCTAssertEqual(preview.importableRows, 3)
+        XCTAssertEqual(preview.warningRows, 2)
+        XCTAssertEqual(preview.errorRows, 0)
+        XCTAssertEqual(preview.potentialDuplicateRows, 2)
+        XCTAssertEqual(preview.newTagCount, 3)
+        XCTAssertEqual(preview.newCollectionCount, 3)
+        XCTAssertEqual(preview.newSourceCount, 3)
+        XCTAssertEqual(try repository.allBooks().count, 0, "Preview must never write")
+
+        let exact = preview.sampleRows[1]
+        XCTAssertEqual(
+            exact.duplicateMatches,
+            [ImportDuplicateMatch(scope: .currentBatch(earlierLine: 2), confidence: .exact)]
+        )
+        XCTAssertTrue(exact.issues.contains { $0.code == "duplicate_current_batch" })
+        let strong = preview.sampleRows[3]
+        XCTAssertEqual(
+            strong.duplicateMatches,
+            [ImportDuplicateMatch(scope: .currentBatch(earlierLine: 4), confidence: .strong)]
+        )
+
+        let result = try coordinator.execute(preview: preview, repository: repository)
+        XCTAssertEqual(result.imported, preview.importableRows)
+        XCTAssertEqual(result.skipped, preview.potentialDuplicateRows)
+        XCTAssertEqual(result.duplicateRows, preview.potentialDuplicateRows)
+        XCTAssertEqual(try repository.allBooks().count, 3)
+        XCTAssertEqual(try repository.tagSummaries().count, 3)
+        XCTAssertEqual(try repository.collectionSummaries().count, 3)
+        XCTAssertEqual(try repository.sourceSummaries().count, 3)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: preview.staging.directoryURL.path))
+
+        let report = try XCTUnwrap(result.errorReport)
+        XCTAssertEqual(report.issueCount, 2)
+        let stagedIssues = try String(contentsOf: report.fileURL, encoding: .utf8)
+        XCTAssertTrue(stagedIssues.contains(#""code":"duplicate_at_execution""#))
+        XCTAssertFalse(stagedIssues.hasPrefix("row,field,code"))
+        let savedReport = directory.appendingPathComponent("actual-import-errors.csv")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: savedReport.path))
+        try LibraryExportCoordinator().exportErrorReport(report, to: savedReport)
+        let reportText = try String(contentsOf: savedReport, encoding: .utf8)
+        XCTAssertEqual(
+            reportText.components(separatedBy: "duplicate_at_execution").count - 1,
+            2
+        )
+        XCTAssertFalse(reportText.contains("ISBN 变化标题"))
+        XCTAssertFalse(reportText.contains("另一个跳过标签"))
+    }
+
+    func testDuplicateIntroducedAfterPreviewIsRecheckedAndIncludedInActualReport() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try BookRepository.inMemory()
+        let csvURL = directory.appendingPathComponent("changed-library.csv")
+        try Data(
+            """
+            format_version,title,author,isbn
+            bookatlas-csv/1,《预览后变化》,虚构作者,978-0-306-40615-7
+            """.utf8
+        ).write(to: csvURL)
+        let coordinator = LibraryImportCoordinator()
+        let preview = try coordinator.prepare(url: csvURL, mapping: nil, repository: repository)
+
+        XCTAssertEqual(preview.importableRows, 1)
+        XCTAssertEqual(preview.potentialDuplicateRows, 0)
+        XCTAssertTrue(try repository.allBooks().isEmpty)
+
+        _ = try repository.create(
+            BookDraft(
+                title: "《执行前新增》",
+                author: "另一位虚构作者",
+                isbn: "9780306406157"
+            )
+        )
+        let result = try coordinator.execute(preview: preview, repository: repository)
+
+        XCTAssertEqual(result.imported, 0)
+        XCTAssertEqual(result.skipped, 1)
+        XCTAssertEqual(result.duplicateRows, 1)
+        XCTAssertEqual(try repository.allBooks().count, 1)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: preview.staging.directoryURL.path))
+
+        let report = try XCTUnwrap(result.errorReport)
+        XCTAssertEqual(report.issueCount, 1)
+        let savedReport = directory.appendingPathComponent("actual-changed-library.csv")
+        try LibraryExportCoordinator().exportErrorReport(report, to: savedReport)
+        let reportText = try String(contentsOf: savedReport, encoding: .utf8)
+        XCTAssertTrue(reportText.contains("duplicate_at_execution"))
+        XCTAssertFalse(reportText.contains("预览后变化"))
+        XCTAssertFalse(reportText.contains("执行前新增"))
+    }
+
+    func testThreeRowBatchMarksOnlyLaterExactRowAndExcludesItsAssociationsFromForecast() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try BookRepository.inMemory()
+        let csvURL = directory.appendingPathComponent("three-rows.csv")
+        try Data(
+            """
+            format_version,title,author,isbn,tags,collections,sources
+            bookatlas-csv/1,《第一本》,虚构甲,,标签甲,书单甲,来源甲
+            bookatlas-csv/1,《第二本》,虚构乙,978-1-4028-9462-6,标签乙,书单乙,来源乙
+            bookatlas-csv/1,《第三行重复第二本》,虚构丙,9781402894626,不应新建标签,不应新建书单,不应新建来源
+            """.utf8
+        ).write(to: csvURL)
+        let coordinator = LibraryImportCoordinator()
+        let preview = try coordinator.prepare(url: csvURL, mapping: nil, repository: repository)
+        defer {
+            if FileManager.default.fileExists(atPath: preview.staging.directoryURL.path) {
+                coordinator.discard(preview)
+            }
+        }
+
+        XCTAssertEqual(preview.importableRows, 2)
+        XCTAssertEqual(preview.potentialDuplicateRows, 1)
+        XCTAssertEqual(preview.newTagCount, 2)
+        XCTAssertEqual(preview.newCollectionCount, 2)
+        XCTAssertEqual(preview.newSourceCount, 2)
+        XCTAssertTrue(preview.sampleRows[0].duplicateMatches.isEmpty)
+        XCTAssertTrue(preview.sampleRows[1].duplicateMatches.isEmpty)
+        XCTAssertEqual(
+            preview.sampleRows[2].duplicateMatches,
+            [ImportDuplicateMatch(scope: .currentBatch(earlierLine: 3), confidence: .exact)]
+        )
+        XCTAssertTrue(try repository.allBooks().isEmpty)
     }
 
     func testFatalInterruptionRollsBackEveryImportedRow() throws {

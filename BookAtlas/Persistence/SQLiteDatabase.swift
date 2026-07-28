@@ -93,6 +93,18 @@ final class SQLiteDatabase {
         try query("PRAGMA integrity_check") { row in row.string(at: 0) }.first == "ok"
     }
 
+    func foreignKeyCheck() throws -> Bool {
+        try query("PRAGMA foreign_key_check") { row in
+            (row.string(at: 0), row.integer(at: 1), row.string(at: 2), row.integer(at: 3))
+        }.isEmpty
+    }
+
+    func storageBytes() throws -> Int64 {
+        let pageCount = try scalarInt("PRAGMA page_count") ?? 0
+        let pageSize = try scalarInt("PRAGMA page_size") ?? 0
+        return pageCount * pageSize
+    }
+
     func journalMode() throws -> String {
         try query("PRAGMA journal_mode") { row in row.string(at: 0) }
             .compactMap { $0 }
@@ -106,7 +118,10 @@ final class SQLiteDatabase {
         }
     }
 
-    func onlineBackup(to destinationPath: String) throws {
+    func onlineBackup(
+        to destinationPath: String,
+        progress: () throws -> Void = {}
+    ) throws {
         guard let sourceHandle = handle else { throw SQLiteDatabaseError.closed }
         var destinationHandle: OpaquePointer?
         let openResult = sqlite3_open_v2(
@@ -124,7 +139,19 @@ final class SQLiteDatabase {
         guard let backup = sqlite3_backup_init(destinationHandle, "main", sourceHandle, "main") else {
             throw SQLiteDatabaseError.backupFailed(sqlite3_errcode(destinationHandle))
         }
-        let result = sqlite3_backup_step(backup, -1)
+        var result = SQLITE_OK
+        do {
+            repeat {
+                try progress()
+                result = sqlite3_backup_step(backup, 128)
+                if result == SQLITE_BUSY || result == SQLITE_LOCKED {
+                    sqlite3_sleep(5)
+                }
+            } while result == SQLITE_OK || result == SQLITE_BUSY || result == SQLITE_LOCKED
+        } catch {
+            _ = sqlite3_backup_finish(backup)
+            throw error
+        }
         let finishResult = sqlite3_backup_finish(backup)
         guard result == SQLITE_DONE, finishResult == SQLITE_OK else {
             throw SQLiteDatabaseError.backupFailed(

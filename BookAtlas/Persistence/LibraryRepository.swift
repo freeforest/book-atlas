@@ -293,6 +293,14 @@ final class BookRepository {
         try database.integrityCheck()
     }
 
+    func foreignKeyCheck() throws -> Bool {
+        try database.foreignKeyCheck()
+    }
+
+    func storageBytes() throws -> Int64 {
+        try database.storageBytes()
+    }
+
     func journalMode() throws -> String {
         try database.journalMode()
     }
@@ -301,8 +309,11 @@ final class BookRepository {
         try database.checkpointWAL()
     }
 
-    func onlineBackup(to destinationURL: URL) throws {
-        try database.onlineBackup(to: destinationURL.path)
+    func onlineBackup(
+        to destinationURL: URL,
+        progress: () throws -> Void = {}
+    ) throws {
+        try database.onlineBackup(to: destinationURL.path, progress: progress)
     }
 
     func close() throws {

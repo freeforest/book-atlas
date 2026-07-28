@@ -22,6 +22,8 @@ struct DataPortabilityView: View {
                 }
                 if let preview = store.backupPreview {
                     restorePreview(preview)
+                } else if let phase = store.restorePhase {
+                    restoreProgress(phase)
                 }
                 if let message = store.statusMessage {
                     Label(message, systemImage: "checkmark.circle")
@@ -31,6 +33,12 @@ struct DataPortabilityView: View {
                     Label(message, systemImage: "exclamationmark.triangle")
                         .foregroundStyle(.red)
                         .accessibilityIdentifier("portability-error")
+                }
+                if store.hasImportErrorReport {
+                    Button("保存实际导入错误报告…") {
+                        chooseSave(extension: "csv", action: store.saveErrorReport)
+                    }
+                    .accessibilityIdentifier("save-import-errors-button")
                 }
             }
             .padding(BookAtlasDesign.pageSpacing)
@@ -81,6 +89,10 @@ struct DataPortabilityView: View {
                 )
                 Text(preview.wasTruncated ? "屏幕预览已限制；执行仍覆盖所有已解析行。" : "预览未截断。")
                     .accessibilityIdentifier("import-preview-truncation")
+                if preview.issuesWereTruncated {
+                    Text("问题明细仅显示前 \(preview.issues.count) 项；统计覆盖全部已解析行。")
+                        .accessibilityIdentifier("import-issue-truncation")
+                }
 
                 DisclosureGroup("字段映射") {
                     ForEach(ImportField.allCases) { field in
@@ -110,17 +122,22 @@ struct DataPortabilityView: View {
                         .lineLimit(1)
                         .accessibilityIdentifier("import-preview-row-\(index)")
                 }
+                if !preview.issues.isEmpty {
+                    DisclosureGroup("问题明细（\(preview.issues.count)）") {
+                        ForEach(Array(preview.issues.enumerated()), id: \.offset) { index, issue in
+                            Text(
+                                "第 \(issue.lineNumber) 行 · \(issue.field) · \(issue.description)"
+                            )
+                            .accessibilityIdentifier("import-preview-issue-\(index)")
+                        }
+                    }
+                    .accessibilityIdentifier("import-preview-issues")
+                }
 
                 HStack {
                     Button("取消") { store.cancelImport() }
                         .keyboardShortcut(.cancelAction)
                         .accessibilityIdentifier("cancel-import-button")
-                    if !preview.issues.isEmpty {
-                        Button("保存错误报告…") {
-                            chooseSave(extension: "csv", action: store.saveErrorReport)
-                        }
-                        .accessibilityIdentifier("save-import-errors-button")
-                    }
                     Spacer()
                     Button("确认导入") {
                         store.executeImport()
@@ -144,10 +161,24 @@ struct DataPortabilityView: View {
                 Text("确认后，当前书库将被替换。Book Atlas 会先创建并验证恢复前安全副本；失败时回滚。")
                     .foregroundStyle(.red)
                     .accessibilityIdentifier("restore-replacement-warning")
+                if let phase = store.restorePhase {
+                    Text(restorePhaseLabel(phase))
+                        .accessibilityIdentifier("restore-progress-phase")
+                }
+                if store.isSafelyReplacing {
+                    Label("正在安全替换书库；此阶段不能取消或使用 Escape。", systemImage: "lock.shield")
+                        .accessibilityIdentifier("restore-safe-replacement")
+                }
                 HStack {
-                    Button("取消") { store.cancelRestore() }
-                        .keyboardShortcut(.cancelAction)
-                        .accessibilityIdentifier("cancel-restore-button")
+                    if store.canCancelRestore {
+                        Button("取消") { store.cancelRestore() }
+                            .keyboardShortcut(.cancelAction)
+                            .accessibilityIdentifier("cancel-restore-button")
+                    } else {
+                        Button("正在安全替换") {}
+                            .disabled(true)
+                            .accessibilityIdentifier("cancel-restore-button")
+                    }
                     Spacer()
                     Button("确认恢复", role: .destructive) {
                         store.confirmRestore()
@@ -161,6 +192,40 @@ struct DataPortabilityView: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("restore-preview")
+    }
+
+    private func restoreProgress(_ phase: RestoreProgressPhase) -> some View {
+        GroupBox("恢复检查") {
+            HStack {
+                ProgressView()
+                Text(restorePhaseLabel(phase))
+                    .accessibilityIdentifier("restore-progress-phase")
+                Spacer()
+                Button("取消") { store.cancelRestore() }
+                    .keyboardShortcut(.cancelAction)
+                    .disabled(!store.canCancelRestore)
+                    .accessibilityIdentifier("cancel-restore-button")
+            }
+            .padding(.vertical, 6)
+        }
+        .accessibilityIdentifier("restore-progress")
+    }
+
+    private func restorePhaseLabel(_ phase: RestoreProgressPhase) -> String {
+        switch phase {
+        case .inspecting:
+            "正在验证备份；可取消且当前书库尚未更改。"
+        case .creatingRecoveryCopy:
+            "正在创建并验证恢复前副本；可取消且当前书库尚未更改。"
+        case .staging:
+            "正在暂存备份；可取消且当前书库尚未更改。"
+        case .migrating:
+            "正在迁移并验证暂存书库；可取消且当前书库尚未更改。"
+        case .safeReplacement:
+            "正在安全替换书库；此阶段不能取消。"
+        case .reconnecting:
+            "正在验证并重新连接；此阶段不能取消。"
+        }
     }
 
     private func perform(_ action: PortabilityRequestedAction) {

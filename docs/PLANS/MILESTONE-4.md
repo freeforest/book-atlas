@@ -6,7 +6,7 @@ Give the user control of data portability, add bounded relationship exploration,
 
 ## Stages
 
-- Prompt 7: implementation and local validation complete; independent review pending — staged import, explicit export, versioned backup, validated restore, and failure recovery.
+- Prompt 7: NO-GO closure implementation plus build/unit validation complete; final full UI rerun and independent re-review pending — bounded staged import, explicit export, versioned/application-schema-validated backup, and interruption-safe restore.
 - Prompt 8: local relationship graph projection, native rendering, bounded interaction, and accessible alternatives.
 - Prompt 9: Apple Books and external-link behavior supported by Prompt 1 evidence.
 
@@ -19,7 +19,7 @@ Give the user control of data portability, add bounded relationship exploration,
 
 ## Prompt 7 implementation record
 
-- `bookatlas-csv/1` supports streaming UTF-8/BOM parsing, user mapping, bounded preview, row issues, Prompt 6 duplicate reuse, organization deduplication, and one-transaction confirmed import.
+- `bookatlas-csv/1` supports streaming UTF-8/BOM parsing into bounded disk staging, user mapping generations, a 20-row/80-issue presentation bound, existing-library and same-batch Prompt 6 duplicate reuse, organization forecasts/deduplication, one-transaction confirmed import, and a post-execution redacted report.
 - `bookatlas-markdown/1` and CSV export use stable documented escaping; CSV protects six formula prefixes and remains round-trippable.
-- `.bookatlasbackup` version 1 uses SQLite online backup, a path-free manifest, single-file journal mode, integrity verification, non-overwrite output, restore preview, a retained recovery copy, staged migration, connection close/reopen, and rollback.
+- `.bookatlasbackup` version 1 uses SQLite online backup, a path-free manifest, single-file journal mode, physical plus application-schema verification, a 4 GiB limit, capacity/error checks, non-overwrite output, restore preview, a retained recovery copy, staged migration, explicit cancellation boundaries, a path-free process-interruption marker, startup recovery, connection close/reopen, and rollback.
 - Prompt 8 and Prompt 9 remain unimplemented.

@@ -435,6 +435,34 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testSafeReplacementDisablesCancelAndEscapeWhileRemainingAccessible() {
+        let app = launchInMemoryApp(seedSafeReplacement: true)
+        app.typeKey("5", modifierFlags: .command)
+
+        XCTAssertTrue(element("restore-preview", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("restore-safe-replacement", in: app).waitForExistence(timeout: 3))
+        let cancel = element("cancel-restore-button", in: app)
+        XCTAssertTrue(cancel.exists)
+        XCTAssertFalse(cancel.isEnabled)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("restore-preview", in: app).exists)
+        XCTAssertTrue(element("restore-safe-replacement", in: app).exists)
+    }
+
+    @MainActor
+    func testRestoreInspectionIsAccessibleAndCancellableWithEscape() {
+        let app = launchInMemoryApp(seedRestoreInspection: true)
+        app.typeKey("5", modifierFlags: .command)
+
+        XCTAssertTrue(element("restore-progress", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("restore-progress-phase", in: app).exists)
+        XCTAssertTrue(element("cancel-restore-button", in: app).isEnabled)
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("restore-progress", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("portability-status", in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
@@ -444,7 +472,9 @@ final class BookAtlasUITests: XCTestCase {
         seedFictionalBooks: Bool = false,
         seedMergePreviewAssociations: Bool = false,
         seedPortabilityPreview: Bool = false,
-        seedRestorePreview: Bool = false
+        seedRestorePreview: Bool = false,
+        seedSafeReplacement: Bool = false,
+        seedRestoreInspection: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
@@ -459,6 +489,12 @@ final class BookAtlasUITests: XCTestCase {
         }
         if seedRestorePreview {
             app.launchArguments.append("-BookAtlasSeedRestorePreview")
+        }
+        if seedSafeReplacement {
+            app.launchArguments.append("-BookAtlasSeedSafeReplacement")
+        }
+        if seedRestoreInspection {
+            app.launchArguments.append("-BookAtlasSeedRestoreInspection")
         }
         app.launch()
         return app

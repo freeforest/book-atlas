@@ -12,6 +12,7 @@ enum PortabilityRequestedAction: Equatable {
 final class PortabilityStore: ObservableObject {
     @Published private(set) var importPreview: ImportPreview?
     @Published private(set) var backupPreview: BackupPreview?
+    @Published private(set) var restorePhase: RestoreProgressPhase?
     @Published private(set) var isWorking = false
     @Published private(set) var statusMessage: String?
     @Published private(set) var errorMessage: String?
@@ -21,7 +22,21 @@ final class PortabilityStore: ObservableObject {
     private let catalog: (any LibraryCataloging)?
     private var importURL: URL?
     private var backupURL: URL?
+    private var importErrorReport: ImportErrorReport?
     private var task: Task<Void, Never>?
+    private var operationGeneration: UInt64 = 0
+
+    var canCancelRestore: Bool {
+        restorePhase?.allowsCancellation ?? (backupPreview != nil)
+    }
+
+    var isSafelyReplacing: Bool {
+        restorePhase == .safeReplacement || restorePhase == .reconnecting
+    }
+
+    var hasImportErrorReport: Bool {
+        importErrorReport != nil
+    }
 
     init(catalog: (any LibraryCataloging)?) {
         self.catalog = catalog
@@ -36,6 +51,8 @@ final class PortabilityStore: ObservableObject {
     }
 
     func selectImport(_ url: URL) {
+        discardCurrentImportPreview()
+        discardCurrentErrorReport()
         importURL = url
         prepareImport(mapping: nil)
     }
@@ -47,7 +64,9 @@ final class PortabilityStore: ObservableObject {
     }
 
     func cancelImport() {
+        invalidateCurrentOperation()
         task?.cancel()
+        discardCurrentImportPreview()
         importPreview = nil
         importURL = nil
         statusMessage = "已取消导入；书库未更改。"
@@ -56,72 +75,116 @@ final class PortabilityStore: ObservableObject {
 
     func executeImport() {
         guard let catalog, let preview = importPreview else { return }
-        run {
-            let result = try await catalog.executeImport(preview)
-            self.importPreview = nil
-            self.importURL = nil
-            self.libraryRevision &+= 1
-            self.statusMessage = "已导入 \(result.imported) 本；跳过 \(result.skipped) 行，其中重复候选 \(result.duplicateRows) 行。"
-        }
+        start(
+            operation: { _ in try await catalog.executeImport(preview) },
+            apply: { result in
+                self.importPreview = nil
+                self.importURL = nil
+                self.importErrorReport = result.errorReport
+                self.libraryRevision &+= 1
+                self.statusMessage = "已导入 \(result.imported) 本；跳过 \(result.skipped) 行，其中重复 \(result.duplicateRows) 行。"
+            },
+            onFailure: {
+                self.importPreview = nil
+                self.importURL = nil
+            }
+        )
     }
 
     func saveErrorReport(to url: URL) {
-        guard let catalog, let issues = importPreview?.issues else { return }
-        run(url: url) {
-            try await catalog.exportImportErrors(issues, to: url)
-            self.statusMessage = "错误报告已保存。"
-        }
+        guard let catalog, let report = importErrorReport else { return }
+        start(
+            url: url,
+            operation: { _ in
+                try await catalog.exportImportErrors(report, to: url)
+                return ()
+            },
+            apply: { _ in
+                self.importErrorReport = nil
+                self.statusMessage = "实际导入错误报告已保存。"
+            }
+        )
     }
 
     func exportCSV(to url: URL) {
         guard let catalog else { return }
-        run(url: url) {
-            try await catalog.exportCSV(to: url)
-            self.statusMessage = "CSV 已导出。"
-        }
+        start(
+            url: url,
+            operation: { _ in try await catalog.exportCSV(to: url) },
+            apply: { self.statusMessage = "CSV 已导出。" }
+        )
     }
 
     func exportMarkdown(to url: URL) {
         guard let catalog else { return }
-        run(url: url) {
-            try await catalog.exportMarkdown(to: url)
-            self.statusMessage = "Markdown 已导出。"
-        }
+        start(
+            url: url,
+            operation: { _ in try await catalog.exportMarkdown(to: url) },
+            apply: { self.statusMessage = "Markdown 已导出。" }
+        )
     }
 
     func createBackup(at url: URL) {
         guard let catalog else { return }
-        run(url: url) {
-            let result = try await catalog.createBackup(at: url)
-            self.statusMessage = "备份已验证并保存，共 \(result.preview.bookCount) 本书。"
-        }
+        start(
+            url: url,
+            operation: { _ in try await catalog.createBackup(at: url) },
+            apply: {
+                self.statusMessage = "备份已验证并保存，共 \($0.preview.bookCount) 本书。"
+            }
+        )
     }
 
     func selectBackupForRestore(_ url: URL) {
         guard let catalog else { return }
         backupURL = url
-        run(url: url) {
-            self.backupPreview = try await catalog.inspectBackup(at: url)
-        }
+        restorePhase = .inspecting
+        start(
+            url: url,
+            operation: { _ in try await catalog.inspectBackup(at: url) },
+            apply: {
+                self.backupPreview = $0
+                self.restorePhase = nil
+            },
+            onFailure: { self.restorePhase = nil }
+        )
     }
 
     func cancelRestore() {
+        guard canCancelRestore else { return }
+        invalidateCurrentOperation()
         task?.cancel()
         backupPreview = nil
         backupURL = nil
+        restorePhase = nil
         statusMessage = "已取消恢复；当前书库未更改。"
         isWorking = false
     }
 
     func confirmRestore() {
         guard let catalog, let url = backupURL else { return }
-        run(url: url) {
-            let restored = try await catalog.restoreBackup(at: url)
-            self.backupPreview = nil
-            self.backupURL = nil
-            self.libraryRevision &+= 1
-            self.statusMessage = "恢复完成并重新打开书库，共 \(restored.bookCount) 本书。"
-        }
+        start(
+            url: url,
+            operation: { generation in
+                try await catalog.restoreBackup(at: url) { phase in
+                    Task { @MainActor [weak self] in
+                        guard let self,
+                              self.operationGeneration == generation,
+                              self.isWorking
+                        else { return }
+                        self.restorePhase = phase
+                    }
+                }
+            },
+            apply: { restored in
+                self.backupPreview = nil
+                self.backupURL = nil
+                self.restorePhase = nil
+                self.libraryRevision &+= 1
+                self.statusMessage = "恢复完成并重新打开书库，共 \(restored.bookCount) 本书。"
+            },
+            onFailure: { self.restorePhase = nil }
+        )
     }
 
     func waitForPendingWork() async {
@@ -142,7 +205,8 @@ final class PortabilityStore: ObservableObject {
             collections: ["北岸书单"],
             sources: ["纸页来源"],
             issues: [],
-            duplicateCandidates: []
+            duplicateCandidates: [],
+            duplicateMatches: []
         )
         let headers = ["format_version", "title", "author", "tags", "collections", "sources"]
         importPreview = ImportPreview(
@@ -158,8 +222,17 @@ final class PortabilityStore: ObservableObject {
             mapping: .inferred(from: headers),
             availableHeaders: headers,
             wasTruncated: false,
-            preparedRows: [row],
-            issues: []
+            issues: [],
+            issuesWereTruncated: false,
+            staging: ImportStagingReference(
+                directoryURL: FileManager.default.temporaryDirectory,
+                recordsURL: FileManager.default.temporaryDirectory
+                    .appendingPathComponent("bookatlas-ui-preview.jsonl"),
+                token: UUID(uuidString: "00000000-0000-0000-0000-000000000701")!,
+                sourceFingerprint: "ui-preview",
+                mappingFingerprint: "ui-preview",
+                rowCount: 1
+            )
         )
     }
 
@@ -173,18 +246,43 @@ final class PortabilityStore: ObservableObject {
         )
     }
 
-    private func prepareImport(mapping: CSVFieldMapping?) {
-        guard let catalog, let url = importURL else { return }
-        run(url: url) {
-            self.importPreview = try await catalog.prepareImport(from: url, mapping: mapping)
-        }
+    func seedSafeReplacementForUITesting() {
+        seedFictionalRestorePreviewForUITesting()
+        restorePhase = .safeReplacement
+        isWorking = true
     }
 
-    private func run(
+    func seedRestoreInspectionForUITesting() {
+        restorePhase = .inspecting
+        isWorking = true
+    }
+
+    private func prepareImport(mapping: CSVFieldMapping?) {
+        guard let catalog, let url = importURL else { return }
+        let previous = importPreview
+        start(
+            url: url,
+            operation: { _ in try await catalog.prepareImport(from: url, mapping: mapping) },
+            apply: { preview in
+                if let previous, previous.staging != preview.staging {
+                    await catalog.discardImport(previous)
+                }
+                self.importPreview = preview
+            },
+            discardStale: { await catalog.discardImport($0) }
+        )
+    }
+
+    private func start<T: Sendable>(
         url: URL? = nil,
-        _ operation: @escaping @MainActor () async throws -> Void
+        operation: @escaping @MainActor (UInt64) async throws -> T,
+        apply: @escaping @MainActor (T) async -> Void,
+        discardStale: @escaping @MainActor (T) async -> Void = { _ in },
+        onFailure: @escaping @MainActor () -> Void = {}
     ) {
         task?.cancel()
+        operationGeneration &+= 1
+        let generation = operationGeneration
         isWorking = true
         errorMessage = nil
         statusMessage = nil
@@ -192,17 +290,48 @@ final class PortabilityStore: ObservableObject {
             let accessed = url?.startAccessingSecurityScopedResource() ?? false
             defer {
                 if accessed { url?.stopAccessingSecurityScopedResource() }
-                self?.isWorking = false
+                if self?.operationGeneration == generation {
+                    self?.isWorking = false
+                }
             }
             do {
                 try Task.checkCancellation()
-                try await operation()
+                let value = try await operation(generation)
+                guard self?.operationGeneration == generation else {
+                    await discardStale(value)
+                    return
+                }
+                await apply(value)
             } catch is CancellationError {
-                self?.statusMessage = "操作已取消；书库未更改。"
+                guard self?.operationGeneration == generation else { return }
+                onFailure()
+                self?.statusMessage = "已取消且书库未更改。"
+            } catch PortabilityError.cancelled {
+                guard self?.operationGeneration == generation else { return }
+                onFailure()
+                self?.statusMessage = "已取消且书库未更改。"
             } catch {
+                guard self?.operationGeneration == generation else { return }
+                onFailure()
                 self?.errorMessage = Self.userFacingMessage(for: error)
             }
         }
+    }
+
+    private func invalidateCurrentOperation() {
+        operationGeneration &+= 1
+    }
+
+    private func discardCurrentImportPreview() {
+        guard let catalog, let preview = importPreview else { return }
+        Task { await catalog.discardImport(preview) }
+        importPreview = nil
+    }
+
+    private func discardCurrentErrorReport() {
+        guard let catalog, let report = importErrorReport else { return }
+        Task { await catalog.discardImportErrors(report) }
+        importErrorReport = nil
     }
 
     private static func userFacingMessage(for error: Error) -> String {
@@ -213,6 +342,10 @@ final class PortabilityStore: ObservableObject {
             "CSV 格式版本不受支持。"
         case PortabilityError.corruptDatabase:
             "备份完整性检查失败，当前书库未更改。"
+        case PortabilityError.invalidBackupSchema:
+            "备份不是可安全读取的 Book Atlas 数据库，当前书库未更改。"
+        case PortabilityError.backupTooLarge:
+            "备份超过支持的大小上限，尚未执行完整性检查或复制。"
         case PortabilityError.invalidManifest:
             "备份清单无效，当前书库未更改。"
         case PortabilityError.unsupportedBackupFormat:
@@ -229,6 +362,10 @@ final class PortabilityStore: ObservableObject {
             "恢复被中断；原书库已保留或回滚。"
         case PortabilityError.reconnectFailed:
             "恢复失败，且无法重新打开书库；请保留恢复前安全副本并停止编辑。"
+        case PortabilityError.recoveryRequired:
+            "检测到未完成且无法自动判定的恢复状态。请停止编辑并保留当前文件，按恢复指引处理。"
+        case PortabilityError.cancelled:
+            "已取消且书库未更改。"
         case is CSVParserError:
             "CSV 无法安全解析；请检查编码、引号和大小限制。"
         case PortabilityError.missingRequiredMapping:

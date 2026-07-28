@@ -8,6 +8,7 @@ enum LibraryUserFacingError: Error, Equatable {
     case deleteFailed
     case duplicateReviewFailed
     case mergeFailed
+    case restoreRecoveryRequired
     case validation(BookEditorValidationError)
 
     var title: String {
@@ -24,6 +25,8 @@ enum LibraryUserFacingError: Error, Equatable {
             "无法检查重复书籍"
         case .mergeFailed:
             "无法合并书籍"
+        case .restoreRecoveryRequired:
+            "恢复需要人工处理"
         case .validation:
             "请检查填写内容"
         }
@@ -43,6 +46,8 @@ enum LibraryUserFacingError: Error, Equatable {
             "暂时无法读取重复候选；书库内容未被更改。"
         case .mergeFailed:
             "合并未完成，相关书籍和关联均保持原状。"
+        case .restoreRecoveryRequired:
+            "检测到无法自动判定的中断恢复状态。请停止编辑，保留数据库与恢复前副本，并按照恢复指引处理。"
         case let .validation(error):
             error.message
         }
@@ -162,6 +167,9 @@ final class LibraryStore: ObservableObject {
                 )
             } else {
                 let databaseURL = try BookAtlasDatabaseLocation.defaultURL()
+                try LibraryBackupCoordinator().recoverInterruptedRestore(
+                    databaseURL: databaseURL
+                )
                 catalog = LibraryCatalogService(
                     repository: try BookRepository(databaseURL: databaseURL),
                     databaseURL: databaseURL
@@ -174,7 +182,15 @@ final class LibraryStore: ObservableObject {
             if arguments.contains("-BookAtlasSeedRestorePreview") {
                 store.portability.seedFictionalRestorePreviewForUITesting()
             }
+            if arguments.contains("-BookAtlasSeedSafeReplacement") {
+                store.portability.seedSafeReplacementForUITesting()
+            }
+            if arguments.contains("-BookAtlasSeedRestoreInspection") {
+                store.portability.seedRestoreInspectionForUITesting()
+            }
             return store
+        } catch PortabilityError.recoveryRequired {
+            return LibraryStore(initialError: .restoreRecoveryRequired)
         } catch {
             return LibraryStore(initialError: .databaseUnavailable)
         }

@@ -2,7 +2,7 @@
 
 ## Current state
 
-Prompt 6 has passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated rollback-capable restore. Prompt 7 evidence is awaiting independent review. Graph implementation and external-link actions remain unimplemented.
+Prompt 6 has passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore. Its NO-GO closure evidence is awaiting independent re-review. Graph implementation and external-link actions remain unimplemented.
 
 ## Intended shape
 
@@ -30,11 +30,11 @@ The production registry currently advances from version 1 (core tables), through
 
 ## State and concurrency
 
-UI state remains feature-sized: `LibraryStore` is scoped to catalog/editor/duplicate flow, `CatalogOrganizerStore` owns organization state, and `PortabilityStore` owns file-operation presentation. `StreamingCSVParser`, `LibraryImportCoordinator`, `LibraryExportCoordinator`, and `LibraryBackupCoordinator` separate parsing, preview, transactional writes, serialization, and SQLite file lifecycle. SQLite work is serialized by the catalog actor instead of running in SwiftUI. Prompt 8 graph work must retain an explicit background boundary.
+UI state remains feature-sized: `LibraryStore` is scoped to catalog/editor/duplicate flow, `CatalogOrganizerStore` owns organization state, and `PortabilityStore` owns file-operation presentation. `StreamingCSVParser`, `LibraryImportCoordinator`, `LibraryExportCoordinator`, `BookAtlasSchemaValidator`, and `LibraryBackupCoordinator` separate parsing, disk staging, preview, transactional writes, serialization, application-schema validation, and SQLite file lifecycle. Import rows live in a controlled JSON-lines staging file; presentation retains aggregate statistics, at most 20 sample rows, and bounded issue details. A source/mapping fingerprint and operation generation prevent stale mapping tasks from publishing old state. SQLite work is serialized by the catalog actor instead of running in SwiftUI. Prompt 8 graph work must retain an explicit background boundary.
 
 ## Storage and sandboxing
 
-The production database location is `Application Support/BookAtlas/book-atlas.sqlite`; tests use temporary or in-memory stores. Temporary work belongs in system temporary storage and is cleaned on success and failure. Access outside the sandbox starts with `NSOpenPanel` or `NSSavePanel`. Prompt 7 uses transient, balanced security-scoped access and stores no bookmark; see [ADR-0008](DECISIONS/0008-versioned-portability-formats.md).
+The production database location is `Application Support/BookAtlas/book-atlas.sqlite`; tests use temporary or in-memory stores. Temporary import work belongs in system temporary storage and is cleaned on success, cancellation, supersession, and failure. Restore stages same-filesystem old/new databases next to the live path and persists a path-free recovery marker before closing the connection. Startup resolves any marker to a complete schema-valid live, old, or new database before constructing `BookRepository`; ambiguity stops opening instead of creating an empty store. Access outside the sandbox starts with `NSOpenPanel` or `NSSavePanel`. Prompt 7 uses transient, balanced security-scoped access and stores no bookmark; see [ADR-0008](DECISIONS/0008-versioned-portability-formats.md).
 
 App Sandbox is the default. The production entitlement set is App Sandbox plus user-selected read/write files; no network or broad filesystem entitlement is present. Paths and user file content must not appear in logs.
 
