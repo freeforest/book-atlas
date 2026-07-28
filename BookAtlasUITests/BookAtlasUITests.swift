@@ -463,6 +463,123 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testLocalGraphOpensFromDetailExposesConcreteEvidenceAndReturnsToBookDetail() {
+        let app = launchInMemoryApp(seedGraph: true)
+        selectGraphCenter(in: app)
+        element("show-local-graph-button", in: app).click()
+
+        XCTAssertTrue(element("local-graph-page", in: app).waitForExistence(timeout: 3))
+        let relation = element(
+            "graph-relation-00000000-0000-0000-0000-000000000601-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
+        XCTAssertTrue(relation.waitForExistence(timeout: 3))
+        let relationText = accessibilityText(of: relation)
+        for expected in ["同作者", "共同标签", "同一书单", "同一来源", "手动关系", "含备注"] {
+            XCTAssertTrue(relationText.contains(expected), "\(expected): \(relationText)")
+        }
+
+        let directNode = element(
+            "graph-node-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
+        XCTAssertTrue(directNode.waitForExistence(timeout: 3))
+        directNode.click()
+        XCTAssertTrue(app.staticTexts["《雾港直接邻居》"].waitForExistence(timeout: 3))
+        element("graph-open-detail", in: app).click()
+        XCTAssertTrue(element("book-detail-view", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["《雾港直接邻居》"].exists)
+    }
+
+    @MainActor
+    func testLocalGraphKeyboardSelectionTwoLayersFilteringCenterAndReset() {
+        let app = launchInMemoryApp(seedGraph: true)
+        selectGraphCenter(in: app)
+        element("show-local-graph-button", in: app).click()
+        XCTAssertTrue(
+            element("graph-node-00000000-0000-0000-0000-000000000601", in: app)
+                .waitForExistence(timeout: 3)
+        )
+
+        let secondLayer = element(
+            "graph-node-00000000-0000-0000-0000-000000000603",
+            in: app
+        )
+        XCTAssertFalse(secondLayer.exists)
+        element("graph-depth-2", in: app).click()
+        XCTAssertTrue(secondLayer.waitForExistence(timeout: 3))
+
+        let sharedTagFilter = element("graph-filter-sharedTag", in: app)
+        XCTAssertTrue(sharedTagFilter.waitForExistence(timeout: 3))
+        sharedTagFilter.click()
+        XCTAssertTrue(secondLayer.waitForNonExistence(timeout: 3))
+
+        let centerNode = element(
+            "graph-node-00000000-0000-0000-0000-000000000601",
+            in: app
+        )
+        centerNode.click()
+        app.typeKey(.downArrow, modifierFlags: .command)
+        let selectedNode = element("graph-selected-node", in: app)
+        XCTAssertTrue(selectedNode.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: selectedNode).contains("雾港直接邻居"))
+
+        let resetButton = app.buttons["重置视图"]
+        XCTAssertTrue(resetButton.waitForExistence(timeout: 3))
+        resetButton.click()
+        XCTAssertTrue(
+            element("graph-node-00000000-0000-0000-0000-000000000601", in: app)
+                .waitForExistence(timeout: 3)
+        )
+
+        let directNode = element(
+            "graph-node-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
+        directNode.click()
+        element("graph-set-center", in: app).click()
+        let newCenterNode = element(
+            "graph-node-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
+        XCTAssertTrue(newCenterNode.waitForExistence(timeout: 3))
+        let centerPredicate = NSPredicate(format: "label CONTAINS %@", "中心书籍")
+        let centerExpectation = XCTNSPredicateExpectation(
+            predicate: centerPredicate,
+            object: newCenterNode
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [centerExpectation], timeout: 5),
+            .completed
+        )
+        XCTAssertTrue(element("local-graph-page", in: app).waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testLocalGraphEmptyStateIsExplicit() {
+        let emptyApp = launchInMemoryApp(seedFictionalBooks: true)
+        XCTAssertTrue(element("library-book-list", in: emptyApp).waitForExistence(timeout: 3))
+        element("show-local-graph-button", in: emptyApp).click()
+        XCTAssertTrue(emptyApp.staticTexts["这本书暂无有效关系"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    func testLocalGraphLimitStateIsExplicit() {
+        let limitedApp = launchInMemoryApp(seedGraphLimit: true)
+        selectGraphCenter(in: limitedApp)
+        element("show-local-graph-button", in: limitedApp).click()
+        let limitStatus = limitedApp.descendants(matching: .any).matching(
+            NSPredicate(format: "label CONTAINS %@", "图谱状态：")
+        ).firstMatch
+        XCTAssertTrue(limitStatus.waitForExistence(timeout: 5))
+        XCTAssertTrue(accessibilityText(of: limitStatus).contains("截断"))
+        XCTAssertTrue(
+            element("graph-node-00000000-0000-0000-0000-000000000601", in: limitedApp)
+                .exists
+        )
+    }
+
+    @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
@@ -474,7 +591,9 @@ final class BookAtlasUITests: XCTestCase {
         seedPortabilityPreview: Bool = false,
         seedRestorePreview: Bool = false,
         seedSafeReplacement: Bool = false,
-        seedRestoreInspection: Bool = false
+        seedRestoreInspection: Bool = false,
+        seedGraph: Bool = false,
+        seedGraphLimit: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
@@ -495,6 +614,12 @@ final class BookAtlasUITests: XCTestCase {
         }
         if seedRestoreInspection {
             app.launchArguments.append("-BookAtlasSeedRestoreInspection")
+        }
+        if seedGraph {
+            app.launchArguments.append("-BookAtlasSeedGraphUITestData")
+        }
+        if seedGraphLimit {
+            app.launchArguments.append("-BookAtlasSeedGraphLimitUITestData")
         }
         app.launch()
         return app
@@ -521,6 +646,12 @@ final class BookAtlasUITests: XCTestCase {
         element.click()
         element.typeKey("a", modifierFlags: .command)
         element.typeText(value)
+    }
+
+    @MainActor
+    private func selectGraphCenter(in app: XCUIApplication) {
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("show-local-graph-button", in: app).waitForExistence(timeout: 3))
     }
 
     @MainActor

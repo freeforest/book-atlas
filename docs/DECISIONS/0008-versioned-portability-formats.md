@@ -1,9 +1,13 @@
 # ADR-0008: Versioned portability formats and safe database snapshots
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-07-28
 - Owners: Project maintainers
 - Related: ADR-0006; this ADR extends its explicit-selection rule for one-shot write destinations
+
+## Acceptance
+
+Accepted after the third independent Prompt 7 review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Independent verification recorded a successful Debug build, 114/114 unit and integration tests, and 17/17 macOS UI tests, with no failures or skipped tests. The production schema remains version 4 with migration path 1 → 2 → 3 → 4.
 
 ## Context
 

@@ -2,7 +2,7 @@
 
 ## Current state
 
-Prompt 6 has passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore. Its NO-GO closure evidence is awaiting independent re-review. Graph implementation and external-link actions remain unimplemented.
+Prompt 6 and Prompt 7 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction are implemented and awaiting independent review. Prompt 9 external-link actions remain unimplemented.
 
 ## Intended shape
 
@@ -30,7 +30,7 @@ The production registry currently advances from version 1 (core tables), through
 
 ## State and concurrency
 
-UI state remains feature-sized: `LibraryStore` is scoped to catalog/editor/duplicate flow, `CatalogOrganizerStore` owns organization state, and `PortabilityStore` owns file-operation presentation. `StreamingCSVParser`, `LibraryImportCoordinator`, `LibraryExportCoordinator`, `BookAtlasSchemaValidator`, and `LibraryBackupCoordinator` separate parsing, disk staging, preview, transactional writes, serialization, application-schema validation, and SQLite file lifecycle. Import rows live in a controlled JSON-lines staging file; presentation retains aggregate statistics, at most 20 sample rows, and bounded issue details. A source/mapping fingerprint and operation generation prevent stale mapping tasks from publishing old state. SQLite work is serialized by the catalog actor instead of running in SwiftUI. Prompt 8 graph work must retain an explicit background boundary.
+UI state remains feature-sized: `LibraryStore` is scoped to catalog/editor/duplicate flow, `CatalogOrganizerStore` owns organization state, `PortabilityStore` owns file-operation presentation, and `GraphStore` owns graph request generations, filters, selection, and view-local coordinates. `StreamingCSVParser`, `LibraryImportCoordinator`, `LibraryExportCoordinator`, `BookAtlasSchemaValidator`, and `LibraryBackupCoordinator` separate parsing, disk staging, preview, transactional writes, serialization, application-schema validation, and SQLite file lifecycle. Import rows live in a controlled JSON-lines staging file; presentation retains aggregate statistics, at most 20 sample rows, and bounded issue details. A source/mapping fingerprint and operation generation prevent stale mapping tasks from publishing old state. SQLite and graph projection/layout work are serialized by the catalog actor instead of running in SwiftUI or on the main actor; graph generations discard stale center/filter results.
 
 ## Storage and sandboxing
 
@@ -40,9 +40,9 @@ App Sandbox is the default. The production entitlement set is App Sandbox plus u
 
 ## Graph rendering decision
 
-The initial graph renderer will be native SwiftUI `Canvas` with a separate interaction model for hit testing, node dragging, panning, zooming, and an accessible list representation; see [ADR-0004](DECISIONS/0004-bounded-canvas-graph.md). Prompt 1 hosted and laid out the canvas with fictional 50-, 100-, and 250-node fixtures. The initial visible-node cap is 250 until Prompt 8 measures real frame timing and accessibility behavior.
+The graph renderer is native asynchronous SwiftUI `Canvas` with a separate interaction model for hit testing, node dragging, panning, zooming, selection, and an accessible list representation; see [ADR-0004](DECISIONS/0004-bounded-canvas-graph.md). `LibraryGraphProjection` issues bounded indexed queries for the five supported relationship families. `LocalGraphBuilder` performs deterministic one- or two-layer traversal, merges concrete evidence into canonical edges, and enforces the configured bounds. `DeterministicGraphLayout` uses a fixed radial seed and at most 80 force iterations with cancellation checks. The default is 80 nodes/200 edges; hard configuration caps remain 250/500 and truncation is shown to the caller.
 
-The graph remains an optional projection over library relationships; it cannot become the source of truth for books or persist view coordinates in bibliography entities.
+The graph remains an optional projection over library relationships; it cannot become the source of truth for books or persist view coordinates in bibliography entities. Re-centering performs a new projection, and merging/deleting records is reflected by the existing relational data rather than graph-specific migration.
 
 ## External integration decision
 

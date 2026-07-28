@@ -2,6 +2,7 @@ import SwiftUI
 
 struct BookDetailView: View {
     let book: Book
+    var onShowGraph: ((UUID) -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -14,6 +15,13 @@ struct BookDetailView: View {
                     Text(book.author)
                         .font(.title3)
                         .foregroundStyle(.secondary)
+                    if let onShowGraph {
+                        Button("查看局部书图", systemImage: "point.3.connected.trianglepath.dotted") {
+                            onShowGraph(book.id)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("show-local-graph-button")
+                    }
                 }
 
                 GroupBox("书目信息") {

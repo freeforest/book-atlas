@@ -40,6 +40,8 @@ Restore creates and validates a recovery snapshot, stages and migrates the selec
 
 Book merges require an explicit preview and confirmation. Field changes, membership unions, link and relation migration, ignored-pair migration, and source deletion share one SQLite transaction; the source is deleted last. Self-relations, relation-note conflicts, and equal external links with different nonempty labels that cannot be preserved are rejected before mutation. The preview disables confirmation for a known blocking association, and any repository failure rolls back the target and source records plus all associations.
 
+Prompt 8 graph construction is read-only and accepts only an existing book UUID plus bounded options. Repository projection queries use fixed SQL templates and indexed relationship columns; callers cannot supply table or column names. Deterministic node/edge caps, candidate truncation disclosure, bounded layout iterations, task cancellation, and stale-generation rejection limit resource use and prevent an older request from replacing the current graph. Canvas content has a separate semantic list so security/privacy controls do not depend on visual color alone. Graph rendering adds no network, file, process-launch, or entitlement surface.
+
 ## Reporting vulnerabilities
 
 Before a public release, add a repository security policy with a private reporting channel. Do not publish a personal address or placeholder channel before the maintainer chooses one.

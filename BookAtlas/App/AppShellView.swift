@@ -48,13 +48,22 @@ struct AppShellView: View {
     private func page(for section: AppSection) -> some View {
         switch section {
         case .library:
-            LibraryView(store: libraryStore)
+            LibraryView(store: libraryStore) { bookID in
+                libraryStore.graph.load(centerBookID: bookID)
+                selection = .graph
+            }
         case .collections:
             CollectionsPlaceholderView(store: libraryStore)
         case .tags:
             TagsPlaceholderView(store: libraryStore)
         case .graph:
-            GraphPlaceholderView()
+            LocalGraphView(
+                store: libraryStore.graph,
+                defaultCenterBookID: libraryStore.selectedBookID
+            ) { bookID in
+                libraryStore.focusBook(bookID)
+                selection = .library
+            }
         case .settings:
             DataPortabilityView(store: libraryStore.portability) {
                 libraryStore.refresh()

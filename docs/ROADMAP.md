@@ -33,8 +33,8 @@ Exit condition: duplicate candidates can be explained, reviewed, ignored, or mer
 
 ### Milestone 4 — portability and exploration
 
-- **Prompt 7:** second NO-GO closure implemented for bounded staged import, export, exact versioned application-schema-validated backup, backend-authoritative restore cancellation, and interruption-safe restore; independent re-review pending.
-- **Prompt 8:** bounded local relationship graph.
+- **Prompt 7:** independently accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5` with bounded staged import, export, exact versioned application-schema-validated backup, backend-authoritative restore cancellation, and interruption-safe restore.
+- **Prompt 8:** implemented and awaiting independent review; bounded local relationship projection, deterministic layout, native Canvas interaction, and accessible list.
 - **Prompt 9:** only the Apple Books and external-link behaviors proven by experiments.
 
 Exit condition: data is portable and recoverable, relationship exploration does not compromise the core model, and integrations degrade safely.

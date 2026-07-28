@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LibraryView: View {
     @ObservedObject var store: LibraryStore
+    let onShowGraph: (UUID) -> Void
     @State private var showsManagement = false
     @State private var membershipBook: Book?
 
@@ -163,7 +164,7 @@ struct LibraryView: View {
                     Divider()
 
                     if let book = store.selectedBook {
-                        BookDetailView(book: book)
+                        BookDetailView(book: book, onShowGraph: onShowGraph)
                     } else {
                         ContentUnavailableView(
                             "选择一本书",

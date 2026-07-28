@@ -267,7 +267,7 @@ enum BookRepositoryError: Error, Equatable {
 }
 
 final class BookRepository {
-    private let database: SQLiteDatabase
+    let database: SQLiteDatabase
 
     init(database: SQLiteDatabase, automaticallyMigrate: Bool = true) throws {
         self.database = database
@@ -1556,7 +1556,7 @@ final class BookRepository {
         return limit
     }
 
-    private var bookColumns: String {
+    var bookColumns: String {
         "id, title, original_title, author, isbn, publisher, publication_date, kind, reading_status, priority, note, created_at, updated_at, started_at, finished_at"
     }
 
@@ -1571,7 +1571,7 @@ final class BookRepository {
         ]
     }
 
-    private func decodeBook(_ row: SQLiteRow) throws -> Book {
+    func decodeBook(_ row: SQLiteRow) throws -> Book {
         guard let id = UUID(uuidString: row.string(at: 0) ?? ""),
               let title = row.string(at: 1),
               let author = row.string(at: 3),

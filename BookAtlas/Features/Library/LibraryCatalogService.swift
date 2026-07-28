@@ -70,6 +70,10 @@ protocol LibraryCataloging: Actor {
     func createSource(name: String, details: String?) throws -> RecommendationSource
     func renameSource(_ source: RecommendationSource, name: String, details: String?) throws -> RecommendationSource
     func deleteSource(_ source: RecommendationSource) throws
+    func localGraph(
+        centerBookID: UUID,
+        options: GraphBuildOptions
+    ) throws -> GraphScene
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview
     func executeImport(_ preview: ImportPreview) throws -> ImportResult
     func discardImport(_ preview: ImportPreview)
@@ -189,6 +193,12 @@ extension LibraryCataloging {
         throw BookRepositoryError.entityNotFound
     }
     func deleteSource(_ source: RecommendationSource) throws { throw BookRepositoryError.entityNotFound }
+    func localGraph(
+        centerBookID: UUID,
+        options: GraphBuildOptions
+    ) throws -> GraphScene {
+        throw GraphBuildError.databaseUnavailable
+    }
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview {
         throw PortabilityError.unsafeFile
     }
@@ -504,6 +514,56 @@ actor LibraryCatalogService: LibraryCataloging {
 
     func deleteSource(_ source: RecommendationSource) throws {
         try repository.deleteSource(id: source.id)
+    }
+
+    func localGraph(
+        centerBookID: UUID,
+        options: GraphBuildOptions
+    ) throws -> GraphScene {
+        let clock = ContinuousClock()
+        var queryDuration = Duration.zero
+        let cancellation = GraphBuildCancellation(
+            isCancelled: {
+                withUnsafeCurrentTask { $0?.isCancelled ?? false }
+            }
+        )
+        let projectionStart = clock.now
+        let snapshot = try LocalGraphBuilder().build(
+            centerBookID: centerBookID,
+            options: options,
+            cancellation: cancellation,
+            book: { id in
+                let start = clock.now
+                defer { queryDuration += start.duration(to: clock.now) }
+                return try repository.book(id: id)
+            },
+            neighbors: { id, relationTypes, limit in
+                let start = clock.now
+                defer { queryDuration += start.duration(to: clock.now) }
+                return try repository.graphNeighbors(
+                    for: id,
+                    relationTypes: relationTypes,
+                    limit: limit
+                )
+            }
+        )
+        let projectionDuration =
+            projectionStart.duration(to: clock.now) - queryDuration
+        let layoutStart = clock.now
+        let layout = try DeterministicGraphLayout().layout(
+            snapshot: snapshot,
+            cancellation: cancellation
+        )
+        let layoutDuration = layoutStart.duration(to: clock.now)
+        return GraphScene(
+            snapshot: snapshot,
+            layout: layout,
+            metrics: GraphSceneMetrics(
+                querySeconds: queryDuration.secondsValue,
+                projectionSeconds: max(0, projectionDuration.secondsValue),
+                layoutSeconds: layoutDuration.secondsValue
+            )
+        )
     }
 
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview {

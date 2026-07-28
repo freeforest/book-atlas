@@ -28,4 +28,4 @@ Keep ADRs concise. An ADR records a decision; implementation details belong in c
 - [ADR-0005: External links and Apple Books](0005-external-links-and-apple-books.md) — Accepted
 - [ADR-0006: Sandboxed file access](0006-sandboxed-file-access.md) — Accepted; Prompt 7 write destinations are extended by ADR-0008
 - [ADR-0007: Deterministic duplicate resolution](0007-deterministic-duplicate-resolution.md) — Accepted
-- [ADR-0008: Versioned portability formats and safe database snapshots](0008-versioned-portability-formats.md) — Proposed
+- [ADR-0008: Versioned portability formats and safe database snapshots](0008-versioned-portability-formats.md) — Accepted

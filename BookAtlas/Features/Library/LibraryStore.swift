@@ -131,6 +131,7 @@ final class LibraryStore: ObservableObject {
 
     let organizer: CatalogOrganizerStore
     let portability: PortabilityStore
+    let graph: GraphStore
 
     private let catalog: (any LibraryCataloging)?
     private var queryTask: Task<Void, Never>?
@@ -141,6 +142,7 @@ final class LibraryStore: ObservableObject {
         self.catalog = catalog
         organizer = CatalogOrganizerStore(catalog: catalog)
         portability = PortabilityStore(catalog: catalog)
+        graph = GraphStore(catalog: catalog)
         if let initialError {
             loadingState = .failed(initialError)
         } else if catalog == nil {
@@ -163,7 +165,9 @@ final class LibraryStore: ObservableObject {
             if arguments.contains("-BookAtlasUseInMemoryStore") || environment["XCTestConfigurationFilePath"] != nil {
                 catalog = try Self.makeInMemoryCatalog(
                     seedFictionalUITestBooks: arguments.contains("-BookAtlasSeedFictionalUITestBooks"),
-                    seedMergePreviewAssociations: arguments.contains("-BookAtlasSeedMergePreviewAssociations")
+                    seedMergePreviewAssociations: arguments.contains("-BookAtlasSeedMergePreviewAssociations"),
+                    seedGraphUITestData: arguments.contains("-BookAtlasSeedGraphUITestData"),
+                    seedGraphLimitUITestData: arguments.contains("-BookAtlasSeedGraphLimitUITestData")
                 )
             } else {
                 let databaseURL = try BookAtlasDatabaseLocation.defaultURL()
@@ -187,6 +191,20 @@ final class LibraryStore: ObservableObject {
             }
             if arguments.contains("-BookAtlasSeedRestoreInspection") {
                 store.portability.seedRestoreInspectionForUITesting()
+            }
+            if arguments.contains("-BookAtlasSeedGraphUITestData")
+                || arguments.contains("-BookAtlasSeedGraphLimitUITestData")
+            {
+                let graphCenterID = UUID(
+                    uuidString: "00000000-0000-0000-0000-000000000601"
+                )!
+                store.selectedBookID = graphCenterID
+                if arguments.contains("-BookAtlasSeedGraphLimitUITestData") {
+                    store.graph.load(
+                        centerBookID: graphCenterID,
+                        options: GraphBuildOptions(maximumNodes: 20, maximumEdges: 50)
+                    )
+                }
             }
             return store
         } catch PortabilityError.recoveryRequired {
@@ -223,6 +241,12 @@ final class LibraryStore: ObservableObject {
 
     func refresh() {
         organizer.load()
+        scheduleQuery(delay: nil)
+    }
+
+    func focusBook(_ id: UUID) {
+        query = LibraryQuery()
+        selectedBookID = id
         scheduleQuery(delay: nil)
     }
 
@@ -597,6 +621,7 @@ final class LibraryStore: ObservableObject {
         await queryTask?.value
         await duplicateTask?.value
         await organizer.waitForPendingWork()
+        await graph.waitForPendingWork()
     }
 
     private func scheduleQuery(delay: Duration?) {
@@ -690,10 +715,16 @@ final class LibraryStore: ObservableObject {
 
     private nonisolated static func makeInMemoryCatalog(
         seedFictionalUITestBooks: Bool,
-        seedMergePreviewAssociations: Bool
+        seedMergePreviewAssociations: Bool,
+        seedGraphUITestData: Bool,
+        seedGraphLimitUITestData: Bool
     ) throws -> LibraryCatalogService {
         let repository = try BookRepository.inMemory()
-        guard seedFictionalUITestBooks || seedMergePreviewAssociations else {
+        guard seedFictionalUITestBooks
+            || seedMergePreviewAssociations
+            || seedGraphUITestData
+            || seedGraphLimitUITestData
+        else {
             return LibraryCatalogService(repository: repository)
         }
 
@@ -717,7 +748,107 @@ final class LibraryStore: ObservableObject {
         if seedMergePreviewAssociations {
             try Self.seedMergePreviewAssociations(in: repository, at: timestamp)
         }
+        if seedGraphUITestData || seedGraphLimitUITestData {
+            try Self.seedGraphData(
+                in: repository,
+                at: timestamp,
+                includesLimitFixture: seedGraphLimitUITestData
+            )
+        }
         return LibraryCatalogService(repository: repository)
+    }
+
+    private nonisolated static func seedGraphData(
+        in repository: BookRepository,
+        at timestamp: Date,
+        includesLimitFixture: Bool
+    ) throws {
+        let center = try repository.create(
+            BookDraft(
+                title: "《雾港图谱中心》",
+                author: "林雾",
+                isbn: "9780000000601"
+            ),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000601")!,
+            at: timestamp
+        )
+        let direct = try repository.create(
+            BookDraft(title: "《雾港直接邻居》", author: "林雾"),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000602")!,
+            at: timestamp.addingTimeInterval(1)
+        )
+        let second = try repository.create(
+            BookDraft(title: "《北岸第二层》", author: "沈遥"),
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000603")!,
+            at: timestamp.addingTimeInterval(2)
+        )
+        let sharedTag = try repository.createTag(
+            try Tag(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000611")!,
+                name: "潮汐图谱",
+                createdAt: timestamp
+            )
+        )
+        let bridgeTag = try repository.createTag(
+            try Tag(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000612")!,
+                name: "北岸桥接",
+                createdAt: timestamp
+            )
+        )
+        let collection = try repository.createCollection(
+            try BookCollection(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000621")!,
+                name: "虚构局部书单",
+                createdAt: timestamp
+            )
+        )
+        let source = try repository.createSource(
+            try RecommendationSource(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000631")!,
+                name: "虚构图谱来源",
+                createdAt: timestamp
+            )
+        )
+        for bookID in [center.id, direct.id] {
+            try repository.attach(tagID: sharedTag.id, toBookID: bookID)
+            try repository.add(bookID: bookID, toCollectionID: collection.id)
+            try repository.attach(sourceID: source.id, toBookID: bookID)
+        }
+        for bookID in [direct.id, second.id] {
+            try repository.attach(tagID: bridgeTag.id, toBookID: bookID)
+        }
+        _ = try repository.addManualRelation(
+            try ManualBookRelation(
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000000641")!,
+                sourceBookID: center.id,
+                targetBookID: direct.id,
+                kind: .respondsTo,
+                note: "固定虚构图谱备注",
+                createdAt: timestamp
+            )
+        )
+
+        if includesLimitFixture {
+            try repository.transaction {
+                for index in 0 ..< 82 {
+                    let id = UUID(
+                        uuidString: String(
+                            format: "00000000-0000-0000-0000-%012d",
+                            700 + index
+                        )
+                    )!
+                    _ = try repository.create(
+                        BookDraft(
+                            title: String(format: "《上限邻居 %03d》", index),
+                            author: center.author
+                        ),
+                        id: id,
+                        at: timestamp.addingTimeInterval(Double(index + 10))
+                    )
+                }
+            }
+        }
     }
 
     private nonisolated static func seedMergePreviewAssociations(

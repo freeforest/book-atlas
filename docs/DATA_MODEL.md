@@ -2,7 +2,7 @@
 
 ## Status
 
-Prompt 3 established the production SQLite schema, Prompt 5 activated organization and unified queries, and Prompt 6 added derived duplicate keys, ignored candidate pairs, and transactional record merging. Prompt 7 adds versioned interchange and snapshot formats without changing the production schema. The model remains deliberately smaller than a work/edition authority model.
+Prompt 3 established the production SQLite schema, Prompt 5 activated organization and unified queries, and Prompt 6 added derived duplicate keys, ignored candidate pairs, and transactional record merging. Independently accepted Prompt 7 adds versioned interchange and snapshot formats without changing the production schema. Prompt 8 adds only a read-only graph projection over Schema 4; it does not change stored entities or migrations. The model remains deliberately smaller than a work/edition authority model.
 
 ## Candidate concepts
 
@@ -30,7 +30,13 @@ Where the user learned about or acquired a book. A source can have an optional u
 
 ### Relationship
 
-An explicit, user-maintained edge between two books, such as “inspired by,” “responds to,” or “read with.” The current schema defines directed, unique, non-self relationships with cascading endpoint deletion. Prompt 8 must define the user-facing relationship vocabulary and graph projection rules before exposing this concept in the production UI.
+An explicit, user-maintained edge between two books: `related`, `inspired_by`, `responds_to`, or `companion`. The current schema defines directed, unique, non-self relationships with cascading endpoint deletion. The graph preserves direction, relation kind, endpoint identities, and whether a note exists in its evidence; private note text is not copied into graph state.
+
+### Graph projection
+
+`GraphNode`, `GraphEdge`, `GraphSnapshot`, `GraphRelationEvidence`, and `GraphBuildOptions` are transient domain values, not persistence records. A canonical undirected display edge may combine five independently readable evidence families: exact same author string, shared tag, shared collection, shared recommendation source, and directed manual relation. Concrete names and manual endpoint/direction metadata remain available for explanation and accessibility. Self-edges and duplicate evidence are removed.
+
+The default projection is one relationship layer, with an optional second layer. It defaults to 80 nodes/200 edges and has hard caps of 250/500. Candidates are ordered by computed weight, title, and UUID; repository queries use explicit count/UUID/name orderings and expose truncation. Weight contributions are manual 100–120, same author 80, shared collections 40–60, shared sources 35–50, and shared tags 20 each up to 60, with the combined edge capped at 250. These values rank and draw a local projection only; they do not assert semantic truth or alter stored data.
 
 ### External link
 
@@ -55,6 +61,7 @@ The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is ac
 - Manual relations are directed, unique by source/target/kind, and reject self-relations in both domain validation and a database check.
 - Timestamps are UTC ISO-8601 strings with fractional seconds. Collection membership and all list queries use explicit deterministic orderings.
 - Migrations run one version at a time inside `BEGIN IMMEDIATE` transactions. Failures roll back and surface an error; the store never deletes or silently rebuilds an existing database.
+- Prompt 8 retains Schema 4 and migration path `1 → 2 → 3 → 4`; graph positions, zoom, pan, selection, and filters are never stored in SQLite.
 
 ## Query and organization semantics
 

@@ -6,9 +6,9 @@ Give the user control of data portability, add bounded relationship exploration,
 
 ## Stages
 
-- Prompt 7: second NO-GO closure implemented and pending independent re-review — bounded staged import, explicit export, exact versioned application-schema-validated backup, backend-authoritative cancellation, and interruption-safe restore.
-- Prompt 8: local relationship graph projection, native rendering, bounded interaction, and accessible alternatives.
-- Prompt 9: Apple Books and external-link behavior supported by Prompt 1 evidence.
+- Prompt 7: independently accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5` — bounded staged import, explicit export, exact versioned application-schema-validated backup, backend-authoritative cancellation, and interruption-safe restore.
+- Prompt 8: implemented and awaiting independent review — local relationship graph projection, deterministic bounded layout, native interaction, and an accessible semantic alternative.
+- Prompt 9: not started; Prompt 1 contains feasibility evidence only.
 
 ## Gates
 
@@ -22,4 +22,6 @@ Give the user control of data portability, add bounded relationship exploration,
 - `bookatlas-csv/1` supports streaming UTF-8/BOM parsing into bounded disk staging, user mapping generations, a 20-row/80-issue presentation bound, existing-library and same-batch Prompt 6 duplicate reuse, organization forecasts/deduplication, one-transaction confirmed import, and a post-execution redacted report.
 - `bookatlas-markdown/1` and CSV export use stable documented escaping; CSV protects six formula prefixes and remains round-trippable.
 - `.bookatlasbackup` version 1 uses SQLite online backup, a path-free manifest, single-file journal mode, physical plus exact versioned table/index/trigger/view verification, a 4 GiB limit, capacity/error checks, non-overwrite output, restore preview, a retained recovery copy, staged migration, backend-authoritative atomic cancellation boundaries, a path-free process-interruption marker, startup recovery, connection close/reopen, and rollback.
-- Prompt 8 and Prompt 9 remain unimplemented.
+- Prompt 7 passed its third independent review: Debug build succeeded, 114/114 unit and integration tests passed, and 17/17 UI tests passed, with no failures or skipped tests.
+- Prompt 8 implements the five evidence families, deterministic one/two-layer projection, explicit default/hard limits, cancellable bounded layout, asynchronous Canvas interaction, keyboard/accessibility list, and fixed-fictional production/performance tests without a Schema change.
+- Prompt 8 is awaiting independent review. Prompt 9 has not started.
