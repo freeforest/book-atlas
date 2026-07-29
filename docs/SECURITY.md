@@ -48,6 +48,8 @@ Long-lived file entries originate only in `NSOpenPanel`, require a regular non-s
 
 Reading-entry presentation is a security boundary as well as a UI concern. The store clears prior-book rows synchronously, arbitrates asynchronous results with cancellation, generation, and `bookID`, and requires row actions to match the current scoped snapshot. Duplicate-candidate viewing uses a separate read-only store; return or cancellation resets only that scope and leaves the main detail unchanged.
 
+Nested duplicate review has one active Escape owner. The duplicate-review layer routes Escape according to its current child state, the editor yields while that layer exists, and candidate detail does not register a competing global handler. One Escape therefore cannot both leave candidate detail and cancel review or trigger editor draft discard.
+
 ## Reporting vulnerabilities
 
 Before a public release, add a repository security policy with a private reporting channel. Do not publish a personal address or placeholder channel before the maintainer chooses one.

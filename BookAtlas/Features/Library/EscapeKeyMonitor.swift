@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// Intercepts Escape while the editor is presented, before macOS can dismiss the sheet.
+/// Intercepts Escape for the currently owning presentation layer before macOS dismisses it.
 struct EscapeKeyMonitor: NSViewRepresentable {
     let handleEscape: () -> Bool
 

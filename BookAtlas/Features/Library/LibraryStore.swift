@@ -446,6 +446,21 @@ final class LibraryStore: ObservableObject {
         clearDuplicateReview()
     }
 
+    @discardableResult
+    func handleDuplicateReviewEscape() -> Bool {
+        guard duplicateReview != nil else {
+            return false
+        }
+        if viewedDuplicateBook != nil {
+            returnFromViewedDuplicate()
+        } else if mergePreview != nil {
+            cancelMergePreview()
+        } else {
+            cancelDuplicateReview()
+        }
+        return true
+    }
+
     func viewSelectedDuplicate() {
         guard let selectedDuplicateID,
               let candidate = duplicateReview?.candidates.first(where: { $0.id == selectedDuplicateID })

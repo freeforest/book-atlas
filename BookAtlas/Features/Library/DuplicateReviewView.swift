@@ -19,11 +19,9 @@ struct DuplicateReviewSheet: View {
         .interactiveDismissDisabled(store.isDuplicateOperationInProgress)
         .background(
             EscapeKeyMonitor {
-                handleEscape()
-                return true
+                store.handleDuplicateReviewEscape()
             }
         )
-        .onExitCommand(perform: handleEscape)
         .sheet(
             item: Binding(
                 get: { store.viewedDuplicateBook },
@@ -162,7 +160,6 @@ struct DuplicateReviewSheet: View {
             Divider()
             HStack {
                 Button("取消", action: store.cancelDuplicateReview)
-                    .keyboardShortcut(.cancelAction)
                     .accessibilityIdentifier("duplicate-review-cancel")
                 Spacer()
                 if !review.candidates.isEmpty {
@@ -219,19 +216,11 @@ struct DuplicateReviewSheet: View {
 
             HStack {
                 Button("返回重复审阅", action: store.returnFromViewedDuplicate)
-                    .keyboardShortcut(.cancelAction)
                     .accessibilityIdentifier("duplicate-existing-back")
                 Spacer()
             }
             .padding()
         }
-        .background(
-            EscapeKeyMonitor {
-                store.returnFromViewedDuplicate()
-                return true
-            }
-        )
-        .onExitCommand(perform: store.returnFromViewedDuplicate)
     }
 
     private func mergePreview(_ preview: BookMergePreview) -> some View {
@@ -310,7 +299,6 @@ struct DuplicateReviewSheet: View {
             Divider()
             HStack {
                 Button("返回候选", action: store.cancelMergePreview)
-                    .keyboardShortcut(.cancelAction)
                     .accessibilityIdentifier("merge-preview-back")
                 Spacer()
                 Button("确认选择并合并…") {
@@ -449,16 +437,6 @@ struct DuplicateReviewSheet: View {
 
     private var selectedCandidate: DuplicateCandidate? {
         review.candidates.first { $0.id == store.selectedDuplicateID }
-    }
-
-    private func handleEscape() {
-        if store.viewedDuplicateBook != nil {
-            store.returnFromViewedDuplicate()
-        } else if store.mergePreview != nil {
-            store.cancelMergePreview()
-        } else {
-            store.cancelDuplicateReview()
-        }
     }
 
     private func choiceBinding(for field: BookMergeField) -> Binding<BookMergeValueChoice> {

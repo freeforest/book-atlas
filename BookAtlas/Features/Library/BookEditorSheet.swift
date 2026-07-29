@@ -84,6 +84,7 @@ struct BookEditorSheet: View {
             HStack {
                 Button("取消", action: requestCancel)
                     .keyboardShortcut(.cancelAction)
+                    .disabled(store.duplicateReview != nil)
                     .accessibilityIdentifier("editor-cancel")
                 Spacer()
                 Button("保存", action: save)
@@ -98,7 +99,7 @@ struct BookEditorSheet: View {
         .interactiveDismissDisabled(isDirty)
         .background(
             EscapeKeyMonitor {
-                guard !confirmsDiscard else {
+                guard !confirmsDiscard, store.duplicateReview == nil else {
                     return false
                 }
                 requestCancel()

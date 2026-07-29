@@ -281,6 +281,7 @@ final class LibraryStoreTests: XCTestCase {
         let draft = BookEditorDraft(
             title: "可返回的灯塔",
             author: "沈遥",
+            isbn: "9780000000002",
             note: "固定虚构草稿内容"
         )
         _ = await store.save(draft, for: session)
@@ -325,6 +326,25 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(store.readingEntries.currentBookID, mainBook.id)
         XCTAssertEqual(store.readingEntries.webLinks.map(\.id), [mainLink.id])
         XCTAssertEqual(store.readingEntries.localFiles.map(\.id), [mainFile.id])
+
+        store.viewSelectedDuplicate()
+        await store.duplicateReadingEntries.waitForPendingLoad()
+        XCTAssertTrue(store.handleDuplicateReviewEscape())
+        XCTAssertNil(store.viewedDuplicateBook)
+        XCTAssertEqual(store.duplicateReview?.id, reviewID)
+        XCTAssertEqual(store.editorSession?.id, session.id)
+        guard case let .newBook(editor, _) = store.duplicateReview?.subject else {
+            return XCTFail("Expected the original draft review after the first Escape")
+        }
+        XCTAssertEqual(editor.title, draft.title)
+        XCTAssertEqual(editor.author, draft.author)
+        XCTAssertEqual(editor.isbn, draft.isbn)
+        XCTAssertEqual(editor.note, draft.note)
+
+        XCTAssertTrue(store.handleDuplicateReviewEscape())
+        XCTAssertNil(store.duplicateReview)
+        XCTAssertEqual(store.editorSession?.id, session.id)
+        XCTAssertFalse(store.handleDuplicateReviewEscape())
     }
 }
 
