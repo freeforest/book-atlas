@@ -30,6 +30,11 @@ The current implementation provides the native library interface, book CRUD, org
 
 External reading actions are always user initiated. The app can hand a validated HTTPS URL to macOS, distinguish `books.apple.com`, offer a confirmed public Apple Books search, launch the installed Apple Books application, copy an ISBN or title, and retain a read-only bookmark for a file the user selected. It does not read ebook content, check URL reachability, use a network client, scan directories, or claim exact access to a private Apple Books library item.
 
+Prompt 10 is a quality and open-source-readiness closure over this existing
+scope. It does not add another product capability, and completion of its
+implementation is not a claim that a stable build was signed, notarized,
+tagged, uploaded, or independently accepted.
+
 ## Non-goals
 
 Book Atlas is not:

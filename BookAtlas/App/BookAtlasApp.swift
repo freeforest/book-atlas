@@ -42,6 +42,14 @@ struct BookAtlasCommands: Commands {
         }
 
         CommandMenu("书籍") {
+            Button("聚焦搜索") {
+                selection = .library
+                libraryStore.requestSearchFocus()
+            }
+            .keyboardShortcut("f", modifiers: .command)
+
+            Divider()
+
             Button("编辑所选书籍") {
                 selection = .library
                 libraryStore.beginEdit()

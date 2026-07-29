@@ -6,7 +6,7 @@
 
 The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
-The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, and a bounded local relationship graph. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9 now implements HTTPS/Apple Books/clipboard/local-file reading entries; its second-review NO-GO closure is implemented and waiting for another independent review. Prompt 10 has not started. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
+The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 9's independent evidence is a successful Debug build, 171/171 unit/integration/migration/security/performance tests, and 26/26 UI tests. Prompt 10 quality and open-source preparation is implemented and awaits independent review. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
 
 ## Build
 
@@ -22,7 +22,66 @@ xcodebuild \
 
 The Prompt 7 acceptance baseline independently passed the Debug build, 114-test unit/integration suite, and 17-test UI suite with Xcode 26.6 (build 17F113), Swift 6.3.3, and an arm64 Mac running macOS 26.5.2 (build 25F84). Prompt 8 was formally accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`: the independent Debug build succeeded, 146/146 unit/integration/performance tests passed, and 22/22 macOS UI tests ran in an interactive session after XCUIAutomation initialized and passed, with zero failures and zero skips. The command ad-hoc signs the Debug product for local execution; a UI count is valid only from an unlocked interactive session that successfully initializes XCUIAutomation.
 
-The Prompt 9 second-review closure build described above succeeded on the same local toolchain class. Prompt 9 remains pending another independent review.
+Prompt 9 passed independent review at the baseline recorded above. Prompt 10 validation uses new `/tmp` build and result-bundle paths; a result is reported only when the corresponding command actually completed.
+
+### Prompt 10 closure validation
+
+The implementation closure completed both local build configurations:
+
+```sh
+xcodebuild \
+  -project BookAtlas.xcodeproj \
+  -scheme BookAtlas \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/bookatlas-p10-final-debug-2 \
+  build
+
+xcodebuild \
+  -project BookAtlas.xcodeproj \
+  -scheme BookAtlas \
+  -configuration Release \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/bookatlas-p10-final-release-2 \
+  build
+```
+
+Both commands reported `BUILD SUCCEEDED`. The Release product is ad-hoc
+signed with Hardened Runtime for local verification; its effective
+entitlements are App Sandbox, user-selected read/write, and app-scoped
+bookmarks only. `get-task-allow` remains present only in Debug. This is not
+distribution signing, notarization, or release evidence.
+
+The complete final test commands were:
+
+```sh
+xcodebuild test \
+  -project BookAtlas.xcodeproj \
+  -scheme BookAtlas \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/bookatlas-p10-final-unit \
+  -resultBundlePath /tmp/bookatlas-p10-final-unit.xcresult \
+  -only-testing:BookAtlasTests
+
+xcodebuild test \
+  -project BookAtlas.xcodeproj \
+  -scheme BookAtlas \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/bookatlas-p10-final-ui-2 \
+  -resultBundlePath /tmp/bookatlas-p10-final-ui-2.xcresult \
+  -only-testing:BookAtlasUITests
+```
+
+The unit/integration/migration/security/performance command executed 173
+tests: 173 passed, zero failed, zero skipped. The UI command initialized
+XCUIAutomation in the interactive macOS session and executed 27 tests: 27
+passed, zero failed, zero skipped. Prompt 10 adds the historical Schema 1–5
+domain-data matrix, explicit Command-F search-focus state and UI coverage, and
+the three-repetition performance evidence documented in
+[`PERFORMANCE.md`](PERFORMANCE.md). These are implementation results awaiting
+independent review, not a Prompt 10 acceptance decision.
 
 ## Unit tests
 
@@ -38,7 +97,7 @@ xcodebuild \
   test
 ```
 
-The Prompt 9 second-review closure run executed all 171 unit, integration, migration, rollback, security, state, and performance tests: 171 passed, zero failed, and zero skipped. Coverage includes:
+The independently accepted Prompt 9 run executed all 171 unit, integration, migration, rollback, security, state, and performance tests: 171 passed, zero failed, and zero skipped. Coverage includes:
 
 - domain validation, editor drafts, navigation, layout, and light/dark appearance smoke checks;
 - schema versions 1–5, duplicate-key backfill, local-file-reference migration, new-store creation, data preservation, idempotence, rollback, future-version rejection, and exact per-version backup-schema object validation;
@@ -69,7 +128,7 @@ The Prompt 9 second-review closure run executed all 171 unit, integration, migra
 
 ## UI tests
 
-The second-review Escape race was exercised without retries by relaunching the app for ten consecutive repetitions:
+The second-review Escape race was requested as ten relaunch-enabled repetitions:
 
 ```sh
 xcodebuild \
@@ -85,7 +144,12 @@ xcodebuild \
   test
 ```
 
-The result bundle records 10 test runs on the macOS device configuration: 10 passed, zero failed, and zero skipped.
+Two repetitions were polluted by unrelated external applications taking keyboard
+focus: one lost focus while filling the author field and one was interrupted
+before the second Escape. They are infrastructure incidents, not product-code
+failures, and the command must not be described as 10/10. The other eight
+repetitions passed. The subsequent independent complete UI suite initialized
+XCUIAutomation and passed 26/26 with zero failures and zero skips.
 
 ```sh
 xcodebuild \
@@ -99,7 +163,7 @@ xcodebuild \
   test
 ```
 
-The final interactive run initialized XCUIAutomation and executed all 26 macOS UI tests: 26 passed, zero failed, and zero skipped. The formerly racing candidate-detail Escape path also passed 10/10 consecutive relaunch-enabled repetitions before the full run. It retains all Prompt 5/6/7/8 paths and covers reading-entry empty state, HTTPS add/edit/delete and no-op open dispatch, host-only status/accessibility without path disclosure, HTTP/dangerous-scheme rejection, Apple Books limitation/confirmation/copy controls, local-file cancellation, invalid-bookmark repair/removal, separate read-only duplicate-candidate entries followed by an unchanged main detail, keyboard defaults, and the single-owner nested Escape path. UI tests opt into an in-memory store, fixed fictional test-only launch seeds, and no-op system adapters; they do not open a real file panel, external application, pasteboard, user file, or real database.
+The independent interactive run initialized XCUIAutomation and executed all 26 macOS UI tests: 26 passed, zero failed, and zero skipped. It retains all Prompt 5/6/7/8 paths and covers reading-entry empty state, HTTPS add/edit/delete and no-op open dispatch, host-only status/accessibility without path disclosure, HTTP/dangerous-scheme rejection, Apple Books limitation/confirmation/copy controls, local-file cancellation, invalid-bookmark repair/removal, separate read-only duplicate-candidate entries followed by an unchanged main detail, keyboard defaults, and the single-owner nested Escape path. UI tests opt into an in-memory store, fixed fictional test-only launch seeds, and no-op system adapters; they do not open a real file panel, external application, pasteboard, user file, or real database.
 
 ## Query baseline
 
@@ -154,6 +218,6 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Backup format 1 is capped at 4 GiB and uses a 16 MiB free-space safety reserve. Capacity values are filesystem estimates; a later real write error is still handled and reported.
 - Backups are intentionally unencrypted and recovery copies are retained until the user manages them through the app container; no automatic retention policy is implemented.
 - The graph defaults to one layer and 80 nodes/200 edges, allows a second layer, and has hard caps of 250/500. It does not provide clustering, saved layouts, a global graph, arbitrary graph queries, or cross-library relationships.
-- Prompt 9 is implemented, has received its second independent review, and is waiting for another independent review after the second NO-GO closure. Automated tests prove adapter calls and state transitions, not that an external application will accept or render a particular URL or file on every Mac.
+- Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Automated tests prove adapter calls and state transitions, not that an external application will accept or render a particular URL or file on every Mac.
 - No supported API was established for an exact item in a user's private Apple Books library. `ibooks:` remains unverified, private-library targeting remains unsupported, public search may disclose its term after confirmation, and Unicode/IDN hosts are deliberately rejected.
 - Long-lived local references can become stale, missing, corrupt, revoked, or exceed the documented 1 MiB per-record limit and require user re-selection. The app stores bounded opaque bookmark bytes in Schema 5 and full backups but omits them, local display names and paths, and private URLs from CSV/Markdown.

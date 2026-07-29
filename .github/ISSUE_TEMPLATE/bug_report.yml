@@ -1,0 +1,53 @@
+name: Bug report
+description: Report a reproducible Book Atlas defect using fictional data only.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not attach a real database, backup, export, bookmark, URL, local path,
+        private note, credential, certificate, or signing material. Security
+        vulnerabilities must follow SECURITY.md and must not be disclosed here.
+  - type: input
+    id: version
+    attributes:
+      label: Book Atlas version or commit
+      placeholder: Commit hash or local build version
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: macOS and Mac
+      description: Include macOS version and Apple silicon model; omit device names.
+      placeholder: macOS 14.x, Apple silicon
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use only fixed fictional records.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed real titles, notes, identifiers, URLs, paths, databases, bookmarks, and credentials.
+          required: true
+        - label: This report does not disclose a security vulnerability.
+          required: true

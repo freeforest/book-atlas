@@ -2,7 +2,7 @@
 
 ## Current state
 
-Prompt 6, Prompt 7, and Prompt 8 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction were accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9 Apple Books and external reading-entry work is implemented and waiting for another independent review after its second NO-GO closure; Prompt 10 has not started.
+Prompts 6–9 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction were accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9's Apple Books and external reading-entry work was accepted at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b` after an independent Debug build, 171/171 tests, and 26/26 UI tests passed. Prompt 10 quality and open-source preparation is implemented and awaits independent review; it changes no product scope or schema.
 
 ## Intended shape
 
@@ -32,11 +32,23 @@ The production registry currently advances from version 1 (core tables), through
 
 UI state remains feature-sized: `LibraryStore` is scoped to catalog/editor/duplicate flow, `CatalogOrganizerStore` owns organization state, `PortabilityStore` owns file-operation presentation, and `GraphStore` owns graph request generations, filters, selection, and view-local coordinates. `StreamingCSVParser`, `LibraryImportCoordinator`, `LibraryExportCoordinator`, `BookAtlasSchemaValidator`, and `LibraryBackupCoordinator` separate parsing, disk staging, preview, transactional writes, serialization, application-schema validation, and SQLite file lifecycle. Import rows live in a controlled JSON-lines staging file; presentation retains aggregate statistics, at most 20 sample rows, and bounded issue details. A source/mapping fingerprint and operation generation prevent stale mapping tasks from publishing old state. SQLite and graph projection/layout work are serialized by the catalog actor instead of running in SwiftUI or on the main actor. That actor also publishes a process-local graph-content revision after graph-relevant mutations; graph generations discard stale center, filter, and older-revision results.
 
+Command-F navigation is an explicit presentation signal owned by
+`LibraryStore`. A focused `NSViewRepresentable` contains the only new AppKit
+detail: making the existing `NSSearchField` first responder on macOS 14.
+Search text, debouncing, query cancellation, and persistence remain in their
+existing store/catalog layers; the wrapper performs no query or database work.
+
 ## Storage and sandboxing
 
 The production database location is `Application Support/BookAtlas/book-atlas.sqlite`; tests use temporary or in-memory stores. Temporary import work belongs in system temporary storage and is cleaned on success, cancellation, supersession, and failure. Restore stages same-filesystem old/new databases next to the live path and persists a path-free recovery marker before closing the connection. Startup resolves any marker to a complete schema-valid live, old, or new database before constructing `BookRepository`; ambiguity stops opening instead of creating an empty store. Access outside the sandbox starts with `NSOpenPanel` or `NSSavePanel`. Prompt 7 uses transient, balanced security-scoped access and stores no bookmark; Prompt 9 separately retains only opaque, read-only, app-scoped bookmark bytes for a file explicitly selected as a reading entry. It stores a safe basename rather than an absolute path, never reads file content, refreshes stale authorization, and pairs every successful access start with a stop; see [ADR-0006](DECISIONS/0006-sandboxed-file-access.md) and [ADR-0008](DECISIONS/0008-versioned-portability-formats.md).
 
 App Sandbox is the default. The production entitlement set is App Sandbox, user-selected read/write files for explicit Prompt 7 operations, and app-scoped bookmarks for Prompt 9's long-lived read-only references. No network, Apple Events, automation, Downloads, or broad filesystem entitlement is present. Paths and user file content must not appear in logs.
+
+The local Release configuration enables Hardened Runtime and disables base
+entitlement injection, so the inspected ad-hoc product contains exactly that
+three-item production set and no `get-task-allow`. Debug keeps
+`get-task-allow` for testability. Distribution signing and notarization remain
+separate, unperformed release gates.
 
 ## Graph rendering decision
 

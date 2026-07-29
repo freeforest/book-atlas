@@ -121,6 +121,7 @@ final class LibraryStore: ObservableObject {
     @Published var editorSession: BookEditorSession?
     @Published var deletionCandidate: Book?
     @Published var saveRequestID = 0
+    @Published private(set) var searchFocusRequestID = 0
     @Published var operationError: LibraryUserFacingError?
     @Published var duplicateReview: DuplicateReviewSession?
     @Published var selectedDuplicateID: UUID?
@@ -281,6 +282,10 @@ final class LibraryStore: ObservableObject {
         query.searchText = text
         query.offset = 0
         scheduleQuery(delay: .milliseconds(250))
+    }
+
+    func requestSearchFocus() {
+        searchFocusRequestID &+= 1
     }
 
     func toggleReadingStatus(_ status: ReadingStatus) {

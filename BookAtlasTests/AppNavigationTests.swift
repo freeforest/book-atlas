@@ -15,6 +15,17 @@ final class AppNavigationTests: XCTestCase {
         XCTAssertEqual(AppNavigationState().selection, .library)
     }
 
+    @MainActor
+    func testSearchFocusRequestIsExplicitAndMonotonic() throws {
+        let store = try inMemoryLibraryStore()
+
+        XCTAssertEqual(store.searchFocusRequestID, 0)
+        store.requestSearchFocus()
+        XCTAssertEqual(store.searchFocusRequestID, 1)
+        store.requestSearchFocus()
+        XCTAssertEqual(store.searchFocusRequestID, 2)
+    }
+
     func testTitlesAndIdentifiersAreStable() {
         let expected: [(AppSection, String, String)] = [
             (.library, "书库", "library"),

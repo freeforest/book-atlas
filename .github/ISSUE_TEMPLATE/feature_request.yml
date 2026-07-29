@@ -1,0 +1,47 @@
+name: Feature request
+description: Propose a focused improvement within Book Atlas product boundaries.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Book Atlas is local-first, offline by default, macOS-only, and not an
+        ebook reader. Do not include real library content or private files.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the problem without prescribing a broad implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Does this affect sensitive boundaries?
+      options:
+        - No
+        - Persistence or migration
+        - Privacy or security
+        - Entitlements or external integration
+        - Dependency or deployment target
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and limitations
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: The proposal does not include real or private user data.
+          required: true
+        - label: I understand a boundary-changing proposal may require an ADR before implementation.
+          required: true

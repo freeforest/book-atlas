@@ -35,7 +35,7 @@ Exit condition: duplicate candidates can be explained, reviewed, ignored, or mer
 
 - **Prompt 7:** independently accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5` with bounded staged import, export, exact versioned application-schema-validated backup, backend-authoritative restore cancellation, and interruption-safe restore.
 - **Prompt 8:** independently accepted after its second review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; the independent Debug build, 146/146 unit/integration/performance tests, and 22/22 UI tests passed without failures or skips.
-- **Prompt 9:** Apple Books and external reading entries are implemented; second-review NO-GO closure fixes are complete and waiting for another independent review.
+- **Prompt 9:** independently accepted at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`; the independent Debug build, 171/171 unit/integration/migration/security/performance tests, and 26/26 UI tests passed without failures or skips.
 
 Exit condition: data is portable and recoverable, relationship exploration does not compromise the core model, and integrations degrade safely.
 
@@ -43,7 +43,7 @@ Exit condition: data is portable and recoverable, relationship exploration does 
 
 - **Prompt 10:** performance and accessibility checks, privacy/security audit, release documentation, and open-source preparation.
 
-Prompt 10 has not started.
+Prompt 10 quality and open-source preparation is implemented and awaits independent review. Local closure evidence is successful Debug and hardened local Release builds, 173/173 unit/integration/migration/security/performance tests, and 27/27 UI tests. No stable release, tag, distribution signature, notarization, or upload has occurred.
 
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 

@@ -24,12 +24,23 @@ The production database is stored at `Application Support/BookAtlas/book-atlas.s
 
 Logs may include operation names, durations, counts, schema versions, and coarse error categories. They must omit or redact titles, contributors, notes, tags, list names, source contents, identifiers, URLs, local paths, imported rows, exported contents, bookmark bytes, and database payloads. Debug logging follows the same rule.
 
+The Prompt 10 source audit found no production `print`, `NSLog`, `os_log`, or
+`Logger` call site and no telemetry or automatic crash-upload client.
+Fixed-fictional performance values are emitted only by the test target. This
+is source-level evidence, not a claim about logs generated internally by macOS
+or Xcode.
+
 ## Repository and testing
 
 - Real databases, reading lists, notes, exports, backups, paths, bookmarks, account data, and credentials are prohibited.
 - `SampleData/` contains fictional, reviewable fixtures only.
 - `LocalData/` and generated-data directories are ignored.
 - Tests use temporary or in-memory stores and never discover or read a real user library.
+
+Prompt 10 extends the ignore and release-scan policy to the actual
+`.bookatlasbackup` and `.xcresult` suffixes. The committed sample CSV and the
+fixed-seed generator contain invented names and `example.invalid` destinations
+only; generated large fixtures belong outside the repository.
 
 ## User control
 

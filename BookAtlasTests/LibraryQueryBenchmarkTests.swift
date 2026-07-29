@@ -68,6 +68,16 @@ final class LibraryQueryBenchmarkTests: XCTestCase {
             XCTAssertFalse(searchResult.isEmpty)
             XCTAssertLessThanOrEqual(filtered.count, 100)
             XCTAssertEqual(sorted.count, min(size, 100))
+            print(
+                """
+                QUERY_BASELINE_\(size)=insert:\(insertionDuration.secondsValue),\
+                tag_write:\(associationDuration.secondsValue),\
+                query_build:\(queryConstructionDuration.secondsValue),\
+                search:\(searchDuration.secondsValue),\
+                filter:\(filterDuration.secondsValue),\
+                sort:\(sortDuration.secondsValue)
+                """
+            )
             XCTContext.runActivity(named: "Baseline \(size) fictional books") { activity in
                 let attachment = XCTAttachment(
                     string: """

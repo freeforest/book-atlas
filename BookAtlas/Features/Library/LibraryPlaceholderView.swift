@@ -25,14 +25,6 @@ struct LibraryView: View {
             }
         }
         .navigationTitle("书库")
-        .searchable(
-            text: Binding(
-                get: { store.query.searchText },
-                set: { value in store.updateSearchText(value) }
-            ),
-            placement: .toolbar,
-            prompt: Text("搜索书名、原书名、作者或 ISBN")
-        )
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 Button("管理标签、书单和来源", systemImage: "slider.horizontal.3") {
@@ -188,6 +180,17 @@ private struct LibraryFilterBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
+            LibrarySearchField(
+                text: Binding(
+                    get: { store.query.searchText },
+                    set: { value in
+                        store.updateSearchText(value)
+                    }
+                ),
+                focusRequestID: store.searchFocusRequestID
+            )
+            .frame(minWidth: 180, idealWidth: 260, maxWidth: 320)
+
             filterMenu
             sortMenu
 

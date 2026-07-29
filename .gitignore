@@ -8,6 +8,7 @@ DerivedData/
 Build/
 build/
 *.xcuserstate
+*.xcresult
 xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
 *.xcworkspace/xcuserdata/
@@ -39,6 +40,7 @@ Logs/
 # User exports and backups
 *.bookatlas-export
 *.bookatlas-backup
+*.bookatlasbackup
 *.backup
 *.bak
 

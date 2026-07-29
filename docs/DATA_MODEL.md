@@ -94,6 +94,13 @@ Merge retains the chosen target UUID, takes the earlier `createdAt`, writes the 
 
 Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production registry currently ends at version 5.
 
+The Prompt 10 historical matrix constructs every formal starting schema
+1–5, inserts each data family available in that version, migrates to 5 twice,
+and then reads books and notes, organizations and descriptions, joins,
+external links, manual relations, duplicate keys, ignored pairs, and local
+file references as applicable. This adds evidence only; the schema remains 5
+and the migration path remains `1 → 2 → 3 → 4 → 5`.
+
 Prompt 7 backups record both backup format version 1 and the actual schema version. Prompt 9 keeps backup format 1 and extends supported application schemas from 1–4 to 1–5. Restore stages and migrates older snapshots through the same registry and rejects future schemas. Before inspection can become a restore preview, the backup must have migration history equal to `user_version`, every required table/column/key/constraint, no `foreign_key_check` result, and domain-decodable books, organizations, joins, links, relations, duplicate indexes, ignored pairs, and—at Schema 5—local-file references. For Schema 5, BLOB lengths are checked before materialization and valid rows are streamed one at a time through canonical domain validation. The validator runs again after migration and on the installed file before reconnect. Import staging metadata and recovery markers remain temporary operation formats, not schema tables. CSV and Markdown omit external URLs, local paths, and bookmark bytes; full-fidelity transfer uses backup format 1. See `docs/FORMATS/PORTABILITY.md`.
 
 ## Test data

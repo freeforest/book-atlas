@@ -1,0 +1,6 @@
+format_version,title,original_title,author,isbn,publisher,publication_date,kind,reading_status,priority,note,started_at,finished_at,tags,collections,sources
+bookatlas-csv/1,雾港测绘手册,Mist Harbor Survey,林舟,9780000000002,虚构潮汐出版社,2024-03,book,wish_to_read,4,固定虚构示例,,,海港|地图,示例书单,虚构编辑推荐
+bookatlas-csv/1,纸月航线,,许岸,,虚构纸页社,2022,book,reading,3,"只用于演示，未取自真实书单",2026-01-02T03:04:05Z,,航行,示例书单,虚构编辑推荐
+bookatlas-csv/1,玻璃温室索引,Glasshouse Index,周岚,9780000000019,虚构苔原出版,2021-11-08,reference,reference,2,,,,索引|植物,工具书,虚构馆员清单
+bookatlas-csv/1,回声邮局年鉴,,沈澄,,虚构邮路局,2020,book,read,1,,2025-05-06T07:08:09Z,2025-05-20T07:08:09Z,年鉴,读完的虚构书,虚构馆员清单
+bookatlas-csv/1,第七码头札记,,顾遥,,虚构码头社,,book,archived,,固定虚构空字段示例,,,海港,归档示例,

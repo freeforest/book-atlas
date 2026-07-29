@@ -149,6 +149,38 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testCommandFFocusesLibrarySearchFromAnotherSection() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
+        app.typeKey("4", modifierFlags: .command)
+        XCTAssertTrue(element("local-graph-page", in: app).waitForExistence(timeout: 3))
+
+        app.typeKey("f", modifierFlags: .command)
+
+        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            waitForKeyboardFocus(searchField, timeout: 3),
+            "Command-F must move keyboard focus to the library search field"
+        )
+        XCTAssertEqual(searchField.value as? String, "")
+        app.typeText("A101")
+        XCTAssertTrue(
+            element(
+                "library-book-00000000-0000-0000-0000-000000000101",
+                in: app
+            ).waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            element(
+                "library-book-00000000-0000-0000-0000-000000000202",
+                in: app
+            ).waitForNonExistence(timeout: 3)
+        )
+    }
+
+    @MainActor
     func testCreateCollectionAndSourceWithKeyboardNavigation() {
         let app = launchInMemoryApp()
         XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
@@ -161,7 +193,7 @@ final class BookAtlasUITests: XCTestCase {
         app.typeText("Fictional collection")
         app.typeKey(.tab, modifierFlags: [])
         element("collection-save-button", in: app).click()
-        XCTAssertTrue(app.staticTexts["North Shelf"].waitForExistence(timeout: 3))
+        XCTAssertTrue(catalogRow(named: "North Shelf", in: app).waitForExistence(timeout: 3))
 
         app.typeKey("1", modifierFlags: .command)
         XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
@@ -1019,6 +1051,16 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     private func waitForEnabled(_ element: XCUIElement, timeout: TimeInterval = 3) -> Bool {
         let predicate = NSPredicate(format: "exists == true AND enabled == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func waitForKeyboardFocus(
+        _ element: XCUIElement,
+        timeout: TimeInterval = 3
+    ) -> Bool {
+        let predicate = NSPredicate(format: "exists == true AND hasKeyboardFocus == true")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }

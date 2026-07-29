@@ -149,6 +149,158 @@ final class MigrationTests: XCTestCase {
         )
     }
 
+    func testEveryHistoricalSchemaMigratesToFiveWithAllAvailableDomainData() throws {
+        for version in 1 ... BookAtlasSchema.latestVersion {
+            let database = try SQLiteDatabase(path: ":memory:")
+            let migrator = DatabaseMigrator()
+            try migrator.migrate(database, through: version)
+            let repository = try BookRepository(
+                database: database,
+                automaticallyMigrate: false
+            )
+            let timestamp = FictionalLibraryFixtures.timestamp
+            let first = try repository.create(
+                BookDraft(
+                    title: "《迁移矩阵 \(version) 甲》",
+                    author: "固定虚构作者",
+                    note: "固定虚构备注"
+                ),
+                id: deterministicID(version: version, suffix: 1),
+                at: timestamp
+            )
+            let second = try repository.create(
+                BookDraft(
+                    title: "《迁移矩阵 \(version) 乙》",
+                    author: "固定虚构作者"
+                ),
+                id: deterministicID(version: version, suffix: 2),
+                at: timestamp.addingTimeInterval(1)
+            )
+            let tag = try repository.createTag(
+                try Tag(
+                    id: deterministicID(version: version, suffix: 3),
+                    name: "固定迁移标签 \(version)",
+                    createdAt: timestamp
+                )
+            )
+            let collection = try BookCollection(
+                id: deterministicID(version: version, suffix: 4),
+                name: "固定迁移书单 \(version)",
+                description: "固定虚构说明",
+                createdAt: timestamp
+            )
+            if version == 1 {
+                try database.execute(
+                    """
+                    INSERT INTO book_collections (id, name, created_at, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    """,
+                    bindings: [
+                        .text(collection.id.uuidString),
+                        .text(collection.name),
+                        .text(StorageDateCodec.encode(collection.createdAt)),
+                        .text(StorageDateCodec.encode(collection.updatedAt))
+                    ]
+                )
+            } else {
+                _ = try repository.createCollection(collection)
+            }
+            let source = try repository.createSource(
+                try RecommendationSource(
+                    id: deterministicID(version: version, suffix: 5),
+                    name: "固定迁移来源 \(version)",
+                    details: "固定虚构来源说明",
+                    createdAt: timestamp
+                )
+            )
+            let link = try repository.addExternalLink(
+                try ExternalLink(
+                    id: deterministicID(version: version, suffix: 6),
+                    bookID: first.id,
+                    kind: .web,
+                    label: "固定虚构链接",
+                    value: "https://example.invalid/migration-\(version)",
+                    createdAt: timestamp
+                )
+            )
+            let relation = try repository.addManualRelation(
+                try ManualBookRelation(
+                    id: deterministicID(version: version, suffix: 7),
+                    sourceBookID: first.id,
+                    targetBookID: second.id,
+                    kind: .related,
+                    note: "固定虚构关系说明",
+                    createdAt: timestamp
+                )
+            )
+            try repository.attach(tagID: tag.id, toBookID: first.id)
+            try repository.add(bookID: first.id, toCollectionID: collection.id)
+            try repository.attach(sourceID: source.id, toBookID: first.id)
+
+            if version >= 4 {
+                try repository.ignoreDuplicatePair(
+                    first.id,
+                    second.id,
+                    disposition: .separateEdition,
+                    at: timestamp
+                )
+            }
+            let localFile: LocalFileReference?
+            if version >= 5 {
+                let reference = try LocalFileReference(
+                    id: deterministicID(version: version, suffix: 8),
+                    bookID: first.id,
+                    displayName: "固定虚构阅读副本.pdf",
+                    bookmarkData: Data("fixed-fictional-bookmark".utf8),
+                    createdAt: timestamp
+                )
+                localFile = try repository.addLocalFileReference(reference)
+            } else {
+                localFile = nil
+            }
+
+            XCTAssertEqual(try migrator.migrate(database), BookAtlasSchema.latestVersion)
+            XCTAssertEqual(try migrator.migrate(database), BookAtlasSchema.latestVersion)
+            XCTAssertEqual(try repository.book(id: first.id)?.note, "固定虚构备注")
+            XCTAssertEqual(try repository.tags(forBookID: first.id), [tag])
+            let migratedCollections = try repository.collections(forBookID: first.id)
+            XCTAssertEqual(migratedCollections.map(\.id), [collection.id])
+            XCTAssertEqual(
+                migratedCollections.first?.description,
+                version == 1 ? nil : collection.description
+            )
+            XCTAssertEqual(try repository.sources(forBookID: first.id), [source])
+            XCTAssertEqual(try repository.externalLinks(forBookID: first.id), [link])
+            XCTAssertEqual(try repository.manualRelations(forBookID: first.id), [relation])
+            XCTAssertEqual(
+                try repository.ignoredDuplicatePair(between: first.id, and: second.id)?
+                    .disposition,
+                version >= 4 ? .separateEdition : nil
+            )
+            XCTAssertEqual(
+                try repository.localFileReferences(forBookID: first.id),
+                localFile.map { [$0] } ?? []
+            )
+            XCTAssertEqual(
+                try database.query(
+                    """
+                    SELECT book_id FROM book_duplicate_keys
+                    WHERE book_id IN (?, ?)
+                    ORDER BY book_id
+                    """,
+                    bindings: [.text(first.id.uuidString), .text(second.id.uuidString)]
+                ) { $0.string(at: 0) },
+                [first.id.uuidString, second.id.uuidString].sorted()
+            )
+            XCTAssertEqual(
+                try database.query(
+                    "SELECT version FROM schema_migrations ORDER BY version"
+                ) { $0.integer(at: 0) },
+                [1, 2, 3, 4, 5]
+            )
+        }
+    }
+
     func testFailedMigrationRollsBackWithoutRebuildingOrDeletingExistingData() throws {
         let database = try SQLiteDatabase(path: ":memory:")
         let baselineMigrator = DatabaseMigrator()
@@ -199,5 +351,15 @@ final class MigrationTests: XCTestCase {
             XCTAssertEqual(error as? DatabaseMigrationError, .unsupportedFutureVersion(99))
         }
         XCTAssertEqual(try database.schemaVersion(), 99)
+    }
+
+    private func deterministicID(version: Int, suffix: Int) -> UUID {
+        UUID(
+            uuidString: String(
+                format: "90000000-0000-%04d-0000-%012d",
+                version,
+                suffix
+            )
+        )!
     }
 }

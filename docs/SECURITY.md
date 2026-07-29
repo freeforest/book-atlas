@@ -30,6 +30,13 @@ The repository must not contain API keys, private keys, certificates, provisioni
 
 Apple frameworks are preferred. Before adding a dependency, record its need, source, version strategy, license, maintenance posture, transitive surface, and removal path in an ADR. Security updates must be possible without changing the product's data format unnecessarily.
 
+The Prompt 10 inventory found no Swift package or third-party binary linked by
+the production target. It links Apple SDK frameworks and the operating
+system's SQLite library through `-lsqlite3`; the isolated technical-spike
+package also declares no external package dependency. A release review must
+repeat this inventory and assess any newly introduced license before
+distribution.
+
 ## Backup, restore, and migration
 
 Backups require a documented format/version, integrity checks, atomic destination writes, and failure recovery. Restore never silently overwrites a live library. Migrations are versioned, tested from representative fictional fixtures, and fail without corrupting the prior store.
@@ -50,6 +57,17 @@ Reading-entry presentation is a security boundary as well as a UI concern. The s
 
 Nested duplicate review has one active Escape owner. The duplicate-review layer routes Escape according to its current child state, the editor yields while that layer exists, and candidate detail does not register a competing global handler. One Escape therefore cannot both leave candidate detail and cancel review or trigger editor draft discard.
 
+The Prompt 10 local Release configuration enables Hardened Runtime and
+disables Xcode base-entitlement injection. Effective-product inspection found
+only App Sandbox, user-selected read/write, and app-scoped bookmarks. Debug
+retains `get-task-allow` for local testing; Release does not. Neither product
+contains network, Apple Events, automation, Downloads, or broad filesystem
+entitlements. This ad-hoc inspection does not replace distribution signing,
+notarization, or Gatekeeper review.
+
 ## Reporting vulnerabilities
 
-Before a public release, add a repository security policy with a private reporting channel. Do not publish a personal address or placeholder channel before the maintainer chooses one.
+The repository-level `SECURITY.md` directs contributors here and warns against
+public disclosure of private content. A monitored non-personal private
+reporting channel is not yet configured and remains a release blocker. Do not
+publish a personal address or invent an unmonitored placeholder channel.
