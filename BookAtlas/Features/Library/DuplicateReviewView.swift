@@ -8,15 +8,13 @@ struct DuplicateReviewSheet: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let viewedBook = store.viewedDuplicateBook {
-                viewedExistingBook(viewedBook)
-            } else if let preview = store.mergePreview {
+            if let preview = store.mergePreview {
                 mergePreview(preview)
             } else {
                 candidateReview
             }
         }
-        .frame(minWidth: 720, minHeight: 560)
+        .frame(minWidth: 720, minHeight: 500)
         .accessibilityIdentifier("duplicate-review-sheet")
         .interactiveDismissDisabled(store.isDuplicateOperationInProgress)
         .background(
@@ -26,6 +24,18 @@ struct DuplicateReviewSheet: View {
             }
         )
         .onExitCommand(perform: handleEscape)
+        .sheet(
+            item: Binding(
+                get: { store.viewedDuplicateBook },
+                set: { book in
+                    if book == nil {
+                        store.returnFromViewedDuplicate()
+                    }
+                }
+            )
+        ) { book in
+            viewedExistingBook(book)
+        }
         .confirmationDialog(
             "确认合并这两条书籍记录？",
             isPresented: $confirmsMerge,
@@ -136,6 +146,11 @@ struct DuplicateReviewSheet: View {
                                     .font(.callout)
                                     .foregroundStyle(.secondary)
                                     .accessibilityIdentifier("duplicate-uncertainty")
+                                Button("查看这条已有记录") {
+                                    store.viewDuplicate(candidate)
+                                }
+                                    .accessibilityHint("以只读方式查看所选候选的阅读入口")
+                                    .accessibilityIdentifier("duplicate-view-existing-inline")
                             }
                             .padding()
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -193,7 +208,11 @@ struct DuplicateReviewSheet: View {
 
             Divider()
             VStack(spacing: 0) {
-                BookDetailView(book: book, readingEntries: store.readingEntries)
+                BookDetailView(
+                    book: book,
+                    readingEntries: store.duplicateReadingEntries,
+                    readingEntryMode: .readOnly
+                )
             }
                 .accessibilityIdentifier("duplicate-existing-preview")
             Divider()
@@ -206,6 +225,13 @@ struct DuplicateReviewSheet: View {
             }
             .padding()
         }
+        .background(
+            EscapeKeyMonitor {
+                store.returnFromViewedDuplicate()
+                return true
+            }
+        )
+        .onExitCommand(perform: store.returnFromViewedDuplicate)
     }
 
     private func mergePreview(_ preview: BookMergePreview) -> some View {

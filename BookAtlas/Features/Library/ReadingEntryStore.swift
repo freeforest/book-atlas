@@ -52,7 +52,7 @@ enum ExternalLinkValidationError: Error, Equatable {
         case .empty:
             "请输入 HTTPS 阅读链接。"
         case .tooLong:
-            "链接超过 2,048 字符的安全上限。"
+            "链接超过 2,048 UTF-8 字节的安全上限。"
         case .controlCharacter:
             "链接包含不可见控制字符，已拒绝。"
         case .invalidEncoding:
@@ -89,7 +89,7 @@ struct StrictHTTPSLinkValidator: ExternalLinkValidating {
             throw ExternalLinkValidationError.tooLong
         }
         guard !value.unicodeScalars.contains(where: {
-            CharacterSet.controlCharacters.contains($0)
+            $0.value <= 0x1F || $0.value == 0x7F
         }) else {
             throw ExternalLinkValidationError.controlCharacter
         }
@@ -99,6 +99,18 @@ struct StrictHTTPSLinkValidator: ExternalLinkValidating {
         guard hasValidPercentEncoding(value) else {
             throw ExternalLinkValidationError.invalidEncoding
         }
+        guard !containsPercentEncodedControlCharacter(value) else {
+            throw ExternalLinkValidationError.controlCharacter
+        }
+        guard let decodedValue = value.removingPercentEncoding else {
+            throw ExternalLinkValidationError.invalidEncoding
+        }
+        guard !decodedValue.unicodeScalars.contains(where: {
+            $0.value <= 0x1F || $0.value == 0x7F
+        }) else {
+            throw ExternalLinkValidationError.controlCharacter
+        }
+        let authority = try validatedAuthority(in: value)
         guard let components = URLComponents(string: value) else {
             throw ExternalLinkValidationError.invalidEncoding
         }
@@ -116,13 +128,13 @@ struct StrictHTTPSLinkValidator: ExternalLinkValidating {
         else {
             throw ExternalLinkValidationError.invalidHost
         }
-        if let port = components.port, !(1 ... 65_535).contains(port) {
+        guard components.port == authority.port else {
             throw ExternalLinkValidationError.invalidPort
         }
         guard let url = components.url, url.scheme == "https" else {
             throw ExternalLinkValidationError.invalidEncoding
         }
-        let safeHost = components.port.map { "\(host):\($0)" } ?? host
+        let safeHost = authority.port.map { "\(host):\($0)" } ?? host
         return ValidatedExternalLink(
             url: url,
             normalizedValue: url.absoluteString,
@@ -160,6 +172,75 @@ struct StrictHTTPSLinkValidator: ExternalLinkValidating {
         return true
     }
 
+    private func containsPercentEncodedControlCharacter(_ value: String) -> Bool {
+        let bytes = Array(value.utf8)
+        var index = 0
+        while index < bytes.count {
+            guard bytes[index] == 0x25 else {
+                index += 1
+                continue
+            }
+            guard index + 2 < bytes.count,
+                  let high = bytes[index + 1].hexValue,
+                  let low = bytes[index + 2].hexValue
+            else { return false }
+            let decoded = high * 16 + low
+            if decoded <= 0x1F || decoded == 0x7F {
+                return true
+            }
+            index += 3
+        }
+        return false
+    }
+
+    private func validatedAuthority(in value: String) throws
+        -> (host: Substring, port: Int?)
+    {
+        guard let delimiter = value.range(of: "://") else {
+            if let colon = value.firstIndex(of: ":"),
+               colon != value.startIndex,
+               value[..<colon].lowercased() != "https"
+            {
+                throw ExternalLinkValidationError.rejectedScheme
+            }
+            throw ExternalLinkValidationError.missingScheme
+        }
+        let rawScheme = value[..<delimiter.lowerBound]
+        guard rawScheme.lowercased() == "https" else {
+            throw ExternalLinkValidationError.rejectedScheme
+        }
+        let authorityStart = delimiter.upperBound
+        let authorityEnd = value[authorityStart...].firstIndex(where: {
+            $0 == "/" || $0 == "?" || $0 == "#"
+        }) ?? value.endIndex
+        let authority = value[authorityStart..<authorityEnd]
+        guard !authority.isEmpty else {
+            throw ExternalLinkValidationError.invalidHost
+        }
+        guard !authority.contains("@") else {
+            throw ExternalLinkValidationError.embeddedCredentials
+        }
+        guard !authority.hasPrefix("["),
+              authority.filter({ $0 == ":" }).count <= 1
+        else {
+            throw ExternalLinkValidationError.invalidHost
+        }
+        guard let separator = authority.lastIndex(of: ":") else {
+            return (authority, nil)
+        }
+        let host = authority[..<separator]
+        let rawPort = authority[authority.index(after: separator)...]
+        guard !host.isEmpty,
+              !rawPort.isEmpty,
+              rawPort.utf8.allSatisfy({ (0x30 ... 0x39).contains($0) }),
+              let port = Int(rawPort),
+              (1 ... 65_535).contains(port)
+        else {
+            throw ExternalLinkValidationError.invalidPort
+        }
+        return (host, port)
+    }
+
     private func isSafeASCIIHost(_ host: String) -> Bool {
         guard !host.isEmpty,
               host.utf8.count <= 253,
@@ -188,6 +269,15 @@ private extension UInt8 {
             || (self >= 0x41 && self <= 0x46)
             || (self >= 0x61 && self <= 0x66)
     }
+
+    var hexValue: UInt8? {
+        switch self {
+        case 0x30 ... 0x39: self - 0x30
+        case 0x41 ... 0x46: self - 0x41 + 10
+        case 0x61 ... 0x66: self - 0x61 + 10
+        default: nil
+        }
+    }
 }
 
 enum ReadingEntrySystemError: Error, Equatable {
@@ -200,6 +290,9 @@ enum ReadingEntrySystemError: Error, Equatable {
     case bookmarkCorrupt
     case fileUnavailable
     case permissionDenied
+    case bookmarkTooLarge
+    case contextChanged
+    case catalogUnavailable
     case allFallbacksUnavailable
 
     var message: String {
@@ -222,6 +315,12 @@ enum ReadingEntrySystemError: Error, Equatable {
             "本地文件已移动或删除，请重新选择。"
         case .permissionDenied:
             "本地文件权限已撤销，请重新选择。"
+        case .bookmarkTooLarge:
+            "文件授权数据超过 1 MiB 安全上限；原引用保持不变。"
+        case .contextChanged:
+            "当前书籍已切换；为避免修改错误记录，本次操作未执行。"
+        case .catalogUnavailable:
+            "书库当前不可用，无法读取阅读入口。"
         case .allFallbacksUnavailable:
             "当前没有可用的 Apple Books 或复制降级入口。"
         }
@@ -485,8 +584,35 @@ struct AppleBooksFallbackCoordinator {
     }
 }
 
+struct ReadingEntrySnapshot: Equatable, Sendable {
+    let bookID: UUID
+    let webLinks: [ExternalLink]
+    let localFiles: [LocalFileReference]
+}
+
+protocol ReadingEntryLoading: Sendable {
+    func loadEntries(for bookID: UUID) async throws -> ReadingEntrySnapshot
+}
+
+private struct CatalogReadingEntryLoader: ReadingEntryLoading {
+    let catalog: any LibraryCataloging
+
+    func loadEntries(for bookID: UUID) async throws -> ReadingEntrySnapshot {
+        let links = try await catalog.externalLinks(for: bookID)
+        try Task.checkCancellation()
+        let files = try await catalog.localFileReferences(for: bookID)
+        try Task.checkCancellation()
+        return ReadingEntrySnapshot(
+            bookID: bookID,
+            webLinks: links.filter { $0.kind == .web },
+            localFiles: files
+        )
+    }
+}
+
 @MainActor
 final class ReadingEntryStore: ObservableObject {
+    @Published private(set) var currentBookID: UUID?
     @Published private(set) var webLinks: [ExternalLink] = []
     @Published private(set) var localFiles: [LocalFileReference] = []
     @Published private(set) var isLoading = false
@@ -500,7 +626,8 @@ final class ReadingEntryStore: ObservableObject {
     private let clipboard: any ClipboardWriting
     private let fileSelector: any LocalFileSelecting
     private let bookmarks: any SecurityScopedBookmarking
-    private var currentBookID: UUID?
+    private let loader: (any ReadingEntryLoading)?
+    private var loadGeneration: UInt64 = 0
     private var task: Task<Void, Never>?
 
     init(
@@ -510,7 +637,8 @@ final class ReadingEntryStore: ObservableObject {
         appleBooks: any AppleBooksIntegrating = SystemAppleBooksIntegration(),
         clipboard: any ClipboardWriting = SystemClipboardWriter(),
         fileSelector: any LocalFileSelecting = SystemLocalFileSelector(),
-        bookmarks: any SecurityScopedBookmarking = SystemSecurityScopedBookmarkService()
+        bookmarks: any SecurityScopedBookmarking = SystemSecurityScopedBookmarkService(),
+        loader: (any ReadingEntryLoading)? = nil
     ) {
         self.catalog = catalog
         self.validator = validator
@@ -519,6 +647,7 @@ final class ReadingEntryStore: ObservableObject {
         self.clipboard = clipboard
         self.fileSelector = fileSelector
         self.bookmarks = bookmarks
+        self.loader = loader ?? catalog.map(CatalogReadingEntryLoader.init(catalog:))
     }
 
     deinit {
@@ -535,24 +664,77 @@ final class ReadingEntryStore: ObservableObject {
     }
 
     func load(bookID: UUID) {
+        loadGeneration &+= 1
+        let generation = loadGeneration
         currentBookID = bookID
         task?.cancel()
+        webLinks = []
+        localFiles = []
+        statusMessage = nil
+        errorMessage = nil
         isLoading = true
         task = Task { @MainActor [weak self] in
-            guard let self, let catalog else { return }
+            guard let self else { return }
+            guard let loader = self.loader else {
+                guard self.isCurrentLoad(bookID: bookID, generation: generation) else {
+                    return
+                }
+                self.isLoading = false
+                self.errorMessage = ReadingEntrySystemError.catalogUnavailable.message
+                return
+            }
             do {
-                async let links = catalog.externalLinks(for: bookID)
-                async let files = catalog.localFileReferences(for: bookID)
-                self.webLinks = try await links.filter { $0.kind == .web }
-                self.localFiles = try await files
+                let snapshot = try await loader.loadEntries(for: bookID)
+                guard self.isCurrentLoad(bookID: bookID, generation: generation),
+                      snapshot.bookID == bookID
+                else { return }
+                self.webLinks = snapshot.webLinks.filter { $0.bookID == bookID }
+                self.localFiles = snapshot.localFiles.filter { $0.bookID == bookID }
                 self.errorMessage = nil
+            } catch is CancellationError {
+                return
             } catch {
+                guard self.isCurrentLoad(bookID: bookID, generation: generation) else {
+                    return
+                }
                 self.webLinks = []
                 self.localFiles = []
                 self.errorMessage = "无法读取阅读入口；书籍记录未被更改。"
             }
+            guard self.isCurrentLoad(bookID: bookID, generation: generation) else {
+                return
+            }
             self.isLoading = false
         }
+    }
+
+    func reset() {
+        loadGeneration &+= 1
+        task?.cancel()
+        task = nil
+        currentBookID = nil
+        webLinks = []
+        localFiles = []
+        isLoading = false
+        statusMessage = nil
+        errorMessage = nil
+    }
+
+    func waitForPendingLoad() async {
+        await task?.value
+    }
+
+    func makeScopedStore() -> ReadingEntryStore {
+        ReadingEntryStore(
+            catalog: catalog,
+            validator: validator,
+            opener: opener,
+            appleBooks: appleBooks,
+            clipboard: clipboard,
+            fileSelector: fileSelector,
+            bookmarks: bookmarks,
+            loader: loader
+        )
     }
 
     func saveWebLink(
@@ -562,13 +744,22 @@ final class ReadingEntryStore: ObservableObject {
         rawValue: String,
         now: Date = Date()
     ) async -> Bool {
-        guard let catalog else { return false }
+        guard requireCurrentContext(bookID) else { return false }
+        guard let catalog else {
+            errorMessage = ReadingEntrySystemError.catalogUnavailable.message
+            return false
+        }
         do {
             let validated = try validator.validate(rawValue)
-            if let id, let existing = webLinks.first(where: { $0.id == id }) {
+            if let id {
+                guard let existing = webLinks.first(where: {
+                    $0.id == id && $0.bookID == bookID
+                }) else {
+                    throw ReadingEntrySystemError.contextChanged
+                }
                 let updated = try ExternalLink(
                     id: existing.id,
-                    bookID: existing.bookID,
+                    bookID: bookID,
                     kind: .web,
                     label: label,
                     value: validated.normalizedValue,
@@ -587,39 +778,61 @@ final class ReadingEntryStore: ObservableObject {
                     )
                 )
             }
+            guard isCurrentContext(bookID) else { return true }
             load(bookID: bookID)
             await task?.value
+            guard isCurrentContext(bookID) else { return true }
             statusMessage = "阅读链接已保存。"
             return true
         } catch let error as ExternalLinkValidationError {
+            guard isCurrentContext(bookID) else { return false }
+            errorMessage = error.message
+        } catch let error as ReadingEntrySystemError {
+            guard isCurrentContext(bookID) else { return false }
             errorMessage = error.message
         } catch {
+            guard isCurrentContext(bookID) else { return false }
             errorMessage = "未能保存阅读链接；现有入口未被更改。"
         }
         return false
     }
 
     func deleteWebLink(_ link: ExternalLink) async {
-        guard let catalog else { return }
+        guard requireCurrentRow(id: link.id, bookID: link.bookID, in: webLinks) else {
+            return
+        }
+        guard let catalog else {
+            errorMessage = ReadingEntrySystemError.catalogUnavailable.message
+            return
+        }
         do {
             try await catalog.deleteExternalLink(link.id)
+            guard isCurrentContext(link.bookID) else { return }
             load(bookID: link.bookID)
             await task?.value
+            guard isCurrentContext(link.bookID) else { return }
             statusMessage = "阅读链接已移除。"
         } catch {
+            guard isCurrentContext(link.bookID) else { return }
             errorMessage = "未能移除阅读链接；现有入口未被更改。"
         }
     }
 
     func openWebLink(_ link: ExternalLink) async {
+        guard requireCurrentRow(id: link.id, bookID: link.bookID, in: webLinks) else {
+            return
+        }
         do {
             let validated = try validator.validate(link.value)
             try await opener.open(validated.url)
+            guard isCurrentContext(link.bookID) else { return }
             statusMessage = "已将 \(validated.safeHost) 交给系统打开。"
             errorMessage = nil
         } catch let error as ExternalLinkValidationError {
+            guard isCurrentContext(link.bookID) else { return }
             errorMessage = error.message
         } catch {
+            guard isCurrentContext(link.bookID) else { return }
             errorMessage = ReadingEntrySystemError.externalOpenFailed.message
         }
     }
@@ -633,6 +846,7 @@ final class ReadingEntryStore: ObservableObject {
     }
 
     func performAppleBooksFallback(for book: Book) async {
+        guard requireCurrentContext(book.id) else { return }
         do {
             let step = try await AppleBooksFallbackCoordinator(
                 validator: validator,
@@ -640,21 +854,30 @@ final class ReadingEntryStore: ObservableObject {
                 appleBooks: appleBooks,
                 clipboard: clipboard
             ).perform(book: book, links: webLinks)
+            guard isCurrentContext(book.id) else { return }
             statusMessage = step.message
             errorMessage = nil
         } catch let error as ReadingEntrySystemError {
+            guard isCurrentContext(book.id) else { return }
             errorMessage = error.message
         } catch {
+            guard isCurrentContext(book.id) else { return }
             errorMessage = ReadingEntrySystemError.allFallbacksUnavailable.message
         }
     }
 
     func chooseLocalFile(for bookID: UUID, now: Date = Date()) async {
-        guard let catalog else { return }
+        guard requireCurrentContext(bookID) else { return }
+        guard let catalog else {
+            errorMessage = ReadingEntrySystemError.catalogUnavailable.message
+            return
+        }
         guard let url = await fileSelector.selectFile() else {
+            guard isCurrentContext(bookID) else { return }
             statusMessage = "已取消选择；书库未更改。"
             return
         }
+        guard requireCurrentContext(bookID) else { return }
         do {
             try validateSelectedFile(url)
             let data = try bookmarks.createReadOnlyBookmark(for: url)
@@ -666,18 +889,33 @@ final class ReadingEntryStore: ObservableObject {
                     createdAt: now
                 )
             )
+            guard isCurrentContext(bookID) else { return }
             load(bookID: bookID)
             await task?.value
+            guard isCurrentContext(bookID) else { return }
             statusMessage = "本地文件引用已保存；Book Atlas 未读取文件正文。"
+        } catch DomainValidationError.invalidBookmarkData {
+            guard isCurrentContext(bookID) else { return }
+            errorMessage = ReadingEntrySystemError.bookmarkTooLarge.message
         } catch let error as ReadingEntrySystemError {
+            guard isCurrentContext(bookID) else { return }
             errorMessage = error.message
         } catch {
+            guard isCurrentContext(bookID) else { return }
             errorMessage = ReadingEntrySystemError.bookmarkCreateFailed.message
         }
     }
 
     func openLocalFile(_ reference: LocalFileReference, now: Date = Date()) async {
-        guard let catalog else { return }
+        guard requireCurrentRow(
+            id: reference.id,
+            bookID: reference.bookID,
+            in: localFiles
+        ) else { return }
+        guard let catalog else {
+            errorMessage = ReadingEntrySystemError.catalogUnavailable.message
+            return
+        }
         do {
             let resolved = try bookmarks.resolve(reference.bookmarkData)
             guard bookmarks.startAccessing(resolved.url) else {
@@ -697,25 +935,41 @@ final class ReadingEntryStore: ObservableObject {
                 try await catalog.updateLocalFileReference(refreshed)
             }
             try await opener.open(resolved.url)
+            guard isCurrentContext(reference.bookID) else { return }
             statusMessage = resolved.isStale
                 ? "文件授权已安全更新并交给系统打开。"
                 : "本地文件已交给系统打开。"
             if resolved.isStale {
                 load(bookID: reference.bookID)
             }
+        } catch DomainValidationError.invalidBookmarkData {
+            guard isCurrentContext(reference.bookID) else { return }
+            errorMessage = ReadingEntrySystemError.bookmarkTooLarge.message
         } catch let error as ReadingEntrySystemError {
+            guard isCurrentContext(reference.bookID) else { return }
             errorMessage = error.message
         } catch {
+            guard isCurrentContext(reference.bookID) else { return }
             errorMessage = ReadingEntrySystemError.fileUnavailable.message
         }
     }
 
     func reselectLocalFile(_ reference: LocalFileReference, now: Date = Date()) async {
-        guard let catalog else { return }
+        guard requireCurrentRow(
+            id: reference.id,
+            bookID: reference.bookID,
+            in: localFiles
+        ) else { return }
+        guard let catalog else {
+            errorMessage = ReadingEntrySystemError.catalogUnavailable.message
+            return
+        }
         guard let url = await fileSelector.selectFile() else {
+            guard isCurrentContext(reference.bookID) else { return }
             statusMessage = "已取消重新选择；原引用保持不变。"
             return
         }
+        guard requireCurrentContext(reference.bookID) else { return }
         do {
             try validateSelectedFile(url)
             let updated = try LocalFileReference(
@@ -727,24 +981,42 @@ final class ReadingEntryStore: ObservableObject {
                 updatedAt: now
             )
             try await catalog.updateLocalFileReference(updated)
+            guard isCurrentContext(reference.bookID) else { return }
             load(bookID: reference.bookID)
             await task?.value
+            guard isCurrentContext(reference.bookID) else { return }
             statusMessage = "本地文件授权已更新。"
+        } catch DomainValidationError.invalidBookmarkData {
+            guard isCurrentContext(reference.bookID) else { return }
+            errorMessage = ReadingEntrySystemError.bookmarkTooLarge.message
         } catch let error as ReadingEntrySystemError {
+            guard isCurrentContext(reference.bookID) else { return }
             errorMessage = error.message
         } catch {
+            guard isCurrentContext(reference.bookID) else { return }
             errorMessage = ReadingEntrySystemError.bookmarkCreateFailed.message
         }
     }
 
     func deleteLocalFile(_ reference: LocalFileReference) async {
-        guard let catalog else { return }
+        guard requireCurrentRow(
+            id: reference.id,
+            bookID: reference.bookID,
+            in: localFiles
+        ) else { return }
+        guard let catalog else {
+            errorMessage = ReadingEntrySystemError.catalogUnavailable.message
+            return
+        }
         do {
             try await catalog.deleteLocalFileReference(reference.id)
+            guard isCurrentContext(reference.bookID) else { return }
             load(bookID: reference.bookID)
             await task?.value
+            guard isCurrentContext(reference.bookID) else { return }
             statusMessage = "本地文件引用已移除；文件本身未被删除。"
         } catch {
+            guard isCurrentContext(reference.bookID) else { return }
             errorMessage = "未能移除本地文件引用；文件本身未被修改。"
         }
     }
@@ -778,10 +1050,50 @@ final class ReadingEntryStore: ObservableObject {
     }
 
     private func safeDisplayName(_ url: URL) -> String {
-        let name = url.lastPathComponent
-            .components(separatedBy: .controlCharacters)
-            .joined()
+        let filteredScalars = url.lastPathComponent.unicodeScalars.filter {
+            $0.value > 0x1F && $0.value != 0x7F
+        }
+        let name = String(String.UnicodeScalarView(filteredScalars))
+            .replacingOccurrences(of: "/", with: "／")
+            .replacingOccurrences(of: "\\", with: "＼")
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return String((name.isEmpty ? "所选本地文件" : name).prefix(512))
+        let bounded = String(
+            (name.isEmpty ? "所选本地文件" : name)
+                .prefix(LocalFileReference.maximumDisplayNameLength)
+        ).trimmingCharacters(in: .whitespacesAndNewlines)
+        return bounded.isEmpty ? "所选本地文件" : bounded
+    }
+
+    private func isCurrentLoad(bookID: UUID, generation: UInt64) -> Bool {
+        !Task.isCancelled
+            && currentBookID == bookID
+            && loadGeneration == generation
+    }
+
+    private func isCurrentContext(_ bookID: UUID) -> Bool {
+        currentBookID == bookID
+    }
+
+    @discardableResult
+    private func requireCurrentContext(_ bookID: UUID) -> Bool {
+        guard isCurrentContext(bookID) else {
+            errorMessage = ReadingEntrySystemError.contextChanged.message
+            return false
+        }
+        return true
+    }
+
+    private func requireCurrentRow<Row: Identifiable>(
+        id: UUID,
+        bookID: UUID,
+        in rows: [Row]
+    ) -> Bool where Row.ID == UUID {
+        guard requireCurrentContext(bookID),
+              rows.contains(where: { $0.id == id })
+        else {
+            errorMessage = ReadingEntrySystemError.contextChanged.message
+            return false
+        }
+        return true
     }
 }

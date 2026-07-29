@@ -35,7 +35,7 @@ Exit condition: duplicate candidates can be explained, reviewed, ignored, or mer
 
 - **Prompt 7:** independently accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5` with bounded staged import, export, exact versioned application-schema-validated backup, backend-authoritative restore cancellation, and interruption-safe restore.
 - **Prompt 8:** independently accepted after its second review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; the independent Debug build, 146/146 unit/integration/performance tests, and 22/22 UI tests passed without failures or skips.
-- **Prompt 9:** Apple Books and external reading entries are implemented and waiting for independent review.
+- **Prompt 9:** Apple Books and external reading entries are implemented; first-review NO-GO closure fixes are complete and waiting for another independent review.
 
 Exit condition: data is portable and recoverable, relationship exploration does not compromise the core model, and integrations degrade safely.
 

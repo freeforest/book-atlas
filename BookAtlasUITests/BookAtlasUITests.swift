@@ -666,6 +666,13 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(savedLinkRow.waitForExistence(timeout: 3))
         XCTAssertTrue(accessibilityText(of: savedLinkRow).contains("reader.example.invalid"))
         XCTAssertFalse(accessibilityText(of: savedLinkRow).contains("private-segment"))
+        let open = app.buttons["打开"].firstMatch
+        XCTAssertTrue(open.waitForExistence(timeout: 3))
+        open.click()
+        let openStatus = element("reading-entry-status", in: app)
+        XCTAssertTrue(openStatus.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: openStatus).contains("reader.example.invalid"))
+        XCTAssertFalse(accessibilityText(of: openStatus).contains("private-segment"))
         let edit = app.buttons["编辑"].firstMatch
         XCTAssertTrue(edit.waitForExistence(timeout: 3))
         edit.click()
@@ -778,6 +785,82 @@ final class BookAtlasUITests: XCTestCase {
                 "local-file-row-00000000-0000-0000-0000-000000000902",
                 in: app
             ).waitForNonExistence(timeout: 3)
+        )
+    }
+
+    @MainActor
+    func testDuplicateCandidateReadingEntriesAreReadOnlyAndDoNotPolluteMainDetail() {
+        let app = launchInMemoryApp(seedReadingEntries: true)
+        let primaryBookRow = element(
+            "library-book-00000000-0000-0000-0000-000000000101",
+            in: app
+        )
+        XCTAssertTrue(primaryBookRow.waitForExistence(timeout: 3))
+        primaryBookRow.click()
+        element("review-duplicates-button", in: app).click()
+        XCTAssertTrue(
+            element("duplicate-review-sheet", in: app).waitForExistence(timeout: 3)
+        )
+        let candidateRow = app.staticTexts
+            .matching(
+                identifier: "duplicate-candidate-00000000-0000-0000-0000-000000000202"
+            )
+            .firstMatch
+        XCTAssertTrue(candidateRow.waitForExistence(timeout: 3))
+        candidateRow.click()
+        let viewExisting = element("duplicate-view-existing-inline", in: app)
+        XCTAssertTrue(viewExisting.waitForExistence(timeout: 3))
+        viewExisting.click()
+        let preview = element("duplicate-existing-preview", in: app)
+        XCTAssertTrue(preview.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            preview.descendants(matching: .any)[
+                "reading-link-row-00000000-0000-0000-0000-000000000903"
+            ].waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            preview.descendants(matching: .any)[
+                "local-file-row-00000000-0000-0000-0000-000000000904"
+            ].exists
+        )
+        XCTAssertTrue(
+            preview.descendants(matching: .any)["reading-entries-read-only"].exists
+        )
+        XCTAssertFalse(
+            preview.descendants(matching: .any)["add-reading-link"].exists
+        )
+        XCTAssertFalse(
+            preview.descendants(matching: .any)[
+                "edit-reading-link-00000000-0000-0000-0000-000000000903"
+            ].exists
+        )
+        XCTAssertFalse(
+            preview.descendants(matching: .any)[
+                "remove-local-file-00000000-0000-0000-0000-000000000904"
+            ].exists
+        )
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(preview.waitForNonExistence(timeout: 3))
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(
+            element("duplicate-review-sheet", in: app).waitForNonExistence(timeout: 3)
+        )
+        scrollToElement(
+            "reading-link-row-00000000-0000-0000-0000-000000000901",
+            in: app
+        )
+        XCTAssertTrue(
+            element(
+                "reading-link-row-00000000-0000-0000-0000-000000000901",
+                in: app
+            ).waitForExistence(timeout: 3)
+        )
+        XCTAssertFalse(
+            element(
+                "reading-link-row-00000000-0000-0000-0000-000000000903",
+                in: app
+            ).exists
         )
     }
 

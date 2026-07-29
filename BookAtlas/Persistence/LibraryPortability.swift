@@ -1246,22 +1246,40 @@ final class BookAtlasSchemaValidator {
             )
         }
         if version >= 5 {
-            _ = try database.query(
+            let oversizedOrEmptyBookmarks = try database.scalarInt(
                 """
-                SELECT id, book_id, display_name, bookmark_data, created_at, updated_at
+                SELECT COUNT(*)
                 FROM local_file_references
+                WHERE length(bookmark_data) < 1
+                   OR length(bookmark_data) > \(LocalFileReference.maximumBookmarkBytes)
+                """
+            ) ?? 0
+            guard oversizedOrEmptyBookmarks == 0 else {
+                throw PortabilityError.invalidBackupSchema
+            }
+
+            try database.forEachRow(
+                """
+                SELECT id, book_id, display_name, length(bookmark_data), bookmark_data,
+                       created_at, updated_at
+                FROM local_file_references
+                ORDER BY id
                 """
             ) { row in
-                guard let bookmarkData = row.data(at: 3) else {
+                let storedLength = Int(row.integer(at: 3))
+                guard (1 ... LocalFileReference.maximumBookmarkBytes).contains(storedLength),
+                      let bookmarkData = row.data(at: 4),
+                      bookmarkData.count == storedLength
+                else {
                     throw PortabilityError.invalidBackupSchema
                 }
-                return try LocalFileReference(
+                _ = try LocalFileReference(
                     id: try requiredUUID(row.string(at: 0)),
                     bookID: try requiredUUID(row.string(at: 1)),
                     displayName: try requiredString(row.string(at: 2)),
                     bookmarkData: bookmarkData,
-                    createdAt: try requiredDate(row.string(at: 4)),
-                    updatedAt: try requiredDate(row.string(at: 5))
+                    createdAt: try requiredDate(row.string(at: 5)),
+                    updatedAt: try requiredDate(row.string(at: 6))
                 )
             }
         }

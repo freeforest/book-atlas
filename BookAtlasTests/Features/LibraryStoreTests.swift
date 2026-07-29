@@ -3,6 +3,31 @@ import XCTest
 
 @MainActor
 final class LibraryStoreTests: XCTestCase {
+    func testReadingEntryUIFixtureProducesExactDuplicateCandidate() async throws {
+        let store = LibraryStore.makeApplicationStore(
+            arguments: [
+                "-BookAtlasUseInMemoryStore",
+                "-BookAtlasSeedReadingEntryUITestData"
+            ],
+            environment: [:]
+        )
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(
+            store.selectedBookID,
+            UUID(uuidString: "00000000-0000-0000-0000-000000000101")
+        )
+        store.reviewSelectedBookForDuplicates()
+        await store.waitForPendingWork()
+
+        let candidate = try XCTUnwrap(store.duplicateReview?.candidates.first)
+        XCTAssertEqual(candidate.confidence, .exact)
+        XCTAssertEqual(
+            candidate.existingBook.id,
+            UUID(uuidString: "00000000-0000-0000-0000-000000000202")
+        )
+    }
+
     func testStoreSelectsNewlyCreatedBookAndClearsSelectionAfterDelete() async throws {
         let repository = try BookRepository.inMemory()
         let service = LibraryCatalogService(repository: repository)
@@ -215,8 +240,42 @@ final class LibraryStoreTests: XCTestCase {
             BookDraft(title: "《可返回的灯塔》", author: "沈遥"),
             at: FictionalLibraryFixtures.timestamp
         )
+        let mainBook = try repository.create(
+            BookDraft(title: "《主详情灯塔》", author: "林雾"),
+            at: FictionalLibraryFixtures.timestamp.addingTimeInterval(1)
+        )
+        let mainLink = try repository.addExternalLink(
+            ExternalLink(
+                bookID: mainBook.id,
+                kind: .web,
+                value: "https://main.example.invalid/private-main"
+            )
+        )
+        let candidateLink = try repository.addExternalLink(
+            ExternalLink(
+                bookID: existing.id,
+                kind: .web,
+                value: "https://candidate.example.invalid/private-candidate"
+            )
+        )
+        let mainFile = try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: mainBook.id,
+                displayName: "主详情虚构文件.pdf",
+                bookmarkData: Data("main".utf8)
+            )
+        )
+        let candidateFile = try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: existing.id,
+                displayName: "候选虚构文件.pdf",
+                bookmarkData: Data("candidate".utf8)
+            )
+        )
         let store = LibraryStore(catalog: LibraryCatalogService(repository: repository))
         await store.waitForPendingWork()
+        store.readingEntries.load(bookID: mainBook.id)
+        await store.readingEntries.waitForPendingLoad()
         store.beginCreate()
         let session = try XCTUnwrap(store.editorSession)
         let draft = BookEditorDraft(
@@ -228,10 +287,32 @@ final class LibraryStoreTests: XCTestCase {
         let reviewID = try XCTUnwrap(store.duplicateReview?.id)
 
         store.viewSelectedDuplicate()
+        await store.duplicateReadingEntries.waitForPendingLoad()
 
         XCTAssertEqual(store.viewedDuplicateBook, existing)
         XCTAssertEqual(store.editorSession?.id, session.id)
         XCTAssertEqual(store.duplicateReview?.id, reviewID)
+        XCTAssertEqual(store.readingEntries.currentBookID, mainBook.id)
+        XCTAssertEqual(store.readingEntries.webLinks.map(\.id), [mainLink.id])
+        XCTAssertEqual(store.readingEntries.webLinks.map(\.value), [mainLink.value])
+        XCTAssertEqual(store.readingEntries.localFiles.map(\.id), [mainFile.id])
+        XCTAssertEqual(
+            store.readingEntries.localFiles.map(\.bookmarkData),
+            [mainFile.bookmarkData]
+        )
+        XCTAssertEqual(store.duplicateReadingEntries.currentBookID, existing.id)
+        XCTAssertEqual(
+            store.duplicateReadingEntries.webLinks.map(\.id),
+            [candidateLink.id]
+        )
+        XCTAssertEqual(
+            store.duplicateReadingEntries.webLinks.map(\.value),
+            [candidateLink.value]
+        )
+        XCTAssertEqual(
+            store.duplicateReadingEntries.localFiles.map(\.id),
+            [candidateFile.id]
+        )
 
         store.returnFromViewedDuplicate()
 
@@ -239,6 +320,11 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(store.editorSession?.id, session.id)
         XCTAssertEqual(store.duplicateReview?.id, reviewID)
         XCTAssertEqual(store.duplicateReview?.candidates.map(\.id), [existing.id])
+        XCTAssertNil(store.duplicateReadingEntries.currentBookID)
+        XCTAssertEqual(store.duplicateReadingEntries.webLinks, [])
+        XCTAssertEqual(store.readingEntries.currentBookID, mainBook.id)
+        XCTAssertEqual(store.readingEntries.webLinks.map(\.id), [mainLink.id])
+        XCTAssertEqual(store.readingEntries.localFiles.map(\.id), [mainFile.id])
     }
 }
 

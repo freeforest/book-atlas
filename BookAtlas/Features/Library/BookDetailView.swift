@@ -1,8 +1,14 @@
 import SwiftUI
 
+enum ReadingEntryPresentationMode {
+    case manage
+    case readOnly
+}
+
 struct BookDetailView: View {
     let book: Book
     @ObservedObject var readingEntries: ReadingEntryStore
+    var readingEntryMode: ReadingEntryPresentationMode = .manage
     var onShowGraph: ((UUID) -> Void)? = nil
 
     var body: some View {
@@ -54,7 +60,11 @@ struct BookDetailView: View {
                     }
                 }
 
-                ReadingEntriesSection(book: book, store: readingEntries)
+                ReadingEntriesSection(
+                    book: book,
+                    store: readingEntries,
+                    mode: readingEntryMode
+                )
 
                 GroupBox("时间") {
                     DetailFields {
@@ -82,6 +92,7 @@ struct BookDetailView: View {
 private struct ReadingEntriesSection: View {
     let book: Book
     @ObservedObject var store: ReadingEntryStore
+    let mode: ReadingEntryPresentationMode
     @State private var editedLink: ExternalLink?
     @State private var showsLinkEditor = false
     @State private var linkToDelete: ExternalLink?
@@ -94,6 +105,13 @@ private struct ReadingEntriesSection: View {
                 Text("Book Atlas 只保存并打开你主动配置的外部入口，不是内置阅读器。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if mode == .readOnly {
+                    Text("候选记录中的阅读入口仅供核对；返回主详情后才能管理入口。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("reading-entries-read-only")
+                }
 
                 if store.webLinks.isEmpty, store.localFiles.isEmpty {
                     ContentUnavailableView {
@@ -119,19 +137,21 @@ private struct ReadingEntriesSection: View {
                                 )
                         }
                         Spacer()
-                        Button("打开") {
-                            Task { await store.openWebLink(link) }
+                        if mode == .manage {
+                            Button("打开") {
+                                Task { await store.openWebLink(link) }
+                            }
+                            .accessibilityIdentifier("open-reading-link-\(link.id.uuidString)")
+                            Button("编辑") {
+                                editedLink = link
+                                showsLinkEditor = true
+                            }
+                            .accessibilityIdentifier("edit-reading-link-\(link.id.uuidString)")
+                            Button("删除", role: .destructive) {
+                                linkToDelete = link
+                            }
+                            .accessibilityIdentifier("delete-reading-link-\(link.id.uuidString)")
                         }
-                        .accessibilityIdentifier("open-reading-link-\(link.id.uuidString)")
-                        Button("编辑") {
-                            editedLink = link
-                            showsLinkEditor = true
-                        }
-                        .accessibilityIdentifier("edit-reading-link-\(link.id.uuidString)")
-                        Button("删除", role: .destructive) {
-                            linkToDelete = link
-                        }
-                        .accessibilityIdentifier("delete-reading-link-\(link.id.uuidString)")
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel(
@@ -152,57 +172,61 @@ private struct ReadingEntriesSection: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        Button("打开") {
-                            Task { await store.openLocalFile(reference) }
+                        if mode == .manage {
+                            Button("打开") {
+                                Task { await store.openLocalFile(reference) }
+                            }
+                            .accessibilityIdentifier("open-local-file-\(reference.id.uuidString)")
+                            Button("重新选择") {
+                                Task { await store.reselectLocalFile(reference) }
+                            }
+                            .accessibilityIdentifier("reselect-local-file-\(reference.id.uuidString)")
+                            Button("移除", role: .destructive) {
+                                fileToDelete = reference
+                            }
+                            .accessibilityIdentifier("remove-local-file-\(reference.id.uuidString)")
                         }
-                        .accessibilityIdentifier("open-local-file-\(reference.id.uuidString)")
-                        Button("重新选择") {
-                            Task { await store.reselectLocalFile(reference) }
-                        }
-                        .accessibilityIdentifier("reselect-local-file-\(reference.id.uuidString)")
-                        Button("移除", role: .destructive) {
-                            fileToDelete = reference
-                        }
-                        .accessibilityIdentifier("remove-local-file-\(reference.id.uuidString)")
                     }
                     .accessibilityElement(children: .contain)
                     .accessibilityLabel("\(reference.displayName)，本地只读文件引用")
                     .accessibilityIdentifier("local-file-row-\(reference.id.uuidString)")
                 }
 
-                HStack {
-                    Button("添加 HTTPS 链接…", systemImage: "link.badge.plus") {
-                        editedLink = nil
-                        showsLinkEditor = true
-                    }
-                    .accessibilityIdentifier("add-reading-link")
-                    Button("选择本地文件…", systemImage: "doc.badge.plus") {
-                        Task { await store.chooseLocalFile(for: book.id) }
-                    }
-                    .accessibilityIdentifier("choose-local-file")
-                }
-
-                Divider()
-
-                Text("Apple Books 不支持精确跳转到私人资料库项目。")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("apple-books-capability-note")
-                HStack {
-                    Button("尝试 Apple Books 入口…", systemImage: "books.vertical") {
-                        confirmsAppleBooksFallback = true
-                    }
-                    .accessibilityIdentifier("apple-books-fallback")
-                    if let isbn = book.isbn {
-                        Button("复制 ISBN") {
-                            store.copyISBN(isbn)
+                if mode == .manage {
+                    HStack {
+                        Button("添加 HTTPS 链接…", systemImage: "link.badge.plus") {
+                            editedLink = nil
+                            showsLinkEditor = true
                         }
-                        .accessibilityIdentifier("copy-book-isbn")
+                        .accessibilityIdentifier("add-reading-link")
+                        Button("选择本地文件…", systemImage: "doc.badge.plus") {
+                            Task { await store.chooseLocalFile(for: book.id) }
+                        }
+                        .accessibilityIdentifier("choose-local-file")
                     }
-                    Button("复制书名") {
-                        store.copyTitle(book.title)
+
+                    Divider()
+
+                    Text("Apple Books 不支持精确跳转到私人资料库项目。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("apple-books-capability-note")
+                    HStack {
+                        Button("尝试 Apple Books 入口…", systemImage: "books.vertical") {
+                            confirmsAppleBooksFallback = true
+                        }
+                        .accessibilityIdentifier("apple-books-fallback")
+                        if let isbn = book.isbn {
+                            Button("复制 ISBN") {
+                                store.copyISBN(isbn)
+                            }
+                            .accessibilityIdentifier("copy-book-isbn")
+                        }
+                        Button("复制书名") {
+                            store.copyTitle(book.title)
+                        }
+                        .accessibilityIdentifier("copy-book-title")
                     }
-                    .accessibilityIdentifier("copy-book-title")
                 }
 
                 if let message = store.statusMessage {

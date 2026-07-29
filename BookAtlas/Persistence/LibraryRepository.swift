@@ -892,7 +892,8 @@ final class BookRepository {
     func localFileReferences(forBookID bookID: UUID) throws -> [LocalFileReference] {
         try database.query(
             """
-            SELECT id, book_id, display_name, bookmark_data, created_at, updated_at
+            SELECT id, book_id, display_name, length(bookmark_data), bookmark_data,
+                   created_at, updated_at
             FROM local_file_references
             WHERE book_id = ?
             ORDER BY created_at ASC, id ASC
@@ -1818,9 +1819,12 @@ final class BookRepository {
         guard let id = UUID(uuidString: row.string(at: 0) ?? ""),
               let bookID = UUID(uuidString: row.string(at: 1) ?? ""),
               let displayName = row.string(at: 2),
-              let bookmarkData = row.data(at: 3),
-              let createdAt = StorageDateCodec.decode(row.string(at: 4)),
-              let updatedAt = StorageDateCodec.decode(row.string(at: 5))
+              (1 ... LocalFileReference.maximumBookmarkBytes)
+                  .contains(Int(row.integer(at: 3))),
+              let bookmarkData = row.data(at: 4),
+              bookmarkData.count == Int(row.integer(at: 3)),
+              let createdAt = StorageDateCodec.decode(row.string(at: 5)),
+              let updatedAt = StorageDateCodec.decode(row.string(at: 6))
         else {
             throw BookRepositoryError.invalidStoredRecord
         }

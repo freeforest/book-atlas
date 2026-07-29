@@ -133,6 +133,7 @@ final class LibraryStore: ObservableObject {
     let portability: PortabilityStore
     let graph: GraphStore
     let readingEntries: ReadingEntryStore
+    let duplicateReadingEntries: ReadingEntryStore
 
     private let catalog: (any LibraryCataloging)?
     private var queryTask: Task<Void, Never>?
@@ -148,7 +149,9 @@ final class LibraryStore: ObservableObject {
         organizer = CatalogOrganizerStore(catalog: catalog)
         portability = PortabilityStore(catalog: catalog)
         graph = GraphStore(catalog: catalog)
-        self.readingEntries = readingEntries ?? ReadingEntryStore(catalog: catalog)
+        let primaryReadingEntries = readingEntries ?? ReadingEntryStore(catalog: catalog)
+        self.readingEntries = primaryReadingEntries
+        duplicateReadingEntries = primaryReadingEntries.makeScopedStore()
         if let initialError {
             loadingState = .failed(initialError)
         } else if catalog == nil {
@@ -449,11 +452,18 @@ final class LibraryStore: ObservableObject {
         else {
             return
         }
+        viewDuplicate(candidate)
+    }
+
+    func viewDuplicate(_ candidate: DuplicateCandidate) {
+        selectedDuplicateID = candidate.id
         viewedDuplicateBook = candidate.existingBook
+        duplicateReadingEntries.load(bookID: candidate.existingBook.id)
     }
 
     func returnFromViewedDuplicate() {
         viewedDuplicateBook = nil
+        duplicateReadingEntries.reset()
     }
 
     func keepSelectedDuplicateIndependent(as disposition: DuplicatePairDisposition) {
@@ -725,6 +735,7 @@ final class LibraryStore: ObservableObject {
         duplicateReview = review
         selectedDuplicateID = review.candidates.first?.id
         viewedDuplicateBook = nil
+        duplicateReadingEntries.reset()
         mergePreview = nil
         mergeSelections = BookMergeSelections()
     }
@@ -733,6 +744,7 @@ final class LibraryStore: ObservableObject {
         duplicateReview = nil
         selectedDuplicateID = nil
         viewedDuplicateBook = nil
+        duplicateReadingEntries.reset()
         mergePreview = nil
         mergeSelections = BookMergeSelections()
     }
@@ -766,7 +778,11 @@ final class LibraryStore: ObservableObject {
                 at: timestamp
             )
             _ = try repository.create(
-                BookDraft(title: "B202", author: "Forest Author"),
+                BookDraft(
+                    title: seedReadingEntryUITestData ? "A101" : "B202",
+                    author: seedReadingEntryUITestData ? "Harbor Author" : "Forest Author",
+                    isbn: seedReadingEntryUITestData ? "9780000000002" : ""
+                ),
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
                 at: timestamp.addingTimeInterval(1)
             )
@@ -789,6 +805,28 @@ final class LibraryStore: ObservableObject {
                     bookID: bookID,
                     displayName: "虚构阅读副本.pdf",
                     bookmarkData: Data("fixed-fictional-ui-bookmark".utf8),
+                    createdAt: timestamp
+                )
+            )
+            let candidateBookID = UUID(
+                uuidString: "00000000-0000-0000-0000-000000000202"
+            )!
+            _ = try repository.addExternalLink(
+                ExternalLink(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000903")!,
+                    bookID: candidateBookID,
+                    kind: .web,
+                    label: "候选虚构入口",
+                    value: "https://candidate.example.invalid/private-candidate",
+                    createdAt: timestamp
+                )
+            )
+            _ = try repository.addLocalFileReference(
+                LocalFileReference(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000904")!,
+                    bookID: candidateBookID,
+                    displayName: "候选虚构阅读副本.pdf",
+                    bookmarkData: Data("fixed-fictional-candidate-bookmark".utf8),
                     createdAt: timestamp
                 )
             )

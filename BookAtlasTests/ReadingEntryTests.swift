@@ -72,12 +72,79 @@ final class ReadingEntryTests: XCTestCase {
         }
     }
 
+    func testStrictHTTPSValidationRejectsPercentEncodedControlsInPathAndQuery() {
+        let validator = StrictHTTPSLinkValidator()
+        for encoded in ["%00", "%09", "%0A", "%0a", "%0D", "%0d%0A", "%7F", "%7f"] {
+            for value in [
+                "https://example.invalid/path/\(encoded)",
+                "https://example.invalid/path?value=\(encoded)"
+            ] {
+                XCTAssertThrowsError(try validator.validate(value), value) {
+                    XCTAssertEqual(
+                        $0 as? ExternalLinkValidationError,
+                        .controlCharacter
+                    )
+                }
+            }
+        }
+    }
+
+    func testStrictHTTPSValidationRejectsMalformedPortsAndAcceptsDeclaredRange() throws {
+        let validator = StrictHTTPSLinkValidator()
+        for value in [
+            "https://example.invalid:/path",
+            "https://example.invalid:not-a-port/path",
+            "https://example.invalid:-1/path",
+            "https://example.invalid:+443/path",
+            "https://example.invalid:0/path",
+            "https://example.invalid:65536/path"
+        ] {
+            XCTAssertThrowsError(try validator.validate(value), value) {
+                XCTAssertEqual($0 as? ExternalLinkValidationError, .invalidPort)
+            }
+        }
+        for port in [1, 443, 65_535] {
+            let result = try validator.validate(
+                "https://example.invalid:\(port)/合法路径?q=%E4%B8%AD"
+            )
+            XCTAssertEqual(result.safeHost, "example.invalid:\(port)")
+        }
+        XCTAssertNoThrow(
+            try validator.validate("https://example.invalid/阅读?q=固定虚构内容")
+        )
+        XCTAssertNoThrow(
+            try validator.validate("https://example.invalid/%E9%98%85%E8%AF%BB?q=%E4%B8%AD")
+        )
+    }
+
+    func testAppleBooksSearchRejectsControlCharactersBeforeExternalDispatch() async throws {
+        let book = try Book(
+            draft: BookDraft(title: "《虚构\n搜索》", author: "林雾"),
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+        let opener = SpyResourceOpener()
+        let appleBooks = SpyAppleBooks(isAvailable: true)
+        let coordinator = AppleBooksFallbackCoordinator(
+            validator: StrictHTTPSLinkValidator(),
+            opener: opener,
+            appleBooks: appleBooks,
+            clipboard: SpyClipboard()
+        )
+
+        let result = try await coordinator.perform(book: book, links: [])
+        XCTAssertEqual(result, .launchApplication)
+        XCTAssertTrue(opener.openedURLs.isEmpty)
+        XCTAssertEqual(appleBooks.launchCount, 1)
+    }
+
     func testWebLinkCRUDValidatesBeforeSaveAndAgainBeforeOpen() async throws {
         let repository = try BookRepository.inMemory()
         let book = try repository.create(FictionalLibraryFixtures.draft())
         let catalog = LibraryCatalogService(repository: repository)
         let opener = SpyResourceOpener()
         let store = ReadingEntryStore(catalog: catalog, opener: opener)
+        store.load(bookID: book.id)
+        await store.waitForPendingLoad()
 
         let rejectedSave = await store.saveWebLink(
             bookID: book.id,
@@ -105,9 +172,10 @@ final class ReadingEntryTests: XCTestCase {
         XCTAssertEqual(store.webLinks.first?.label, "虚构入口（修订）")
 
         let unsafe = try ExternalLink(
+            id: created.id,
             bookID: book.id,
             kind: .web,
-            value: "file:///private/tmp/never-open"
+            value: "https://example.invalid/%0Anever-open"
         )
         await store.openWebLink(unsafe)
         XCTAssertTrue(opener.openedURLs.isEmpty)
@@ -261,6 +329,8 @@ final class ReadingEntryTests: XCTestCase {
             fileSelector: SpyFileSelector(urls: [nil]),
             bookmarks: SpyBookmarks()
         )
+        store.load(bookID: book.id)
+        await store.waitForPendingLoad()
 
         await store.chooseLocalFile(for: book.id)
 
@@ -283,18 +353,25 @@ final class ReadingEntryTests: XCTestCase {
             fileSelector: SpyFileSelector(urls: [fixture]),
             bookmarks: bookmarks
         )
+        store.load(bookID: book.id)
+        await store.waitForPendingLoad()
 
         await store.chooseLocalFile(for: book.id)
         let created = try XCTUnwrap(store.localFiles.first)
         XCTAssertEqual(created.displayName, "虚构阅读文件.txt")
         bookmarks.isStale = true
-        bookmarks.createdData = Data("refreshed-bookmark".utf8)
+        bookmarks.createdData = Data(
+            count: LocalFileReference.maximumBookmarkBytes
+        )
 
         await store.openLocalFile(created)
 
         let persistedFiles = try await catalog.localFileReferences(for: book.id)
         let updated = try XCTUnwrap(persistedFiles.first)
-        XCTAssertEqual(updated.bookmarkData, Data("refreshed-bookmark".utf8))
+        XCTAssertEqual(
+            updated.bookmarkData.count,
+            LocalFileReference.maximumBookmarkBytes
+        )
         XCTAssertEqual(bookmarks.startCount, 1)
         XCTAssertEqual(bookmarks.stopCount, 1)
         XCTAssertEqual(opener.openedURLs, [fixture])
@@ -328,6 +405,8 @@ final class ReadingEntryTests: XCTestCase {
             fileSelector: SpyFileSelector(urls: [replacement]),
             bookmarks: bookmarks
         )
+        store.load(bookID: book.id)
+        await store.waitForPendingLoad()
 
         await store.openLocalFile(reference)
         XCTAssertEqual(store.errorMessage, ReadingEntrySystemError.bookmarkCorrupt.message)
@@ -358,6 +437,208 @@ final class ReadingEntryTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: replacement.path))
     }
 
+    func testLoadGenerationKeepsLateBookAResultFromReplacingBookB() async throws {
+        let bookA = UUID()
+        let bookB = UUID()
+        let linkA = try ExternalLink(
+            bookID: bookA,
+            kind: .web,
+            value: "https://a.example.invalid/private-a"
+        )
+        let linkB = try ExternalLink(
+            bookID: bookB,
+            kind: .web,
+            value: "https://b.example.invalid/private-b"
+        )
+        let fileA = try LocalFileReference(
+            bookID: bookA,
+            displayName: "A-虚构文件.pdf",
+            bookmarkData: Data("a".utf8)
+        )
+        let fileB = try LocalFileReference(
+            bookID: bookB,
+            displayName: "B-虚构文件.pdf",
+            bookmarkData: Data("b".utf8)
+        )
+        let loader = ControlledReadingEntryLoader(
+            snapshots: [
+                bookA: .init(bookID: bookA, webLinks: [linkA], localFiles: [fileA]),
+                bookB: .init(bookID: bookB, webLinks: [linkB], localFiles: [fileB])
+            ]
+        )
+        let store = ReadingEntryStore(catalog: nil, loader: loader)
+
+        store.load(bookID: bookA)
+        await loader.waitUntilRequested(bookA)
+        store.load(bookID: bookB)
+        XCTAssertEqual(store.currentBookID, bookB)
+        XCTAssertEqual(store.webLinks, [])
+        XCTAssertEqual(store.localFiles, [])
+        await loader.waitUntilRequested(bookB)
+        await loader.complete(bookB)
+        await store.waitForPendingLoad()
+        XCTAssertEqual(store.webLinks, [linkB])
+        XCTAssertEqual(store.localFiles, [fileB])
+
+        await loader.complete(bookA)
+        await Task.yield()
+        XCTAssertEqual(store.currentBookID, bookB)
+        XCTAssertEqual(store.webLinks, [linkB])
+        XCTAssertEqual(store.localFiles, [fileB])
+        XCTAssertNil(store.errorMessage)
+    }
+
+    func testOldRowsCannotOpenModifyOrDeleteAnotherBooksEntries() async throws {
+        let repository = try BookRepository.inMemory()
+        let bookA = try repository.create(
+            BookDraft(title: "《入口隔离甲》", author: "林雾")
+        )
+        let bookB = try repository.create(
+            BookDraft(title: "《入口隔离乙》", author: "沈遥")
+        )
+        let linkA = try repository.addExternalLink(
+            ExternalLink(
+                bookID: bookA.id,
+                kind: .web,
+                value: "https://a.example.invalid/private-a"
+            )
+        )
+        let linkB = try repository.addExternalLink(
+            ExternalLink(
+                bookID: bookB.id,
+                kind: .web,
+                value: "https://b.example.invalid/private-b"
+            )
+        )
+        let fileA = try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: bookA.id,
+                displayName: "A-虚构文件.pdf",
+                bookmarkData: Data("a".utf8)
+            )
+        )
+        let catalog = LibraryCatalogService(repository: repository)
+        let opener = SpyResourceOpener()
+        let store = ReadingEntryStore(catalog: catalog, opener: opener)
+        store.load(bookID: bookA.id)
+        await store.waitForPendingLoad()
+        store.load(bookID: bookB.id)
+        await store.waitForPendingLoad()
+
+        await store.openWebLink(linkA)
+        await store.deleteWebLink(linkA)
+        await store.deleteLocalFile(fileA)
+        let mismatchedSave = await store.saveWebLink(
+            id: linkA.id,
+            bookID: bookB.id,
+            label: "错误上下文",
+            rawValue: "https://changed.example.invalid"
+        )
+        XCTAssertFalse(mismatchedSave)
+
+        let persistedLinksA = try await catalog.externalLinks(for: bookA.id)
+        let persistedLinksB = try await catalog.externalLinks(for: bookB.id)
+        let persistedFilesA = try await catalog.localFileReferences(for: bookA.id)
+        XCTAssertTrue(opener.openedURLs.isEmpty)
+        XCTAssertEqual(persistedLinksA.map(\.id), [linkA.id])
+        XCTAssertEqual(persistedLinksA.map(\.value), [linkA.value])
+        XCTAssertEqual(persistedLinksB.map(\.id), [linkB.id])
+        XCTAssertEqual(persistedLinksB.map(\.value), [linkB.value])
+        XCTAssertEqual(persistedFilesA.map(\.id), [fileA.id])
+        XCTAssertEqual(persistedFilesA.map(\.bookmarkData), [fileA.bookmarkData])
+        XCTAssertEqual(store.webLinks.map(\.id), [linkB.id])
+        XCTAssertEqual(store.currentBookID, bookB.id)
+        XCTAssertEqual(store.errorMessage, ReadingEntrySystemError.contextChanged.message)
+    }
+
+    func testUnavailableCatalogEndsLoadingWithSafeError() async {
+        let store = ReadingEntryStore(catalog: nil)
+        store.load(bookID: UUID())
+        await store.waitForPendingLoad()
+
+        XCTAssertFalse(store.isLoading)
+        XCTAssertEqual(store.webLinks, [])
+        XCTAssertEqual(store.localFiles, [])
+        XCTAssertEqual(store.errorMessage, ReadingEntrySystemError.catalogUnavailable.message)
+    }
+
+    func testBookmarkBoundaryAndOversizeCreateOrReselectKeepOriginal() async throws {
+        XCTAssertNoThrow(
+            try LocalFileReference(
+                bookID: UUID(),
+                displayName: "边界虚构文件.pdf",
+                bookmarkData: Data(count: LocalFileReference.maximumBookmarkBytes)
+            )
+        )
+        XCTAssertThrowsError(
+            try LocalFileReference(
+                bookID: UUID(),
+                displayName: "超限虚构文件.pdf",
+                bookmarkData: Data(count: LocalFileReference.maximumBookmarkBytes + 1)
+            )
+        ) {
+            XCTAssertEqual($0 as? DomainValidationError, .invalidBookmarkData)
+        }
+
+        let fixture = try temporaryFile(named: "替换虚构文件.pdf")
+        defer { try? FileManager.default.removeItem(at: fixture.deletingLastPathComponent()) }
+        let repository = try BookRepository.inMemory()
+        let book = try repository.create(FictionalLibraryFixtures.draft())
+        let original = try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: book.id,
+                displayName: "原虚构文件.pdf",
+                bookmarkData: Data("original".utf8)
+            )
+        )
+        let catalog = LibraryCatalogService(repository: repository)
+        let bookmarks = SpyBookmarks(resolvedURL: fixture)
+        bookmarks.createdData = Data(count: LocalFileReference.maximumBookmarkBytes + 1)
+        let store = ReadingEntryStore(
+            catalog: catalog,
+            fileSelector: SpyFileSelector(urls: [fixture, fixture]),
+            bookmarks: bookmarks
+        )
+        store.load(bookID: book.id)
+        await store.waitForPendingLoad()
+
+        await store.chooseLocalFile(for: book.id)
+        let filesAfterCreate = try await catalog.localFileReferences(for: book.id)
+        XCTAssertEqual(filesAfterCreate.map(\.id), [original.id])
+        XCTAssertEqual(filesAfterCreate.map(\.bookmarkData), [original.bookmarkData])
+        await store.reselectLocalFile(original)
+        let filesAfterReselect = try await catalog.localFileReferences(for: book.id)
+        XCTAssertEqual(filesAfterReselect.map(\.id), [original.id])
+        XCTAssertEqual(filesAfterReselect.map(\.bookmarkData), [original.bookmarkData])
+        XCTAssertEqual(store.errorMessage, ReadingEntrySystemError.bookmarkTooLarge.message)
+    }
+
+    func testLocalFileDisplayNameRequiresCanonicalStoredForm() {
+        for invalid in [
+            " 前导空白.pdf",
+            "尾随空白.pdf ",
+            "控制\n字符.pdf",
+            "目录/文件.pdf",
+            "目录\\文件.pdf",
+            ".",
+            ".."
+        ] {
+            XCTAssertThrowsError(
+                try LocalFileReference(
+                    bookID: UUID(),
+                    displayName: invalid,
+                    bookmarkData: Data("opaque".utf8)
+                ),
+                invalid
+            ) {
+                XCTAssertEqual(
+                    $0 as? DomainValidationError,
+                    .invalidLocalFileDisplayName
+                )
+            }
+        }
+    }
+
     private func temporaryFile(named name: String) throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -365,6 +646,36 @@ final class ReadingEntryTests: XCTestCase {
         let url = directory.appendingPathComponent(name)
         try Data("fixed fictional content".utf8).write(to: url)
         return url
+    }
+}
+
+private actor ControlledReadingEntryLoader: ReadingEntryLoading {
+    private let snapshots: [UUID: ReadingEntrySnapshot]
+    private var requested: Set<UUID> = []
+    private var continuations: [UUID: CheckedContinuation<ReadingEntrySnapshot, Error>] = [:]
+
+    init(snapshots: [UUID: ReadingEntrySnapshot]) {
+        self.snapshots = snapshots
+    }
+
+    func loadEntries(for bookID: UUID) async throws -> ReadingEntrySnapshot {
+        requested.insert(bookID)
+        return try await withCheckedThrowingContinuation { continuation in
+            continuations[bookID] = continuation
+        }
+    }
+
+    func waitUntilRequested(_ bookID: UUID) async {
+        while !requested.contains(bookID) {
+            await Task.yield()
+        }
+    }
+
+    func complete(_ bookID: UUID) {
+        guard let continuation = continuations.removeValue(forKey: bookID),
+              let snapshot = snapshots[bookID]
+        else { return }
+        continuation.resume(returning: snapshot)
     }
 }
 

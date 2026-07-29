@@ -82,6 +82,29 @@ final class SQLiteDatabase {
         }
     }
 
+    /// Iterates one SQLite row at a time without retaining decoded values.
+    /// Use this for strict validation of potentially large BLOB-bearing tables.
+    func forEachRow(
+        _ sql: String,
+        bindings: [SQLiteValue] = [],
+        _ body: (SQLiteRow) throws -> Void
+    ) throws {
+        let statement = try preparedStatement(sql)
+        try statement.bind(bindings)
+
+        while true {
+            let result = sqlite3_step(statement.pointer)
+            switch result {
+            case SQLITE_ROW:
+                try body(SQLiteRow(pointer: statement.pointer))
+            case SQLITE_DONE:
+                return
+            default:
+                throw SQLiteDatabaseError.executionFailed(result)
+            }
+        }
+    }
+
     func scalarInt(_ sql: String, bindings: [SQLiteValue] = []) throws -> Int64? {
         try query(sql, bindings: bindings) { row in row.integer(at: 0) }.first
     }

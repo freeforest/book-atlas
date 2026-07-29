@@ -7,6 +7,8 @@ enum DomainValidationError: Error, Equatable {
     case priorityOutOfRange
     case invalidPublicationDate
     case blankExternalLinkValue
+    case invalidLocalFileDisplayName
+    case invalidBookmarkData
     case selfRelation
 }
 
@@ -320,6 +322,12 @@ struct ExternalLink: Identifiable, Equatable, Sendable {
 }
 
 struct LocalFileReference: Identifiable, Equatable, Sendable {
+    /// A security-scoped bookmark is normally only a few kilobytes. One MiB
+    /// leaves generous headroom while bounding every database read and backup
+    /// validation allocation.
+    static let maximumBookmarkBytes = 1_048_576
+    static let maximumDisplayNameLength = 512
+
     let id: UUID
     let bookID: UUID
     let displayName: String
@@ -335,23 +343,32 @@ struct LocalFileReference: Identifiable, Equatable, Sendable {
         createdAt: Date = Date(),
         updatedAt: Date? = nil
     ) throws {
-        let normalizedName = displayName
-            .components(separatedBy: .controlCharacters)
-            .joined()
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !normalizedName.isEmpty,
-              normalizedName.count <= 512,
-              !normalizedName.contains("/"),
-              !bookmarkData.isEmpty
-        else {
-            throw DomainValidationError.blankExternalLinkValue
+        guard Self.isCanonicalDisplayName(displayName) else {
+            throw DomainValidationError.invalidLocalFileDisplayName
         }
+        guard !bookmarkData.isEmpty,
+              bookmarkData.count <= Self.maximumBookmarkBytes
+        else { throw DomainValidationError.invalidBookmarkData }
         self.id = id
         self.bookID = bookID
-        self.displayName = normalizedName
+        self.displayName = displayName
         self.bookmarkData = bookmarkData
         self.createdAt = createdAt
         self.updatedAt = updatedAt ?? createdAt
+    }
+
+    static func isCanonicalDisplayName(_ value: String) -> Bool {
+        guard !value.isEmpty,
+              value.count <= maximumDisplayNameLength,
+              value == value.trimmingCharacters(in: .whitespacesAndNewlines),
+              value != ".",
+              value != "..",
+              !value.contains("/"),
+              !value.contains("\\")
+        else { return false }
+        return !value.unicodeScalars.contains {
+            $0.value <= 0x1F || $0.value == 0x7F
+        }
     }
 }
 

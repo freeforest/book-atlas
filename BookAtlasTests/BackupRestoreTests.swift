@@ -567,6 +567,41 @@ final class BackupRestoreTests: XCTestCase {
                         .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp))
                     ]
                 )
+            }),
+            ("leading-space-local-file-name", { database in
+                try Self.insertRawLocalFileReference(
+                    in: database,
+                    displayName: " 前导空白.pdf",
+                    bookmarkSQL: "?"
+                )
+            }),
+            ("trailing-space-local-file-name", { database in
+                try Self.insertRawLocalFileReference(
+                    in: database,
+                    displayName: "尾随空白.pdf ",
+                    bookmarkSQL: "?"
+                )
+            }),
+            ("control-local-file-name", { database in
+                try Self.insertRawLocalFileReference(
+                    in: database,
+                    displayName: "控制\n字符.pdf",
+                    bookmarkSQL: "?"
+                )
+            }),
+            ("backslash-local-file-name", { database in
+                try Self.insertRawLocalFileReference(
+                    in: database,
+                    displayName: "目录\\文件.pdf",
+                    bookmarkSQL: "?"
+                )
+            }),
+            ("oversized-bookmark-zeroblob", { database in
+                try Self.insertRawLocalFileReference(
+                    in: database,
+                    displayName: "超限虚构授权.pdf",
+                    bookmarkSQL: "zeroblob(\(LocalFileReference.maximumBookmarkBytes + 1))"
+                )
             })
         ]
 
@@ -578,6 +613,52 @@ final class BackupRestoreTests: XCTestCase {
                 mutate: mutate
             )
         }
+    }
+
+    func testBookmarkLimitDataBacksUpRestoresAndValidatesMultipleRowsStreaming() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let sourceURL = directory.appendingPathComponent("bookmark-source.sqlite")
+        let source = try BookRepository(databaseURL: sourceURL)
+        let book = try source.create(
+            BookDraft(title: "《授权边界港湾》", author: "固定虚构作者")
+        )
+        for index in 0 ..< 3 {
+            _ = try source.addLocalFileReference(
+                LocalFileReference(
+                    bookID: book.id,
+                    displayName: "边界虚构授权-\(index).pdf",
+                    bookmarkData: Data(
+                        repeating: UInt8(index + 1),
+                        count: LocalFileReference.maximumBookmarkBytes
+                    )
+                )
+            )
+        }
+
+        let backupURL = directory.appendingPathComponent("bookmark-limit.bookatlasbackup")
+        let coordinator = LibraryBackupCoordinator()
+        XCTAssertEqual(
+            try coordinator.backup(repository: source, to: backupURL).preview.schemaVersion,
+            5
+        )
+        XCTAssertEqual(try coordinator.inspect(backupURL).bookCount, 1)
+
+        let liveURL = directory.appendingPathComponent("bookmark-live.sqlite")
+        var live = try BookRepository(databaseURL: liveURL)
+        _ = try coordinator.restore(
+            backupURL: backupURL,
+            databaseURL: liveURL,
+            repository: &live,
+            recoveryDirectory: directory.appendingPathComponent("recovery")
+        )
+        let restored = try live.localFileReferences(forBookID: book.id)
+        XCTAssertEqual(restored.count, 3)
+        XCTAssertTrue(
+            restored.allSatisfy {
+                $0.bookmarkData.count == LocalFileReference.maximumBookmarkBytes
+            }
+        )
     }
 
     func testVersionedSchemaObjectExpectationsAcceptVersionsOneThroughFiveAndMigrateRestore() throws {
@@ -1033,6 +1114,37 @@ final class BackupRestoreTests: XCTestCase {
         }
         XCTAssertEqual(try live.allBooks().map(\.title), [originalTitle], name)
         _ = try live.create(BookDraft(title: "《仍可写 \(name)》", author: "虚构守护者"))
+    }
+
+    private static func insertRawLocalFileReference(
+        in database: SQLiteDatabase,
+        displayName: String,
+        bookmarkSQL: String
+    ) throws {
+        let bookID = try database.query("SELECT id FROM books LIMIT 1") {
+            $0.string(at: 0)
+        }.first!
+        let bookmarkBinding = bookmarkSQL == "?" ? ", ?" : ""
+        let sql = """
+            INSERT INTO local_file_references (
+                id, book_id, display_name, bookmark_data, created_at, updated_at
+            ) VALUES (?, ?, ?, \(bookmarkSQL), ?, ?)
+            """
+        var bindings: [SQLiteValue] = [
+            .text(UUID().uuidString),
+            .text(bookID!),
+            .text(displayName)
+        ]
+        if !bookmarkBinding.isEmpty {
+            bindings.append(.blob(Data("opaque".utf8)))
+        }
+        bindings.append(
+            .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp))
+        )
+        bindings.append(
+            .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp))
+        )
+        try database.execute(sql, bindings: bindings)
     }
 
     private func temporaryDirectory() throws -> URL {
