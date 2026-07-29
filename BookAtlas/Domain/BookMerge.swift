@@ -62,6 +62,13 @@ struct BookMergeLinkDetail: Identifiable, Equatable, Sendable {
     let outcome: BookMergeAssociationOutcome
 }
 
+struct BookMergeLocalFileDetail: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let displayName: String
+    let origin: BookMergeAssociationOrigin
+    let outcome: BookMergeAssociationOutcome
+}
+
 enum BookMergeRelationDirection: String, Equatable, Sendable {
     case incoming
     case outgoing
@@ -87,11 +94,14 @@ struct BookMergeAssociationSummary: Equatable, Sendable {
     let sourceSources: [RecommendationSource]
     let targetLinks: [ExternalLink]
     let sourceLinks: [ExternalLink]
+    let targetLocalFiles: [LocalFileReference]
+    let sourceLocalFiles: [LocalFileReference]
     let manualRelations: [ManualBookRelation]
     let tagDetails: [BookMergeNamedAssociationDetail]
     let collectionDetails: [BookMergeNamedAssociationDetail]
     let sourceDetails: [BookMergeNamedAssociationDetail]
     let linkDetails: [BookMergeLinkDetail]
+    let localFileDetails: [BookMergeLocalFileDetail]
     let relationDetails: [BookMergeRelationDetail]
 
     var hasBlockingConflict: Bool {

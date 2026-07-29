@@ -15,6 +15,7 @@ enum SQLiteDatabaseError: Error, Equatable {
 enum SQLiteValue {
     case integer(Int64)
     case text(String)
+    case blob(Data)
     case null
 }
 
@@ -234,6 +235,17 @@ struct SQLiteRow {
         }
         return String(cString: value)
     }
+
+    func data(at index: Int32) -> Data? {
+        guard sqlite3_column_type(pointer, index) != SQLITE_NULL else {
+            return nil
+        }
+        let count = Int(sqlite3_column_bytes(pointer, index))
+        guard count > 0, let bytes = sqlite3_column_blob(pointer, index) else {
+            return Data()
+        }
+        return Data(bytes: bytes, count: count)
+    }
 }
 
 private final class SQLiteStatement {
@@ -256,6 +268,16 @@ private final class SQLiteStatement {
                 result = sqlite3_bind_int64(pointer, index, value)
             case let .text(value):
                 result = sqlite3_bind_text(pointer, index, value, -1, sqliteTransient)
+            case let .blob(value):
+                result = value.withUnsafeBytes { bytes in
+                    sqlite3_bind_blob(
+                        pointer,
+                        index,
+                        bytes.baseAddress,
+                        Int32(bytes.count),
+                        sqliteTransient
+                    )
+                }
             case .null:
                 result = sqlite3_bind_null(pointer, index)
             }

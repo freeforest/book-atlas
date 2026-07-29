@@ -379,8 +379,10 @@ final class BookAtlasUITests: XCTestCase {
         }
         XCTAssertTrue(accessibilityText(of: collection).contains("虚构港湾书单"))
         XCTAssertTrue(accessibilityText(of: source).contains("虚构纸页来源"))
-        XCTAssertTrue(accessibilityText(of: targetLink).contains("https://example.invalid/retained"))
-        XCTAssertTrue(accessibilityText(of: sourceLink).contains("https://example.invalid/incoming"))
+        XCTAssertTrue(accessibilityText(of: targetLink).contains("example.invalid"))
+        XCTAssertTrue(accessibilityText(of: sourceLink).contains("example.invalid"))
+        XCTAssertFalse(accessibilityText(of: targetLink).contains("/retained"))
+        XCTAssertFalse(accessibilityText(of: sourceLink).contains("/incoming"))
         let relationText = accessibilityText(of: relation)
         XCTAssertTrue(relationText.contains("本书指向"), relationText)
         XCTAssertTrue(relationText.contains("回应"), relationText)
@@ -612,6 +614,174 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testReadingEntryEmptyStateRejectsUnsafeURLsAndEscapeCancelsEditor() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        let addLink = element("add-reading-link", in: app)
+        XCTAssertTrue(addLink.waitForExistence(timeout: 3))
+        scrollToReadingEntries(in: app)
+        XCTAssertTrue(element("reading-entry-empty", in: app).exists)
+
+        addLink.click()
+        XCTAssertTrue(element("reading-link-editor", in: app).waitForExistence(timeout: 3))
+        replaceText(
+            in: element("reading-link-value", in: app),
+            with: "javascript:alert(1)"
+        )
+        element("save-reading-link", in: app).click()
+        XCTAssertTrue(element("reading-link-validation", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            accessibilityText(of: element("reading-link-validation", in: app))
+                .contains("仅允许 HTTPS")
+        )
+
+        replaceText(
+            in: element("reading-link-value", in: app),
+            with: "http://example.invalid/unsafe"
+        )
+        element("save-reading-link", in: app).click()
+        XCTAssertTrue(
+            accessibilityText(of: element("reading-link-validation", in: app))
+                .contains("HTTP")
+        )
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("reading-link-editor", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("reading-entry-empty", in: app).exists)
+    }
+
+    @MainActor
+    func testReadingEntryHTTPSCRUDShowsOnlySafeHostAndConfirmsDeletion() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        scrollToReadingEntries(in: app)
+        element("add-reading-link", in: app).click()
+        replaceText(in: element("reading-link-label", in: app), with: "Fictional Reader")
+        replaceText(
+            in: element("reading-link-value", in: app),
+            with: "https://reader.example.invalid/private-segment"
+        )
+        element("save-reading-link", in: app).click()
+
+        let savedLinkRow = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "reading-link-row-")
+        ).firstMatch
+        XCTAssertTrue(savedLinkRow.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: savedLinkRow).contains("reader.example.invalid"))
+        XCTAssertFalse(accessibilityText(of: savedLinkRow).contains("private-segment"))
+        let edit = app.buttons["编辑"].firstMatch
+        XCTAssertTrue(edit.waitForExistence(timeout: 3))
+        edit.click()
+        replaceText(in: element("reading-link-label", in: app), with: "Fictional Reader Revised")
+        element("save-reading-link", in: app).click()
+        XCTAssertTrue(element("reading-link-editor", in: app).waitForNonExistence(timeout: 3))
+        let revisedLinkRow = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "reading-link-row-")
+        ).firstMatch
+        XCTAssertTrue(revisedLinkRow.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: revisedLinkRow).contains("Fictional Reader Revised"))
+
+        app.buttons["删除"].firstMatch.click()
+        XCTAssertTrue(
+            element("confirm-delete-reading-link", in: app).waitForExistence(timeout: 3)
+        )
+        element("confirm-delete-reading-link", in: app).click()
+        XCTAssertTrue(revisedLinkRow.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("reading-entry-empty", in: app).exists)
+    }
+
+    @MainActor
+    func testReadingEntryAppleBooksCopyAndLocalFileFailureUseTestDoubles() {
+        let app = launchInMemoryApp(seedReadingEntries: true)
+        scrollToReadingEntries(in: app)
+
+        scrollToElement(
+            "reading-link-row-00000000-0000-0000-0000-000000000901",
+            in: app
+        )
+        XCTAssertTrue(
+            element(
+                "reading-link-row-00000000-0000-0000-0000-000000000901",
+                in: app
+            ).waitForExistence(timeout: 3)
+        )
+        XCTAssertFalse(
+            accessibilityText(
+                of: element(
+                    "reading-link-row-00000000-0000-0000-0000-000000000901",
+                    in: app
+                )
+            ).contains("private-segment")
+        )
+        scrollToElement(
+            "local-file-row-00000000-0000-0000-0000-000000000902",
+            in: app
+        )
+        XCTAssertTrue(
+            element(
+                "local-file-row-00000000-0000-0000-0000-000000000902",
+                in: app
+            ).exists
+        )
+        scrollToElement("apple-books-capability-note", in: app)
+        XCTAssertTrue(element("apple-books-capability-note", in: app).exists)
+
+        scrollToElement("copy-book-isbn", in: app)
+        element("copy-book-isbn", in: app).click()
+        scrollToElement("reading-entry-status", in: app)
+        XCTAssertTrue(element("reading-entry-status", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            accessibilityText(of: element("reading-entry-status", in: app)).contains("复制 ISBN")
+        )
+        scrollToElement("copy-book-title", in: app)
+        element("copy-book-title", in: app).click()
+        scrollToElement("reading-entry-status", in: app)
+        XCTAssertTrue(
+            accessibilityText(of: element("reading-entry-status", in: app)).contains("复制书名")
+        )
+
+        scrollToElement("apple-books-fallback", in: app)
+        element("apple-books-fallback", in: app).click()
+        XCTAssertTrue(
+            element("confirm-apple-books-fallback", in: app).waitForExistence(timeout: 3)
+        )
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(
+            element("confirm-apple-books-fallback", in: app).waitForNonExistence(timeout: 3)
+        )
+
+        scrollToElement(
+            "open-local-file-00000000-0000-0000-0000-000000000902",
+            in: app
+        )
+        element("open-local-file-00000000-0000-0000-0000-000000000902", in: app).click()
+        scrollToElement("reading-entry-error", in: app)
+        XCTAssertTrue(element("reading-entry-error", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            accessibilityText(of: element("reading-entry-error", in: app))
+                .contains("授权已损坏")
+        )
+        scrollToElement("choose-local-file", in: app)
+        element("choose-local-file", in: app).click()
+        scrollToElement("reading-entry-status", in: app)
+        XCTAssertTrue(
+            accessibilityText(of: element("reading-entry-status", in: app))
+                .contains("已取消选择")
+        )
+
+        scrollToElement(
+            "remove-local-file-00000000-0000-0000-0000-000000000902",
+            in: app
+        )
+        element("remove-local-file-00000000-0000-0000-0000-000000000902", in: app).click()
+        XCTAssertTrue(element("confirm-remove-local-file", in: app).waitForExistence(timeout: 3))
+        element("confirm-remove-local-file", in: app).click()
+        XCTAssertTrue(
+            element(
+                "local-file-row-00000000-0000-0000-0000-000000000902",
+                in: app
+            ).waitForNonExistence(timeout: 3)
+        )
+    }
+
+    @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
     }
@@ -625,7 +795,8 @@ final class BookAtlasUITests: XCTestCase {
         seedSafeReplacement: Bool = false,
         seedRestoreInspection: Bool = false,
         seedGraph: Bool = false,
-        seedGraphLimit: Bool = false
+        seedGraphLimit: Bool = false,
+        seedReadingEntries: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
@@ -653,8 +824,33 @@ final class BookAtlasUITests: XCTestCase {
         if seedGraphLimit {
             app.launchArguments.append("-BookAtlasSeedGraphLimitUITestData")
         }
+        if seedReadingEntries {
+            app.launchArguments.append("-BookAtlasSeedReadingEntryUITestData")
+        }
         app.launch()
         return app
+    }
+
+    @MainActor
+    private func scrollToReadingEntries(in app: XCUIApplication) {
+        let section = element("reading-entries-section", in: app)
+        XCTAssertTrue(section.waitForExistence(timeout: 3))
+        scrollToElement("add-reading-link", in: app)
+    }
+
+    @MainActor
+    private func scrollToElement(_ identifier: String, in app: XCUIApplication) {
+        let target = element(identifier, in: app)
+        for _ in 0..<8 {
+            if target.exists, target.isHittable { return }
+            app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -250)
+        }
+        for _ in 0..<16 {
+            if target.exists, target.isHittable { return }
+            app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: 250)
+        }
+        XCTAssertTrue(target.exists)
+        XCTAssertTrue(target.isHittable)
     }
 
     @MainActor

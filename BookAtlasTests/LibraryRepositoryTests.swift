@@ -71,6 +71,40 @@ final class LibraryRepositoryTests: XCTestCase {
         XCTAssertEqual(try repository.manualRelations(forBookID: second.id), [])
     }
 
+    func testLocalFileReferenceCRUDAndBookDeletionCascadePreserveOpaqueBytes() throws {
+        let book = try repository.create(
+            FictionalLibraryFixtures.draft(),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let created = try LocalFileReference(
+            bookID: book.id,
+            displayName: "虚构阅读副本.pdf",
+            bookmarkData: Data([0x42, 0x41, 0x00, 0xFF]),
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+
+        try repository.addLocalFileReference(created)
+        XCTAssertEqual(try repository.localFileReferences(forBookID: book.id), [created])
+
+        let updated = try LocalFileReference(
+            id: created.id,
+            bookID: created.bookID,
+            displayName: "虚构阅读副本（移动后）.pdf",
+            bookmarkData: Data([0x52, 0x45, 0x46]),
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt.addingTimeInterval(10)
+        )
+        try repository.updateLocalFileReference(updated)
+        XCTAssertEqual(try repository.localFileReferences(forBookID: book.id), [updated])
+
+        try repository.deleteLocalFileReference(id: updated.id)
+        XCTAssertEqual(try repository.localFileReferences(forBookID: book.id), [])
+
+        try repository.addLocalFileReference(created)
+        try repository.deleteBook(id: book.id)
+        XCTAssertEqual(try repository.localFileReferences(forBookID: book.id), [])
+    }
+
     func testTransactionRollsBackWhenTheUseCaseFails() throws {
         enum ExpectedFailure: Error { case stop }
 

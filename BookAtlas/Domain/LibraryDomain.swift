@@ -319,6 +319,42 @@ struct ExternalLink: Identifiable, Equatable, Sendable {
     }
 }
 
+struct LocalFileReference: Identifiable, Equatable, Sendable {
+    let id: UUID
+    let bookID: UUID
+    let displayName: String
+    let bookmarkData: Data
+    let createdAt: Date
+    let updatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        bookID: UUID,
+        displayName: String,
+        bookmarkData: Data,
+        createdAt: Date = Date(),
+        updatedAt: Date? = nil
+    ) throws {
+        let normalizedName = displayName
+            .components(separatedBy: .controlCharacters)
+            .joined()
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalizedName.isEmpty,
+              normalizedName.count <= 512,
+              !normalizedName.contains("/"),
+              !bookmarkData.isEmpty
+        else {
+            throw DomainValidationError.blankExternalLinkValue
+        }
+        self.id = id
+        self.bookID = bookID
+        self.displayName = normalizedName
+        self.bookmarkData = bookmarkData
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt ?? createdAt
+    }
+}
+
 enum ManualRelationKind: String, CaseIterable, Codable, Sendable {
     case related
     case inspiredBy = "inspired_by"

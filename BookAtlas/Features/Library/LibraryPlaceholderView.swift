@@ -164,7 +164,11 @@ struct LibraryView: View {
                     Divider()
 
                     if let book = store.selectedBook {
-                        BookDetailView(book: book, onShowGraph: onShowGraph)
+                        BookDetailView(
+                            book: book,
+                            readingEntries: store.readingEntries,
+                            onShowGraph: onShowGraph
+                        )
                     } else {
                         ContentUnavailableView(
                             "选择一本书",

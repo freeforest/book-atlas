@@ -18,7 +18,7 @@ final class MigrationTests: XCTestCase {
         XCTAssertEqual(try migrator.migrate(database), BookAtlasSchema.latestVersion)
         XCTAssertEqual(
             try database.query("SELECT version FROM schema_migrations ORDER BY version") { row in row.integer(at: 0) },
-            [1, 2, 3, 4]
+            [1, 2, 3, 4, 5]
         )
     }
 
@@ -71,7 +71,7 @@ final class MigrationTests: XCTestCase {
             at: FictionalLibraryFixtures.timestamp
         )
 
-        XCTAssertEqual(try migrator.migrate(database), 4)
+        XCTAssertEqual(try migrator.migrate(database, through: 4), 4)
         let rows = try database.query(
             """
             SELECT valid_isbn, normalized_title, normalized_author, normalized_original_title
@@ -109,18 +109,50 @@ final class MigrationTests: XCTestCase {
         let database = try SQLiteDatabase(path: ":memory:")
         let migrator = DatabaseMigrator()
 
-        XCTAssertEqual(try migrator.migrate(database), 4)
-        XCTAssertEqual(try migrator.migrate(database), 4)
+        XCTAssertEqual(try migrator.migrate(database), 5)
+        XCTAssertEqual(try migrator.migrate(database), 5)
         XCTAssertEqual(
             try database.query("SELECT version FROM schema_migrations ORDER BY version") { row in row.integer(at: 0) },
-            [1, 2, 3, 4]
+            [1, 2, 3, 4, 5]
+        )
+    }
+
+    func testVersionFiveAddsLocalFileReferencesAndPreservesSchemaFourData() throws {
+        let database = try SQLiteDatabase(path: ":memory:")
+        let migrator = DatabaseMigrator()
+        try migrator.migrate(database, through: 4)
+        let repository = try BookRepository(database: database, automaticallyMigrate: false)
+        let book = try repository.create(
+            FictionalLibraryFixtures.draft(),
+            at: FictionalLibraryFixtures.timestamp
+        )
+
+        XCTAssertEqual(try migrator.migrate(database), 5)
+        XCTAssertEqual(try repository.book(id: book.id), book)
+        XCTAssertEqual(
+            try database.query(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type = 'table' AND name = 'local_file_references'
+                """
+            ) { $0.string(at: 0) },
+            ["local_file_references"]
+        )
+        XCTAssertEqual(
+            try database.query(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type = 'index' AND name = 'idx_local_file_references_book_id'
+                """
+            ) { $0.string(at: 0) },
+            ["idx_local_file_references_book_id"]
         )
     }
 
     func testFailedMigrationRollsBackWithoutRebuildingOrDeletingExistingData() throws {
         let database = try SQLiteDatabase(path: ":memory:")
         let baselineMigrator = DatabaseMigrator()
-        try baselineMigrator.migrate(database)
+        try baselineMigrator.migrate(database, through: 4)
         let repository = try BookRepository(database: database, automaticallyMigrate: false)
         let existing = try repository.create(FictionalLibraryFixtures.draft(), at: FictionalLibraryFixtures.timestamp)
 
@@ -131,16 +163,27 @@ final class MigrationTests: XCTestCase {
                 "NOT VALID SQL"
             ]
         )
-        let migrator = DatabaseMigrator(migrations: BookAtlasSchema.migrations + [failingMigration])
+        let migrator = DatabaseMigrator(
+            migrations: Array(BookAtlasSchema.migrations.prefix(4)) + [failingMigration]
+        )
 
         XCTAssertThrowsError(try migrator.migrate(database)) { error in
             XCTAssertEqual(error as? DatabaseMigrationError, .migrationFailed(version: 5))
         }
-        XCTAssertEqual(try database.schemaVersion(), BookAtlasSchema.latestVersion)
+        XCTAssertEqual(try database.schemaVersion(), 4)
         XCTAssertEqual(try repository.book(id: existing.id), existing)
         XCTAssertEqual(
             try database.query(
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'migration_failure_probe'"
+            ) { row in row.string(at: 0) },
+            []
+        )
+        XCTAssertEqual(
+            try database.query(
+                """
+                SELECT name FROM sqlite_master
+                WHERE type = 'table' AND name = 'local_file_references'
+                """
             ) { row in row.string(at: 0) },
             []
         )

@@ -1245,6 +1245,26 @@ final class BookAtlasSchemaValidator {
                 updatedAt: try requiredDate(row.string(at: 6))
             )
         }
+        if version >= 5 {
+            _ = try database.query(
+                """
+                SELECT id, book_id, display_name, bookmark_data, created_at, updated_at
+                FROM local_file_references
+                """
+            ) { row in
+                guard let bookmarkData = row.data(at: 3) else {
+                    throw PortabilityError.invalidBackupSchema
+                }
+                return try LocalFileReference(
+                    id: try requiredUUID(row.string(at: 0)),
+                    bookID: try requiredUUID(row.string(at: 1)),
+                    displayName: try requiredString(row.string(at: 2)),
+                    bookmarkData: bookmarkData,
+                    createdAt: try requiredDate(row.string(at: 4)),
+                    updatedAt: try requiredDate(row.string(at: 5))
+                )
+            }
+        }
         _ = try database.query(
             """
             SELECT id, source_book_id, target_book_id, relation_kind, note, created_at
@@ -1505,6 +1525,30 @@ final class BookAtlasSchemaValidator {
         )
     ]
 
+    private static let versionFiveTables: [String: TableExpectation] = [
+        "local_file_references": TableExpectation(
+            columns: [
+                "id", "book_id", "display_name", "bookmark_data", "created_at", "updated_at"
+            ],
+            primaryKey: ["id"],
+            requiredNonNull: [
+                "id", "book_id", "display_name", "bookmark_data", "created_at", "updated_at"
+            ],
+            foreignKeys: [ForeignKeyDefinition(
+                referencedTable: "books",
+                sourceColumn: "book_id",
+                targetColumn: "id",
+                deleteAction: "CASCADE"
+            )],
+            constraintFragments: [
+                "length(trim(display_name)) > 0",
+                "length(display_name) <= 512",
+                "instr(display_name, '/') = 0",
+                "length(bookmark_data) > 0"
+            ]
+        )
+    ]
+
     private static let backupManifestTable = TableExpectation(
         columns: ["format_version", "schema_version", "application_version", "created_at"],
         primaryKey: [],
@@ -1586,6 +1630,13 @@ final class BookAtlasSchemaValidator {
         )
     ]
 
+    private static let versionFiveIndexes: [String: IndexExpectation] = [
+        "idx_local_file_references_book_id": IndexExpectation(
+            table: "local_file_references",
+            columns: ["book_id"]
+        )
+    ]
+
     private static let versionedSchemas: [Int: SchemaExpectation] = {
         let schemaOne = SchemaExpectation(
             tables: versionOneTables,
@@ -1629,7 +1680,25 @@ final class BookAtlasSchemaValidator {
             ],
             views: []
         )
-        return [1: schemaOne, 2: schemaTwo, 3: schemaThree, 4: schemaFour]
+        let tablesThroughFive = tablesThroughFour.merging(versionFiveTables) {
+            _, current in current
+        }
+        let indexesThroughFive = indexesThroughFour.merging(versionFiveIndexes) {
+            _, current in current
+        }
+        let schemaFive = SchemaExpectation(
+            tables: tablesThroughFive,
+            indexes: indexesThroughFive,
+            triggers: schemaFour.triggers,
+            views: []
+        )
+        return [
+            1: schemaOne,
+            2: schemaTwo,
+            3: schemaThree,
+            4: schemaFour,
+            5: schemaFive
+        ]
     }()
 
     private static func joinExpectation(

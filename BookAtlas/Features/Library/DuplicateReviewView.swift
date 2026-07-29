@@ -193,7 +193,7 @@ struct DuplicateReviewSheet: View {
 
             Divider()
             VStack(spacing: 0) {
-                BookDetailView(book: book)
+                BookDetailView(book: book, readingEntries: store.readingEntries)
             }
                 .accessibilityIdentifier("duplicate-existing-preview")
             Divider()
@@ -259,6 +259,7 @@ struct DuplicateReviewSheet: View {
                         identifierPrefix: "merge-source-detail"
                     )
                     linkAssociationDetails(preview.associations.linkDetails)
+                    localFileAssociationDetails(preview.associations.localFileDetails)
                     relationAssociationDetails(preview.associations.relationDetails)
                     Text("每项均标明保留、新增、去重、补齐或阻止；阻止项必须先在原记录中解决。")
                         .font(.caption)
@@ -296,6 +297,33 @@ struct DuplicateReviewSheet: View {
             .padding()
         }
         .accessibilityIdentifier("book-merge-preview")
+    }
+
+    @ViewBuilder
+    private func localFileAssociationDetails(
+        _ details: [BookMergeLocalFileDetail]
+    ) -> some View {
+        GroupBox("本地文件引用") {
+            if details.isEmpty {
+                Text("无")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(details) { detail in
+                        Text(
+                            "\(detail.origin.displayTitle) · \(detail.outcome.displayTitle)："
+                                + detail.displayName
+                        )
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier(
+                            "merge-local-file-detail-\(detail.id.uuidString)"
+                        )
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+        }
     }
 
     @ViewBuilder
@@ -342,10 +370,9 @@ struct DuplicateReviewSheet: View {
                                 "\(detail.origin.displayTitle) · \(detail.outcome.displayTitle)："
                                     + "\(detail.label ?? "无标签")（\(detail.kind.displayTitle)）"
                             )
-                            Text(detail.value)
+                            Text(safeExternalLinkSummary(detail))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .textSelection(.enabled)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityElement(children: .combine)
@@ -354,6 +381,16 @@ struct DuplicateReviewSheet: View {
                 }
                 .padding(.vertical, 4)
             }
+        }
+    }
+
+    private func safeExternalLinkSummary(_ detail: BookMergeLinkDetail) -> String {
+        switch detail.kind {
+        case .web:
+            (try? StrictHTTPSLinkValidator().validate(detail.value).safeHost)
+                ?? "无效 HTTPS 主机"
+        case .localAuthorization:
+            "旧版本地授权记录"
         }
     }
 

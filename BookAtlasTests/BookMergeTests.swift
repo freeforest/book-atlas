@@ -89,6 +89,22 @@ final class BookMergeTests: XCTestCase {
                 createdAt: FictionalLibraryFixtures.timestamp
             )
         )
+        let targetFile = try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: target.id,
+                displayName: "目标虚构文件.pdf",
+                bookmarkData: Data("target-bookmark".utf8),
+                createdAt: FictionalLibraryFixtures.timestamp
+            )
+        )
+        let sourceFile = try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: source.id,
+                displayName: "来源虚构文件.epub",
+                bookmarkData: Data("source-bookmark".utf8),
+                createdAt: FictionalLibraryFixtures.timestamp
+            )
+        )
         _ = try repository.addExternalLink(
             try ExternalLink(
                 bookID: source.id,
@@ -148,6 +164,16 @@ final class BookMergeTests: XCTestCase {
         XCTAssertEqual(preview.associations.collectionDetails.first?.outcome, .add)
         XCTAssertEqual(preview.associations.sourceDetails.first?.name, "虚构同好")
         XCTAssertEqual(preview.associations.sourceDetails.first?.outcome, .add)
+        XCTAssertEqual(preview.associations.targetLocalFiles, [targetFile])
+        XCTAssertEqual(preview.associations.sourceLocalFiles, [sourceFile])
+        XCTAssertEqual(
+            preview.associations.localFileDetails.first { $0.id == targetFile.id }?.outcome,
+            .keep
+        )
+        XCTAssertEqual(
+            preview.associations.localFileDetails.first { $0.id == sourceFile.id }?.outcome,
+            .add
+        )
         XCTAssertEqual(
             preview.associations.linkDetails.first { $0.value.hasSuffix("/glass") && $0.origin == .source }?.outcome,
             .fillMissingLabel
@@ -190,6 +216,13 @@ final class BookMergeTests: XCTestCase {
         XCTAssertEqual(links.count, 2)
         XCTAssertEqual(links.first { $0.value.hasSuffix("/glass") }?.label, "虚构书页")
         XCTAssertEqual(Set(links.map(\.bookID)), [target.id])
+        let localFiles = try repository.localFileReferences(forBookID: target.id)
+        XCTAssertEqual(Set(localFiles.map(\.id)), [targetFile.id, sourceFile.id])
+        XCTAssertEqual(Set(localFiles.map(\.bookID)), [target.id])
+        XCTAssertEqual(
+            Set(localFiles.map(\.bookmarkData)),
+            [Data("target-bookmark".utf8), Data("source-bookmark".utf8)]
+        )
         let relations = try repository.manualRelations(forBookID: target.id)
         XCTAssertEqual(relations.count, 1)
         XCTAssertEqual(relations[0].sourceBookID, target.id)
@@ -255,6 +288,14 @@ final class BookMergeTests: XCTestCase {
                 createdAt: FictionalLibraryFixtures.timestamp
             )
         )
+        let sourceFile = try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: source.id,
+                displayName: "回滚虚构文件.pdf",
+                bookmarkData: Data("rollback-bookmark".utf8),
+                createdAt: FictionalLibraryFixtures.timestamp
+            )
+        )
         try database.execute(
             """
             CREATE TRIGGER force_merge_failure
@@ -282,6 +323,11 @@ final class BookMergeTests: XCTestCase {
         XCTAssertEqual(try repository.tags(forBookID: source.id).map(\.id), [tag.id])
         XCTAssertEqual(try repository.externalLinks(forBookID: target.id), [])
         XCTAssertEqual(try repository.externalLinks(forBookID: source.id).count, 1)
+        XCTAssertEqual(try repository.localFileReferences(forBookID: target.id), [])
+        XCTAssertEqual(
+            try repository.localFileReferences(forBookID: source.id),
+            [sourceFile]
+        )
     }
 
     func testMergeDeduplicatesIdenticalExternalLinkLabels() throws {

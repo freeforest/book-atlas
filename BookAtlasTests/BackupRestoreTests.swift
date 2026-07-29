@@ -16,7 +16,10 @@ final class BackupRestoreTests: XCTestCase {
         let emptyURL = directory.appendingPathComponent("empty.bookatlasbackup")
         let empty = try coordinator.backup(repository: repository, to: emptyURL)
         XCTAssertEqual(empty.preview.bookCount, 0)
-        XCTAssertEqual(try coordinator.inspect(emptyURL).schemaVersion, 4)
+        XCTAssertEqual(
+            try coordinator.inspect(emptyURL).schemaVersion,
+            BookAtlasSchema.latestVersion
+        )
 
         _ = try repository.create(FictionalLibraryFixtures.draft())
         let populatedURL = directory.appendingPathComponent("populated.bookatlasbackup")
@@ -101,6 +104,14 @@ final class BackupRestoreTests: XCTestCase {
             value: "https://example.invalid/complete",
             createdAt: FictionalLibraryFixtures.timestamp
         ))
+        let localFile = try source.addLocalFileReference(
+            LocalFileReference(
+                bookID: first.id,
+                displayName: "完整关系虚构文件.pdf",
+                bookmarkData: Data([0x42, 0x4F, 0x4F, 0x4B, 0x00, 0xFF]),
+                createdAt: FictionalLibraryFixtures.timestamp
+            )
+        )
         try source.addManualRelation(try ManualBookRelation(
             sourceBookID: first.id,
             targetBookID: second.id,
@@ -138,6 +149,10 @@ final class BackupRestoreTests: XCTestCase {
             [recommendation.name]
         )
         XCTAssertEqual(try live.externalLinks(forBookID: first.id).count, 1)
+        XCTAssertEqual(
+            try live.localFileReferences(forBookID: first.id),
+            [localFile]
+        )
         XCTAssertEqual(try live.manualRelations(forBookID: first.id).count, 1)
         XCTAssertEqual(
             try live.ignoredDuplicatePair(between: first.id, and: second.id)?.disposition,
@@ -350,7 +365,7 @@ final class BackupRestoreTests: XCTestCase {
             let database = try SQLiteDatabase(path: backup.path)
             try mutate(database)
             XCTAssertTrue(try database.integrityCheck(), "\(name) must remain physically valid")
-            XCTAssertEqual(try database.schemaVersion(), 4)
+            XCTAssertEqual(try database.schemaVersion(), BookAtlasSchema.latestVersion)
             try database.close()
 
             let liveURL = directory.appendingPathComponent("\(name)-live.sqlite")
@@ -447,6 +462,9 @@ final class BackupRestoreTests: XCTestCase {
             ("missing-v4-index", { database in
                 try database.execute("DROP INDEX idx_duplicate_keys_isbn")
             }),
+            ("missing-v5-index", { database in
+                try database.execute("DROP INDEX idx_local_file_references_book_id")
+            }),
             ("wrong-index-column-order", { database in
                 try database.execute("DROP INDEX idx_duplicate_keys_title_author")
                 try database.execute(
@@ -477,7 +495,92 @@ final class BackupRestoreTests: XCTestCase {
         }
     }
 
-    func testVersionedSchemaObjectExpectationsAcceptVersionsOneThroughFourAndMigrateRestore() throws {
+    func testSchemaFiveValidationRejectsMissingLocalFileTableAndInvalidBookmarkRowsBeforeClose() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let valid = try makeBackup(
+            in: directory,
+            title: "《Schema 5 本地引用基准》",
+            filename: "valid-local-file-schema.bookatlasbackup"
+        )
+        let cases: [(String, (SQLiteDatabase) throws -> Void)] = [
+            ("missing-local-file-table", { database in
+                try database.execute("DROP TABLE local_file_references")
+            }),
+            ("invalid-local-file-uuid", { database in
+                let bookID = try database.query("SELECT id FROM books LIMIT 1") {
+                    $0.string(at: 0)
+                }.first!
+                try database.execute(
+                    """
+                    INSERT INTO local_file_references (
+                        id, book_id, display_name, bookmark_data, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    bindings: [
+                        .text("not-a-uuid"),
+                        .text(bookID!),
+                        .text("虚构文件.pdf"),
+                        .blob(Data("opaque".utf8)),
+                        .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp)),
+                        .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp))
+                    ]
+                )
+            }),
+            ("invalid-local-file-date", { database in
+                let bookID = try database.query("SELECT id FROM books LIMIT 1") {
+                    $0.string(at: 0)
+                }.first!
+                try database.execute(
+                    """
+                    INSERT INTO local_file_references (
+                        id, book_id, display_name, bookmark_data, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    bindings: [
+                        .text(UUID().uuidString),
+                        .text(bookID!),
+                        .text("虚构文件.pdf"),
+                        .blob(Data("opaque".utf8)),
+                        .text("invalid-date"),
+                        .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp))
+                    ]
+                )
+            }),
+            ("path-shaped-local-file-name", { database in
+                try database.execute("PRAGMA ignore_check_constraints = ON")
+                let bookID = try database.query("SELECT id FROM books LIMIT 1") {
+                    $0.string(at: 0)
+                }.first!
+                try database.execute(
+                    """
+                    INSERT INTO local_file_references (
+                        id, book_id, display_name, bookmark_data, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                    """,
+                    bindings: [
+                        .text(UUID().uuidString),
+                        .text(bookID!),
+                        .text("/private/fictional/hidden.pdf"),
+                        .blob(Data("opaque".utf8)),
+                        .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp)),
+                        .text(StorageDateCodec.encode(FictionalLibraryFixtures.timestamp))
+                    ]
+                )
+            })
+        ]
+
+        for (name, mutate) in cases {
+            try assertInvalidBackupRejectedBeforeClose(
+                validBackup: valid,
+                name: name,
+                directory: directory,
+                mutate: mutate
+            )
+        }
+    }
+
+    func testVersionedSchemaObjectExpectationsAcceptVersionsOneThroughFiveAndMigrateRestore() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let coordinator = LibraryBackupCoordinator()
@@ -845,7 +948,7 @@ final class BackupRestoreTests: XCTestCase {
         )
     }
 
-    func testRestoreMigratesSchemaThreeBackupToCurrentSchemaFour() throws {
+    func testRestoreMigratesSchemaThreeBackupToCurrentSchemaFive() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let oldURL = directory.appendingPathComponent("old.sqlite")
@@ -868,7 +971,7 @@ final class BackupRestoreTests: XCTestCase {
             repository: &live,
             recoveryDirectory: directory.appendingPathComponent("recovery")
         )
-        XCTAssertEqual(live.schemaVersion, 4)
+        XCTAssertEqual(live.schemaVersion, BookAtlasSchema.latestVersion)
         XCTAssertEqual(try live.allBooks().map(\.title), ["《旧版港湾》"])
         XCTAssertEqual(
             try live.duplicateCandidates(

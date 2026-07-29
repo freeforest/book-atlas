@@ -132,17 +132,23 @@ final class LibraryStore: ObservableObject {
     let organizer: CatalogOrganizerStore
     let portability: PortabilityStore
     let graph: GraphStore
+    let readingEntries: ReadingEntryStore
 
     private let catalog: (any LibraryCataloging)?
     private var queryTask: Task<Void, Never>?
     private var duplicateTask: Task<Void, Never>?
     private var activeRequestID = UUID()
 
-    init(catalog: (any LibraryCataloging)? = nil, initialError: LibraryUserFacingError? = nil) {
+    init(
+        catalog: (any LibraryCataloging)? = nil,
+        initialError: LibraryUserFacingError? = nil,
+        readingEntries: ReadingEntryStore? = nil
+    ) {
         self.catalog = catalog
         organizer = CatalogOrganizerStore(catalog: catalog)
         portability = PortabilityStore(catalog: catalog)
         graph = GraphStore(catalog: catalog)
+        self.readingEntries = readingEntries ?? ReadingEntryStore(catalog: catalog)
         if let initialError {
             loadingState = .failed(initialError)
         } else if catalog == nil {
@@ -161,13 +167,16 @@ final class LibraryStore: ObservableObject {
         }
 
         do {
+            let usesTestStore = arguments.contains("-BookAtlasUseInMemoryStore")
+                || environment["XCTestConfigurationFilePath"] != nil
             let catalog: LibraryCatalogService
-            if arguments.contains("-BookAtlasUseInMemoryStore") || environment["XCTestConfigurationFilePath"] != nil {
+            if usesTestStore {
                 catalog = try Self.makeInMemoryCatalog(
                     seedFictionalUITestBooks: arguments.contains("-BookAtlasSeedFictionalUITestBooks"),
                     seedMergePreviewAssociations: arguments.contains("-BookAtlasSeedMergePreviewAssociations"),
                     seedGraphUITestData: arguments.contains("-BookAtlasSeedGraphUITestData"),
-                    seedGraphLimitUITestData: arguments.contains("-BookAtlasSeedGraphLimitUITestData")
+                    seedGraphLimitUITestData: arguments.contains("-BookAtlasSeedGraphLimitUITestData"),
+                    seedReadingEntryUITestData: arguments.contains("-BookAtlasSeedReadingEntryUITestData")
                 )
             } else {
                 let databaseURL = try BookAtlasDatabaseLocation.defaultURL()
@@ -179,7 +188,17 @@ final class LibraryStore: ObservableObject {
                     databaseURL: databaseURL
                 )
             }
-            let store = LibraryStore(catalog: catalog)
+            let readingEntries = usesTestStore
+                ? ReadingEntryStore(
+                    catalog: catalog,
+                    opener: FictionalUITestResourceOpener(),
+                    appleBooks: FictionalUITestAppleBooksIntegration(),
+                    clipboard: FictionalUITestClipboardWriter(),
+                    fileSelector: FictionalUITestFileSelector(),
+                    bookmarks: FictionalUITestBookmarkService()
+                )
+                : nil
+            let store = LibraryStore(catalog: catalog, readingEntries: readingEntries)
             if arguments.contains("-BookAtlasSeedPortabilityPreview") {
                 store.portability.seedFictionalPreviewForUITesting()
             }
@@ -191,6 +210,11 @@ final class LibraryStore: ObservableObject {
             }
             if arguments.contains("-BookAtlasSeedRestoreInspection") {
                 store.portability.seedRestoreInspectionForUITesting()
+            }
+            if arguments.contains("-BookAtlasSeedReadingEntryUITestData") {
+                store.selectedBookID = UUID(
+                    uuidString: "00000000-0000-0000-0000-000000000101"
+                )!
             }
             if arguments.contains("-BookAtlasSeedGraphUITestData")
                 || arguments.contains("-BookAtlasSeedGraphLimitUITestData")
@@ -717,19 +741,21 @@ final class LibraryStore: ObservableObject {
         seedFictionalUITestBooks: Bool,
         seedMergePreviewAssociations: Bool,
         seedGraphUITestData: Bool,
-        seedGraphLimitUITestData: Bool
+        seedGraphLimitUITestData: Bool,
+        seedReadingEntryUITestData: Bool
     ) throws -> LibraryCatalogService {
         let repository = try BookRepository.inMemory()
         guard seedFictionalUITestBooks
             || seedMergePreviewAssociations
             || seedGraphUITestData
             || seedGraphLimitUITestData
+            || seedReadingEntryUITestData
         else {
             return LibraryCatalogService(repository: repository)
         }
 
         let timestamp = Date(timeIntervalSince1970: 1_735_689_600)
-        if seedFictionalUITestBooks {
+        if seedFictionalUITestBooks || seedReadingEntryUITestData {
             _ = try repository.create(
                 BookDraft(
                     title: "A101",
@@ -743,6 +769,28 @@ final class LibraryStore: ObservableObject {
                 BookDraft(title: "B202", author: "Forest Author"),
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
                 at: timestamp.addingTimeInterval(1)
+            )
+        }
+        if seedReadingEntryUITestData {
+            let bookID = UUID(uuidString: "00000000-0000-0000-0000-000000000101")!
+            _ = try repository.addExternalLink(
+                ExternalLink(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000901")!,
+                    bookID: bookID,
+                    kind: .web,
+                    label: "虚构公开入口",
+                    value: "https://reader.example.invalid/private-segment",
+                    createdAt: timestamp
+                )
+            )
+            _ = try repository.addLocalFileReference(
+                LocalFileReference(
+                    id: UUID(uuidString: "00000000-0000-0000-0000-000000000902")!,
+                    bookID: bookID,
+                    displayName: "虚构阅读副本.pdf",
+                    bookmarkData: Data("fixed-fictional-ui-bookmark".utf8),
+                    createdAt: timestamp
+                )
             )
         }
         if seedMergePreviewAssociations {

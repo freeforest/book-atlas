@@ -14,9 +14,9 @@ Prompt 1 built an isolated, ad-hoc-signed macOS app with App Sandbox, user-selec
 
 Use `NSOpenPanel` for explicit user selection. For long-lived access, create a read-only app-scoped security-scoped bookmark, store only its opaque bytes in the future local store, resolve it on use, handle stale or missing targets visibly, and balance every successful access start with a stop. Do not request broad file, downloads, or network entitlements.
 
-Prompt 3 or Prompt 7 will define the production storage record, migration, retention, user-visible repair flow, and test fixture policy for bookmark bytes.
+Prompt 9 defines the production storage record, migration, retention, user-visible repair flow, and test fixture policy for bookmark bytes. Schema 5 adds only a cascading local-file-reference table containing a stable reference UUID, book UUID, safe display basename, opaque bookmark bytes, and timestamps.
 
-Prompt 7 later chose transient user-selected read/write access for explicit import, export, backup, and restore without retaining bookmarks. That extension is recorded in ADR-0008; this ADR continues to govern any future long-lived read-only file authorization.
+Prompt 7 later chose transient user-selected read/write access for explicit import, export, backup, and restore without retaining bookmarks. That extension is recorded in ADR-0008. Prompt 9 implements this ADR's long-lived read-only authorization: selection and re-selection require a regular non-symbolic file from `NSOpenPanel`; resolution handles stale, moved, missing, corrupt, or revoked authorization; and every successful scope start is stopped after the explicit open dispatch.
 
 ## Alternatives considered
 
@@ -50,4 +50,6 @@ xcodebuild -project Experiments/TechnicalSpikes/MacOSApp/BookAtlasTechnicalSpike
 CLANG_MODULE_CACHE_PATH=/tmp/bookatlas-swift-module-cache swift test --package-path Experiments/TechnicalSpikes --scratch-path /tmp/bookatlas-spike-build -Xswiftc -module-cache-path -Xswiftc /tmp/bookatlas-swift-module-cache
 ```
 
-The final macOS result contained two passing tests; the package result contained 13 passing tests. The standalone app entitlement inspection contained App Sandbox, app-scoped bookmark, and user-selected read-only-file permissions only, plus the debug task-allow entitlement.
+The Prompt 1 macOS result contained two passing tests; the package result contained 13 passing tests. Its standalone app entitlement inspection contained App Sandbox, app-scoped bookmark, and user-selected read-only-file permissions only, plus the debug task-allow entitlement.
+
+Prompt 9 production and repository tests use fixed temporary files, opaque fictional bytes, and fake selectors/bookmark/opening services. They cover cancellation, persistence, stale refresh, move/missing/corrupt/revoked handling, re-selection, removal, cascading deletion, merge migration/rollback, backup/restore preservation, and balanced scope access without opening a real user file. Prompt 9 remains awaiting independent review.

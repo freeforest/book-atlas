@@ -34,14 +34,16 @@ Exit condition: duplicate candidates can be explained, reviewed, ignored, or mer
 ### Milestone 4 — portability and exploration
 
 - **Prompt 7:** independently accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5` with bounded staged import, export, exact versioned application-schema-validated backup, backend-authoritative restore cancellation, and interruption-safe restore.
-- **Prompt 8:** first independent review completed; focused Canvas-pan and graph-freshness fixes are implemented and awaiting independent re-review.
-- **Prompt 9:** only the Apple Books and external-link behaviors proven by experiments.
+- **Prompt 8:** independently accepted after its second review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; the independent Debug build, 146/146 unit/integration/performance tests, and 22/22 UI tests passed without failures or skips.
+- **Prompt 9:** Apple Books and external reading entries are implemented and waiting for independent review.
 
 Exit condition: data is portable and recoverable, relationship exploration does not compromise the core model, and integrations degrade safely.
 
 ### Milestone 5 — release quality and open-source readiness
 
 - **Prompt 10:** performance and accessibility checks, privacy/security audit, release documentation, and open-source preparation.
+
+Prompt 10 has not started.
 
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 

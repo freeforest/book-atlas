@@ -2,7 +2,7 @@
 
 ## Status
 
-Prompt 3 established the production SQLite schema, Prompt 5 activated organization and unified queries, and Prompt 6 added derived duplicate keys, ignored candidate pairs, and transactional record merging. Independently accepted Prompt 7 adds versioned interchange and snapshot formats without changing the production schema. Prompt 8 adds only a read-only graph projection over Schema 4; it does not change stored entities or migrations. The model remains deliberately smaller than a work/edition authority model.
+Prompt 3 established the production SQLite schema, Prompt 5 activated organization and unified queries, and Prompt 6 added derived duplicate keys, ignored candidate pairs, and transactional record merging. Independently accepted Prompt 7 adds versioned interchange and snapshot formats without changing the production schema. Independently accepted Prompt 8 adds only a read-only graph projection over Schema 4. Prompt 9 advances the current production schema to 5 solely for opaque local-file references; the model remains deliberately smaller than a work/edition authority model.
 
 ## Candidate concepts
 
@@ -42,9 +42,9 @@ The default projection is one relationship layer, with an optional second layer.
 
 An optional user-entered or verified integration destination. A stored link is not proof that another application can open a specific local-library item.
 
-### Attachment reference
+### Local file reference
 
-If future scope requires a local-file reference, store only the minimum metadata and permission bookmark needed. Book Atlas does not ingest ebook content in the first release.
+A user-selected local reading entry contains a stable reference UUID, owning book UUID, safe display basename, opaque read-only app-scoped bookmark bytes, and creation/update timestamps. It never uses an absolute path as identity and does not ingest, inspect, index, or modify ebook content.
 
 ## Production schema and persistence rules
 
@@ -55,13 +55,14 @@ The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is ac
 - Version 2 adds the optional `book_collections.description` field. Its existence provides a real, data-preserving forward-migration test rather than a disposable spike-only history.
 - Version 3 adds indexes for original-title lookup and deterministic created, updated, and priority orderings without rewriting book rows.
 - Version 4 adds `book_duplicate_keys`, `book_duplicate_title_tokens`, and `ignored_duplicate_pairs`; migration backfills derived keys/tokens for existing rows inside the version transaction.
+- Version 5 adds `local_file_references` plus `idx_local_file_references_book_id`. A reference has a UUID primary key, a cascading book foreign key, nonempty bounded safe display name, nonempty opaque bookmark BLOB, and timestamps.
 - IDs are UUID text primary keys. Join tables use composite primary keys; required names are case-insensitively unique; relevant foreign keys use `ON DELETE CASCADE`; and indexes cover book status, title, author, ISBN, and reverse joins.
 - ISBN is indexed but intentionally not globally unique: the user may keep different records that share an identifier.
 - Duplicate keys contain only derived ISBN/title/author/original-title values. Ignored pairs contain two canonical book UUIDs, one of `not_duplicate`, `separate_edition`, or `separate_translation`, and a timestamp. Identity-bearing edits invalidate affected ignored pairs.
 - Manual relations are directed, unique by source/target/kind, and reject self-relations in both domain validation and a database check.
 - Timestamps are UTC ISO-8601 strings with fractional seconds. Collection membership and all list queries use explicit deterministic orderings.
 - Migrations run one version at a time inside `BEGIN IMMEDIATE` transactions. Failures roll back and surface an error; the store never deletes or silently rebuilds an existing database.
-- Prompt 8 retains Schema 4 and migration path `1 → 2 → 3 → 4`; graph positions, zoom, pan, selection, and filters are never stored in SQLite.
+- Prompt 8 retained Schema 4. Prompt 9's complete path is `1 → 2 → 3 → 4 → 5`; graph positions, zoom, pan, selection, and filters are never stored in SQLite.
 
 ## Query and organization semantics
 
@@ -87,13 +88,13 @@ Valid equal ISBN values are Exact. Equal normalized title and ordered author tex
 
 An ignored decision belongs to exactly one canonical UUID pair. When a newly created record has several candidates, the first decision creates that record once and suppresses only the selected pair; the saved record becomes the subject for the remaining review.
 
-Merge retains the chosen target UUID, takes the earlier `createdAt`, writes the merge time to `updatedAt`, and uses explicit choices for conflicting scalar fields. The preview lists both records' concrete tags, collections, sources, links, and directed manual relations with keep/add/deduplicate/fill/block outcomes. Tags, collections, sources, and links are unioned; duplicate associations are removed; manual relations are redirected or deduplicated; self-relations, lossy relation-note conflicts, and equal links with different nonempty labels stop the operation. An empty target link label may be filled from the source, and equal labels deduplicate safely. The source book is deleted last in the same transaction. A successful merge therefore leaves one book identity for future graph projection; an explicit keep-separate choice leaves both identities.
+Merge retains the chosen target UUID, takes the earlier `createdAt`, writes the merge time to `updatedAt`, and uses explicit choices for conflicting scalar fields. The preview lists both records' concrete tags, collections, sources, links, local-file display names, and directed manual relations with keep/add/deduplicate/fill/block outcomes. Tags, collections, sources, and links are unioned; duplicate associations are removed; every opaque local-file reference is preserved and reassigned because a display name is not file identity; manual relations are redirected or deduplicated. Self-relations, lossy relation-note conflicts, and equal links with different nonempty labels stop the operation. An empty target link label may be filled from the source, and equal labels deduplicate safely. The source book is deleted last in the same transaction. A successful merge therefore leaves one book identity for future graph projection; an explicit keep-separate choice leaves both identities.
 
 ## Schema evolution
 
-Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production registry currently ends at version 4.
+Every later schema change must add a numbered forward migration and tests for successful preservation, repeat execution, and safe failure. Backup/restore compatibility must be specified before applying any later migration to user data. Prompt 1's spike migration is not reused; the production registry currently ends at version 5.
 
-Prompt 7 backups record both backup format version 1 and the actual schema version. Restore accepts supported schemas 1–4, stages and migrates older snapshots through the same registry, and rejects future schemas. Before inspection can become a restore preview, the backup must have migration history equal to `user_version`, every required table/column/key/constraint, no `foreign_key_check` result, and domain-decodable books, organizations, joins, links, relations, duplicate indexes, and ignored pairs. The validator runs again after migration and on the installed file before reconnect. Prompt 7 keeps the production schema at version 4; its import staging metadata and recovery marker are temporary operation formats, not schema tables. CSV and Markdown format versions are independent of SQLite schema version; see `docs/FORMATS/PORTABILITY.md`.
+Prompt 7 backups record both backup format version 1 and the actual schema version. Prompt 9 keeps backup format 1 and extends supported application schemas from 1–4 to 1–5. Restore stages and migrates older snapshots through the same registry and rejects future schemas. Before inspection can become a restore preview, the backup must have migration history equal to `user_version`, every required table/column/key/constraint, no `foreign_key_check` result, and domain-decodable books, organizations, joins, links, relations, duplicate indexes, ignored pairs, and—at Schema 5—local-file references. The validator runs again after migration and on the installed file before reconnect. Import staging metadata and recovery markers remain temporary operation formats, not schema tables. CSV and Markdown omit external URLs, local paths, and bookmark bytes; full-fidelity transfer uses backup format 1. See `docs/FORMATS/PORTABILITY.md`.
 
 ## Test data
 

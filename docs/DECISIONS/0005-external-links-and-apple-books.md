@@ -48,3 +48,5 @@ open -gj 'https://books.apple.com/us/search?term=BookAtlas%20Technical%20Spike'
 ```
 
 These commands verify dispatch only. They do not prove custom schemes, a particular store result, or local-library item support.
+
+Prompt 9 implements this accepted boundary behind replaceable validators, workspace/Apple Books adapters, and a state-layer fallback coordinator. Production validates HTTPS both before persistence and before dispatch, labels only the exact `books.apple.com` host, requires confirmation before public search, and uses the documented order: saved store URL, public search, app launch, ISBN copy, title copy, then another saved HTTPS entry. Automated tests use spies and never invoke a real external application. Prompt 9 remains awaiting independent review; these implementation facts do not expand the experimental dispatch evidence or claim private-library item support.

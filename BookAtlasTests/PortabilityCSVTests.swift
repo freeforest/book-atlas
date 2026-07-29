@@ -403,6 +403,52 @@ final class PortabilityCSVTests: XCTestCase {
         XCTAssertFalse(text.contains("/opt/"))
     }
 
+    func testPortableExportsExcludePrivateWebLinksBookmarksAndLocalPaths() throws {
+        let directory = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try BookRepository.inMemory()
+        let book = try repository.create(
+            BookDraft(title: "《便携边界》", author: "虚构作者"),
+            at: FictionalLibraryFixtures.timestamp
+        )
+        let privateURL = "https://private.example.invalid/account/secret-token"
+        let privatePath = "/Users/fictional/Private/secret.pdf"
+        let bookmark = Data("opaque-bookmark-secret".utf8)
+        try repository.addExternalLink(
+            ExternalLink(
+                bookID: book.id,
+                kind: .web,
+                label: "私人入口",
+                value: privateURL,
+                createdAt: FictionalLibraryFixtures.timestamp
+            )
+        )
+        try repository.addLocalFileReference(
+            LocalFileReference(
+                bookID: book.id,
+                displayName: "secret.pdf",
+                bookmarkData: Data(privatePath.utf8) + bookmark,
+                createdAt: FictionalLibraryFixtures.timestamp
+            )
+        )
+        let csvURL = directory.appendingPathComponent("library.csv")
+        let markdownURL = directory.appendingPathComponent("library.md")
+        let exporter = LibraryExportCoordinator(
+            now: { FictionalLibraryFixtures.timestamp }
+        )
+
+        try exporter.exportCSV(repository: repository, to: csvURL)
+        try exporter.exportMarkdown(repository: repository, to: markdownURL)
+
+        for url in [csvURL, markdownURL] {
+            let data = try Data(contentsOf: url)
+            let text = try XCTUnwrap(String(data: data, encoding: .utf8))
+            XCTAssertFalse(text.contains(privateURL))
+            XCTAssertFalse(text.contains(privatePath))
+            XCTAssertFalse(text.contains(String(decoding: bookmark, as: UTF8.self)))
+        }
+    }
+
     func testErrorReportContainsOnlyStructuredRedactedIssueData() throws {
         let directory = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }

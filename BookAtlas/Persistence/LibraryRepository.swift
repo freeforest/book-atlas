@@ -23,7 +23,7 @@ struct DatabaseMigration: @unchecked Sendable {
 }
 
 enum BookAtlasSchema {
-    static let latestVersion = 4
+    static let latestVersion = 5
     static let ignoredPairInvalidationTriggerName =
         "invalidate_ignored_duplicate_pairs_after_identity_update"
     static let ignoredPairInvalidationTriggerSQL = """
@@ -212,6 +212,29 @@ enum BookAtlasSchema {
                 ignoredPairInvalidationTriggerSQL
             ],
             dataTransform: backfillDuplicateKeys
+        ),
+        DatabaseMigration(
+            version: 5,
+            statements: [
+                """
+                CREATE TABLE local_file_references (
+                    id TEXT PRIMARY KEY NOT NULL,
+                    book_id TEXT NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+                    display_name TEXT NOT NULL CHECK (
+                        length(trim(display_name)) > 0
+                        AND length(display_name) <= 512
+                        AND instr(display_name, '/') = 0
+                    ),
+                    bookmark_data BLOB NOT NULL CHECK (length(bookmark_data) > 0),
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """,
+                """
+                CREATE INDEX idx_local_file_references_book_id
+                ON local_file_references(book_id)
+                """
+            ]
         )
     ]
 }
@@ -815,6 +838,100 @@ final class BookRepository {
         )
     }
 
+    func updateExternalLink(_ link: ExternalLink) throws {
+        try database.execute(
+            """
+            UPDATE external_links
+            SET label = ?, value = ?, updated_at = ?
+            WHERE id = ? AND book_id = ? AND kind = ?
+            """,
+            bindings: [
+                nullable(link.label),
+                .text(link.value),
+                .text(StorageDateCodec.encode(link.updatedAt)),
+                .text(link.id.uuidString),
+                .text(link.bookID.uuidString),
+                .text(link.kind.rawValue)
+            ]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
+    func deleteExternalLink(id: UUID) throws {
+        try database.execute(
+            "DELETE FROM external_links WHERE id = ?",
+            bindings: [.text(id.uuidString)]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
+    @discardableResult
+    func addLocalFileReference(_ reference: LocalFileReference) throws -> LocalFileReference {
+        try database.execute(
+            """
+            INSERT INTO local_file_references (
+                id, book_id, display_name, bookmark_data, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            bindings: [
+                .text(reference.id.uuidString),
+                .text(reference.bookID.uuidString),
+                .text(reference.displayName),
+                .blob(reference.bookmarkData),
+                .text(StorageDateCodec.encode(reference.createdAt)),
+                .text(StorageDateCodec.encode(reference.updatedAt))
+            ]
+        )
+        return reference
+    }
+
+    func localFileReferences(forBookID bookID: UUID) throws -> [LocalFileReference] {
+        try database.query(
+            """
+            SELECT id, book_id, display_name, bookmark_data, created_at, updated_at
+            FROM local_file_references
+            WHERE book_id = ?
+            ORDER BY created_at ASC, id ASC
+            """,
+            bindings: [.text(bookID.uuidString)],
+            row: decodeLocalFileReference
+        )
+    }
+
+    func updateLocalFileReference(_ reference: LocalFileReference) throws {
+        try database.execute(
+            """
+            UPDATE local_file_references
+            SET display_name = ?, bookmark_data = ?, updated_at = ?
+            WHERE id = ? AND book_id = ?
+            """,
+            bindings: [
+                .text(reference.displayName),
+                .blob(reference.bookmarkData),
+                .text(StorageDateCodec.encode(reference.updatedAt)),
+                .text(reference.id.uuidString),
+                .text(reference.bookID.uuidString)
+            ]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
+    func deleteLocalFileReference(id: UUID) throws {
+        try database.execute(
+            "DELETE FROM local_file_references WHERE id = ?",
+            bindings: [.text(id.uuidString)]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
     @discardableResult
     func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation {
         try database.execute(
@@ -1032,6 +1149,7 @@ final class BookRepository {
             try update(merged)
             try copyMemberships(from: sourceID, to: targetID)
             try moveExternalLinks(from: sourceID, to: targetID)
+            try moveLocalFileReferences(from: sourceID, to: targetID)
             try applyRelationMoves(relationMoves)
             try migrateIgnoredPairs(from: sourceID, to: targetID)
 
@@ -1135,6 +1253,10 @@ final class BookRepository {
         let sourceSources = sourceIsPersisted ? try sources(forBookID: source.id) : []
         let targetLinks = try externalLinks(forBookID: target.id)
         let sourceLinks = sourceIsPersisted ? try externalLinks(forBookID: source.id) : []
+        let targetLocalFiles = try localFileReferences(forBookID: target.id)
+        let sourceLocalFiles = sourceIsPersisted
+            ? try localFileReferences(forBookID: source.id)
+            : []
         let targetRelations = try manualRelations(forBookID: target.id)
         let sourceRelations = sourceIsPersisted ? try manualRelations(forBookID: source.id) : []
         let relationsByID = Dictionary(
@@ -1156,6 +1278,8 @@ final class BookRepository {
             sourceSources: sourceSources,
             targetLinks: targetLinks,
             sourceLinks: sourceLinks,
+            targetLocalFiles: targetLocalFiles,
+            sourceLocalFiles: sourceLocalFiles,
             manualRelations: manualRelations,
             tagDetails: namedAssociationDetails(
                 target: targetTags,
@@ -1176,6 +1300,10 @@ final class BookRepository {
                 name: \.name
             ),
             linkDetails: externalLinkDetails(target: targetLinks, source: sourceLinks),
+            localFileDetails: localFileDetails(
+                target: targetLocalFiles,
+                source: sourceLocalFiles
+            ),
             relationDetails: try relationDetails(
                 relations: manualRelations,
                 target: target,
@@ -1258,6 +1386,27 @@ final class BookRepository {
             )
         }
         return retained + incoming
+    }
+
+    private func localFileDetails(
+        target: [LocalFileReference],
+        source: [LocalFileReference]
+    ) -> [BookMergeLocalFileDetail] {
+        target.map {
+            BookMergeLocalFileDetail(
+                id: $0.id,
+                displayName: $0.displayName,
+                origin: .target,
+                outcome: .keep
+            )
+        } + source.map {
+            BookMergeLocalFileDetail(
+                id: $0.id,
+                displayName: $0.displayName,
+                origin: .source,
+                outcome: .add
+            )
+        }
     }
 
     private func relationDetails(
@@ -1389,6 +1538,13 @@ final class BookRepository {
                 }
             }
         }
+    }
+
+    private func moveLocalFileReferences(from sourceID: UUID, to targetID: UUID) throws {
+        try database.execute(
+            "UPDATE local_file_references SET book_id = ? WHERE book_id = ?",
+            bindings: [.text(targetID.uuidString), .text(sourceID.uuidString)]
+        )
     }
 
     private func plannedRelationMoves(
@@ -1656,6 +1812,26 @@ final class BookRepository {
             throw BookRepositoryError.invalidStoredRecord
         }
         return try ExternalLink(id: id, bookID: bookID, kind: kind, label: row.string(at: 3), value: value, createdAt: createdAt, updatedAt: updatedAt)
+    }
+
+    private func decodeLocalFileReference(_ row: SQLiteRow) throws -> LocalFileReference {
+        guard let id = UUID(uuidString: row.string(at: 0) ?? ""),
+              let bookID = UUID(uuidString: row.string(at: 1) ?? ""),
+              let displayName = row.string(at: 2),
+              let bookmarkData = row.data(at: 3),
+              let createdAt = StorageDateCodec.decode(row.string(at: 4)),
+              let updatedAt = StorageDateCodec.decode(row.string(at: 5))
+        else {
+            throw BookRepositoryError.invalidStoredRecord
+        }
+        return try LocalFileReference(
+            id: id,
+            bookID: bookID,
+            displayName: displayName,
+            bookmarkData: bookmarkData,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
     }
 
     private func decodeRelation(_ row: SQLiteRow) throws -> ManualBookRelation {

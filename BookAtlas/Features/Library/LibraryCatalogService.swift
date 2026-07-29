@@ -70,6 +70,14 @@ protocol LibraryCataloging: Actor {
     func createSource(name: String, details: String?) throws -> RecommendationSource
     func renameSource(_ source: RecommendationSource, name: String, details: String?) throws -> RecommendationSource
     func deleteSource(_ source: RecommendationSource) throws
+    func externalLinks(for bookID: UUID) throws -> [ExternalLink]
+    func addExternalLink(_ link: ExternalLink) throws -> ExternalLink
+    func updateExternalLink(_ link: ExternalLink) throws
+    func deleteExternalLink(_ id: UUID) throws
+    func localFileReferences(for bookID: UUID) throws -> [LocalFileReference]
+    func addLocalFileReference(_ reference: LocalFileReference) throws -> LocalFileReference
+    func updateLocalFileReference(_ reference: LocalFileReference) throws
+    func deleteLocalFileReference(_ id: UUID) throws
     func localGraph(
         centerBookID: UUID,
         options: GraphBuildOptions
@@ -197,6 +205,26 @@ extension LibraryCataloging {
         throw BookRepositoryError.entityNotFound
     }
     func deleteSource(_ source: RecommendationSource) throws { throw BookRepositoryError.entityNotFound }
+    func externalLinks(for bookID: UUID) throws -> [ExternalLink] { [] }
+    func addExternalLink(_ link: ExternalLink) throws -> ExternalLink {
+        throw BookRepositoryError.entityNotFound
+    }
+    func updateExternalLink(_ link: ExternalLink) throws {
+        throw BookRepositoryError.entityNotFound
+    }
+    func deleteExternalLink(_ id: UUID) throws {
+        throw BookRepositoryError.entityNotFound
+    }
+    func localFileReferences(for bookID: UUID) throws -> [LocalFileReference] { [] }
+    func addLocalFileReference(_ reference: LocalFileReference) throws -> LocalFileReference {
+        throw BookRepositoryError.entityNotFound
+    }
+    func updateLocalFileReference(_ reference: LocalFileReference) throws {
+        throw BookRepositoryError.entityNotFound
+    }
+    func deleteLocalFileReference(_ id: UUID) throws {
+        throw BookRepositoryError.entityNotFound
+    }
     func localGraph(
         centerBookID: UUID,
         options: GraphBuildOptions
@@ -562,6 +590,38 @@ actor LibraryCatalogService: LibraryCataloging {
     func deleteSource(_ source: RecommendationSource) throws {
         try repository.deleteSource(id: source.id)
         markGraphContentChanged()
+    }
+
+    func externalLinks(for bookID: UUID) throws -> [ExternalLink] {
+        try repository.externalLinks(forBookID: bookID)
+    }
+
+    func addExternalLink(_ link: ExternalLink) throws -> ExternalLink {
+        try repository.addExternalLink(link)
+    }
+
+    func updateExternalLink(_ link: ExternalLink) throws {
+        try repository.updateExternalLink(link)
+    }
+
+    func deleteExternalLink(_ id: UUID) throws {
+        try repository.deleteExternalLink(id: id)
+    }
+
+    func localFileReferences(for bookID: UUID) throws -> [LocalFileReference] {
+        try repository.localFileReferences(forBookID: bookID)
+    }
+
+    func addLocalFileReference(_ reference: LocalFileReference) throws -> LocalFileReference {
+        try repository.addLocalFileReference(reference)
+    }
+
+    func updateLocalFileReference(_ reference: LocalFileReference) throws {
+        try repository.updateLocalFileReference(reference)
+    }
+
+    func deleteLocalFileReference(_ id: UUID) throws {
+        try repository.deleteLocalFileReference(id: id)
     }
 
     func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation {

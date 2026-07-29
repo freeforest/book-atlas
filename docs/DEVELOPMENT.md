@@ -4,9 +4,9 @@
 
 `BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus `BookAtlasTests` and `BookAtlasUITests`. It targets macOS 14.0, uses only SwiftUI and AppKit supplied by macOS, and is sandboxed. The Debug bundle identifier is the intentional placeholder `com.example.BookAtlas`; release signing, distribution identity, and notarization are not configured.
 
-The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 4. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, or merge transactions.
+The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
-The current implemented scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, and a bounded local relationship graph. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 has completed its first independent review and is awaiting re-review after focused Canvas-pan and graph-freshness fixes. There is no network client entitlement, external-link action, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph. Prompt 8 adds no entitlement, dependency, network, file access, or Schema change.
+The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, and a bounded local relationship graph. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9 now implements HTTPS/Apple Books/clipboard/local-file reading entries and is waiting for independent review. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
 
 ## Build
 
@@ -16,11 +16,13 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p8-final-build-2 \
+  -derivedDataPath /tmp/bookatlas-p9-final-build-3 \
   build
 ```
 
-The Prompt 7 acceptance baseline independently passed the Debug build, 114-test unit/integration suite, and 17-test UI suite with Xcode 26.6 (build 17F113), Swift 6.3.3, and an arm64 Mac running macOS 26.5.2 (build 25F84). The first Prompt 8 implementation evidence run produced `BUILD SUCCEEDED`, 132/132 passing unit/integration tests, and 21/21 passing UI tests. On the same host, the current closure produced `BUILD SUCCEEDED`, 146/146 passing unit/integration tests, and 22/22 passing macOS UI tests, with zero failures and zero skips. The command ad-hoc signs the Debug product for local execution; a UI count is valid only from an unlocked interactive session that successfully initializes XCUIAutomation.
+The Prompt 7 acceptance baseline independently passed the Debug build, 114-test unit/integration suite, and 17-test UI suite with Xcode 26.6 (build 17F113), Swift 6.3.3, and an arm64 Mac running macOS 26.5.2 (build 25F84). Prompt 8 was formally accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`: the independent Debug build succeeded, 146/146 unit/integration/performance tests passed, and 22/22 macOS UI tests ran in an interactive session after XCUIAutomation initialized and passed, with zero failures and zero skips. The command ad-hoc signs the Debug product for local execution; a UI count is valid only from an unlocked interactive session that successfully initializes XCUIAutomation.
+
+The final Prompt 9 implementation build described above succeeded on the same local toolchain class. Prompt 9 remains pending independent review.
 
 ## Unit tests
 
@@ -29,37 +31,40 @@ xcodebuild \
   -project BookAtlas.xcodeproj \
   -scheme BookAtlas \
   -configuration Debug \
-  -derivedDataPath /tmp/bookatlas-p8-final-unit-2 \
+  -derivedDataPath /tmp/bookatlas-p9-final-unit-5 \
   -destination 'platform=macOS,arch=arm64' \
   -only-testing:BookAtlasTests \
-  -resultBundlePath /tmp/bookatlas-p8-final-unit-2.xcresult \
+  -resultBundlePath /tmp/bookatlas-p9-final-unit-5.xcresult \
   test
 ```
 
-The suite contains 146 unit, integration, migration, rollback, state, and performance tests. Coverage includes:
+The final Prompt 9 run executed all 161 unit, integration, migration, rollback, security, state, and performance tests: 161 passed, zero failed, and zero skipped. Coverage includes:
 
 - domain validation, editor drafts, navigation, layout, and light/dark appearance smoke checks;
-- schema versions 1–4, duplicate-key backfill, new-store creation, data preservation, idempotence, rollback, future-version rejection, and exact per-version backup-schema object validation;
-- repository CRUD, relationships, cascades, transaction rollback, and in-memory isolation;
+- schema versions 1–5, duplicate-key backfill, local-file-reference migration, new-store creation, data preservation, idempotence, rollback, future-version rejection, and exact per-version backup-schema object validation;
+- repository book/web-link/local-file CRUD, relationships, cascades, transaction rollback, and in-memory isolation;
 - title/original-title/author/ISBN search, each structured filter, documented filter composition, filter clearing, and stable created/updated/priority sorting;
 - tag, collection, and source normalization, rename, deletion, membership removal, duplicate-safe and multiple associations, derived counts, transactional tag merge and rollback, filter cleanup, and organizer snapshot publication;
 - deterministic 1,000-, 5,000-, and 10,000-book query baselines.
 - ISBN-10/13 validation; conservative title/author normalization; Exact/Strong/Possible boundaries; version, translation, series, similar-title, and conflicting-ISBN cases;
 - ignored-pair creation, lookup, persistence after reopen, suppression, identity-edit invalidation, and pair-only handling across three simultaneous candidates without duplicate creation;
-- save interception, cancellation, draft-preserving existing-record viewing, keep-separate behavior, merge preview/defaults/field choices, concrete association outcomes, association union/deduplication, external-link label fill/equal/conflict cases, relation redirection/rejection, source deletion last, and full transaction rollback;
+- save interception, cancellation, draft-preserving existing-record viewing, keep-separate behavior, merge preview/defaults/field choices, concrete association outcomes, association union/deduplication, external-link label fill/equal/conflict cases, local-file-reference preservation, relation redirection/rejection, source deletion last, and full transaction rollback;
 - deterministic uncapped Exact/Strong retrieval beyond 250 matches; deterministic 250-hit Possible lookup with truncation surfaced to the review state;
 - an indexed 10,000-book duplicate-candidate lookup with a one-second regression ceiling on the verified host.
 - streaming UTF-8/BOM CSV parsing, quotes/commas/multiline fields, malformed input, file/row/field/column limits, reordered and unknown columns, required-field errors, mapping, explicit preview limits, and preview/cancel no-write behavior;
 - Prompt 6 Exact/Strong reuse during import against both the current library and earlier accepted rows in the same CSV, deterministic Exact/Strong batch order, organization forecasts that exclude skipped rows, execution-time revalidation, tag/list/source creation and deduplication, cancellation, injected fatal rollback, and post-execution redacted reports;
 - disk-backed import staging bound to source and mapping fingerprints, 20-row and 80-issue presentation bounds with explicit truncation, stale mapping-generation suppression, parsing/confirmed-import cancellation cleanup, and an isolated 84,354,813-byte near-limit input whose measured end-to-end resident-memory growth was 1,441,792 bytes and process peak growth was 21,921,792 bytes;
 - stable Markdown/CSV formats, multiline and empty values, Markdown metacharacter escaping, absolute-path omission, semantic CSV round trips, and formula guards for `=`, `+`, `-`, `@`, tab, and carriage return;
-- empty/populated online backups, uncheckpointed WAL data, path-free manifests, physical plus exact application-schema validation, schema 1–4 table/index/trigger/view whitelists, index structure and restored ignored-pair-trigger semantics, every relationship/duplicate-index family, non-overwrite behavior, symlink/corrupt/missing-manifest/future/oversized rejection, old-schema restore migration, 4 GiB and capacity preflights, Cocoa out-of-space mapping, recovery copies, coordinator-confirmed cancellable staging, atomic cancellation-versus-safe-replacement arbitration, delayed-phase suppression, non-cancellable replacement state, three persistent process-interruption boundaries with startup recovery, replacement/reconnect injection, rollback, reopened writes, and controlled-work cleanup;
+- empty/populated online backups, uncheckpointed WAL data, path-free manifests, physical plus exact application-schema validation, schema 1–5 table/index/trigger/view whitelists, index structure and restored ignored-pair-trigger semantics, every relationship/duplicate-index/local-file family, non-overwrite behavior, symlink/corrupt/missing-manifest/future/oversized rejection, old-schema restore migration through 5, 4 GiB and capacity preflights, Cocoa out-of-space mapping, recovery copies, coordinator-confirmed cancellable staging, atomic cancellation-versus-safe-replacement arbitration, delayed-phase suppression, non-cancellable replacement state, three persistent process-interruption boundaries with startup recovery, replacement/reconnect injection, rollback, reopened writes, and controlled-work cleanup;
 - fixed 1,000/5,000/10,000 portability baselines and an off-main-actor parsing responsiveness check.
 - all five graph evidence families with concrete explanations, evidence merging and deduplication, deterministic weights/order, relationship filters, one/two layers, explicit node/edge/candidate limits, missing center, merged/deleted records, and intentionally separate duplicate versions;
 - deterministic empty/single/multi-node layout, fixed center, bounded iteration, cancellation, stale-center rejection, re-entry, selection, dragging, re-centering, empty/error/limit state publication, and accessibility relationship reasons;
 - production Canvas interaction-state regressions for 10/20/30 cumulative pan input, fixed pan-versus-node drag mode, zoom/pan inverse coordinates, new gesture origins, cancellation/end cleanup, and viewport reset;
 - catalog-owned graph-content revision integration across identity edits, tag/list/source/manual evidence add/remove, neighbor and center deletion, retained/source merge identities, CSV import, database restore, changed-data re-entry, unchanged-data layout retention, and stale slow-build suppression;
 - fixed 1,000/5,000/10,000 production graph query/build/layout/first-render/interaction/re-entry/memory baselines plus a 10,000-book off-main-actor responsiveness check.
+- strict HTTPS acceptance/rejection, bounds, controls, credentials, invalid encoding/ports, deterministic ASCII-host display, HTTP/custom-scheme rejection, IDN/punycode rejection, validation before save and before open, and no automatic dispatch;
+- Apple Books supported/unavailable/unsupported/unverified capability states and deterministic saved-store/search/launch/copy/other-HTTPS fallback using spies only;
+- web-link CRUD/uniqueness/cascade, local-file selection cancellation, opaque bookmark persistence, stale refresh, move/missing/corrupt/revoked repair, re-selection/removal, balanced scoped access, merge migration/rollback, backup/restore preservation, and CSV/Markdown exclusion.
 
 ## UI tests
 
@@ -68,14 +73,14 @@ xcodebuild \
   -project BookAtlas.xcodeproj \
   -scheme BookAtlas \
   -configuration Debug \
-  -derivedDataPath /tmp/bookatlas-p8-final-ui-2 \
+  -derivedDataPath /tmp/bookatlas-p9-final-ui-5 \
   -destination 'platform=macOS,arch=arm64' \
   -only-testing:BookAtlasUITests \
-  -resultBundlePath /tmp/bookatlas-p8-final-ui-2.xcresult \
+  -resultBundlePath /tmp/bookatlas-p9-final-ui-5.xcresult \
   test
 ```
 
-The suite contains 22 macOS UI tests. It retains all Prompt 5/6/7 paths and adds detail-to-graph navigation, concrete five-family relationship accessibility, node selection and return to detail, one/two-layer switching, relation filtering, keyboard list selection, re-centering, reset, independently isolated empty/limit states, disclosed-limit accessibility, and loaded-graph → leave → edit → return freshness. UI tests opt into an in-memory store and fixed fictional test-only launch seeds; they do not open a real file panel, user file, or real database.
+The final interactive run initialized XCUIAutomation and executed all 25 macOS UI tests: 25 passed, zero failed, and zero skipped. It retains all Prompt 5/6/7/8 paths and adds reading-entry empty state, HTTPS add/edit/delete, host-only accessibility, HTTP/dangerous-scheme rejection, Apple Books limitation/confirmation/copy controls, local-file cancellation, invalid-bookmark repair/removal, keyboard defaults, and Escape paths. UI tests opt into an in-memory store, fixed fictional test-only launch seeds, and no-op system adapters; they do not open a real file panel, external application, pasteboard, user file, or real database.
 
 ## Query baseline
 
@@ -85,7 +90,7 @@ The suite contains 22 macOS UI tests. It retains all Prompt 5/6/7 paths and adds
 
 ## Portability baseline
 
-`PortabilityPerformanceTests` creates fresh temporary schema-4 databases and fixed fictional ASCII records for each size. The recorded Prompt 7 final full-suite run on the environment above was:
+`PortabilityPerformanceTests` creates fresh temporary current-schema databases and fixed fictional ASCII records for each size. The recorded Prompt 7 final full-suite run on the environment above was:
 
 | Books | CSV parse | Preview | Import | Markdown | CSV export | Backup | Restore | End-to-end resident-memory growth |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -122,7 +127,7 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Keep App Sandbox enabled and add no network client entitlement unless an accepted ADR and privacy review require it.
 - Preserve `Experiments/TechnicalSpikes/` as evidence only; production code must not import it.
 - Runtime validation currently covers one Apple-silicon host on macOS 26.5.2; the macOS 14.0 minimum runtime has not been exercised in this closure.
-- Automated accessibility identifiers and keyboard paths are covered, but a complete manual VoiceOver audit is not part of Prompt 8.
+- Automated accessibility identifiers and keyboard paths are covered, but a complete manual VoiceOver audit is not part of Prompt 9.
 - Release signing, notarization, and a final non-placeholder bundle identifier remain unconfigured.
 - Duplicate heuristics intentionally do not understand every contributor order, edition, translation, or series convention; every candidate remains user-reviewed.
 - A truncated Possible lookup does not yet provide pagination; the UI states that only the first 250 deterministic raw token hits were evaluated. Exact and Strong candidates are not truncated.
@@ -130,4 +135,6 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Backup format 1 is capped at 4 GiB and uses a 16 MiB free-space safety reserve. Capacity values are filesystem estimates; a later real write error is still handled and reported.
 - Backups are intentionally unencrypted and recovery copies are retained until the user manages them through the app container; no automatic retention policy is implemented.
 - The graph defaults to one layer and 80 nodes/200 edges, allows a second layer, and has hard caps of 250/500. It does not provide clustering, saved layouts, a global graph, arbitrary graph queries, or cross-library relationships.
-- Prompt 8 does not add external-link actions. Prompt 9 has not started.
+- Prompt 9 is implemented but has not been independently accepted. Automated tests prove adapter calls and state transitions, not that an external application will accept or render a particular URL or file on every Mac.
+- No supported API was established for an exact item in a user's private Apple Books library. `ibooks:` remains unverified, private-library targeting remains unsupported, public search may disclose its term after confirmation, and Unicode/IDN hosts are deliberately rejected.
+- Long-lived local references can become stale, missing, corrupt, or revoked and require user re-selection. The app stores opaque bookmark bytes in Schema 5 and full backups but omits them, local paths, and private URLs from CSV/Markdown.
