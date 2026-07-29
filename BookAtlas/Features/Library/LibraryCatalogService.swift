@@ -74,6 +74,10 @@ protocol LibraryCataloging: Actor {
         centerBookID: UUID,
         options: GraphBuildOptions
     ) throws -> GraphScene
+    func graphContentRevision() -> GraphContentRevision
+    func graphContentRevisions() -> AsyncStream<GraphContentRevision>
+    func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation
+    func deleteManualRelation(_ relation: ManualBookRelation) throws
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview
     func executeImport(_ preview: ImportPreview) throws -> ImportResult
     func discardImport(_ preview: ImportPreview)
@@ -199,6 +203,18 @@ extension LibraryCataloging {
     ) throws -> GraphScene {
         throw GraphBuildError.databaseUnavailable
     }
+    func graphContentRevision() -> GraphContentRevision { .initial }
+    func graphContentRevisions() -> AsyncStream<GraphContentRevision> {
+        AsyncStream { continuation in
+            continuation.yield(.initial)
+        }
+    }
+    func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation {
+        throw BookRepositoryError.entityNotFound
+    }
+    func deleteManualRelation(_ relation: ManualBookRelation) throws {
+        throw BookRepositoryError.entityNotFound
+    }
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview {
         throw PortabilityError.unsafeFile
     }
@@ -228,6 +244,10 @@ actor LibraryCatalogService: LibraryCataloging {
     private let databaseURL: URL?
     private let recoveryDirectory: URL?
     private let now: @Sendable () -> Date
+    private var contentRevision = GraphContentRevision.initial
+    private var revisionContinuations: [
+        UUID: AsyncStream<GraphContentRevision>.Continuation
+    ] = [:]
 
     init(
         repository: BookRepository,
@@ -241,22 +261,30 @@ actor LibraryCatalogService: LibraryCataloging {
         self.now = now
     }
 
+    func close() throws {
+        try repository.close()
+    }
+
     func queryBooks(_ query: LibraryQuery) throws -> [Book] {
         try repository.query(query)
     }
 
     func createBook(from editor: BookEditorDraft) throws -> Book {
-        try repository.create(editor.makeBookDraft(), at: now())
+        let book = try repository.create(editor.makeBookDraft(), at: now())
+        markGraphContentChanged()
+        return book
     }
 
     func updateBook(_ book: Book, from editor: BookEditorDraft) throws -> Book {
         let updated = try book.applying(editor.makeBookDraft(), at: now())
         try repository.update(updated)
+        markGraphContentChanged()
         return updated
     }
 
     func deleteBook(_ book: Book) throws {
         try repository.deleteBook(id: book.id)
+        markGraphContentChanged()
     }
 
     func duplicateCandidates(
@@ -308,7 +336,7 @@ actor LibraryCatalogService: LibraryCataloging {
         disposition: DuplicatePairDisposition
     ) throws -> Book {
         let draft = try editor.makeBookDraft()
-        return try repository.transaction {
+        let book = try repository.transaction {
             let book = try repository.create(draft, id: proposedID, at: now())
             if candidateID != book.id {
                 try repository.ignoreDuplicatePair(
@@ -320,6 +348,8 @@ actor LibraryCatalogService: LibraryCataloging {
             }
             return book
         }
+        markGraphContentChanged()
+        return book
     }
 
     func ignoreDuplicatePair(
@@ -357,12 +387,14 @@ actor LibraryCatalogService: LibraryCataloging {
         sourceID: UUID,
         selections: BookMergeSelections
     ) throws -> BookMergeResult {
-        try repository.mergeBooks(
+        let result = try repository.mergeBooks(
             targetID: targetID,
             sourceID: sourceID,
             selections: selections,
             at: now()
         )
+        markGraphContentChanged()
+        return result
     }
 
     func mergeNewBook(
@@ -372,7 +404,7 @@ actor LibraryCatalogService: LibraryCataloging {
         selections: BookMergeSelections
     ) throws -> BookMergeResult {
         let draft = try sourceEditor.makeBookDraft()
-        return try repository.transaction {
+        let result = try repository.transaction {
             _ = try repository.create(draft, id: proposedSourceID, at: now())
             return try repository.mergeBooks(
                 targetID: targetID,
@@ -381,6 +413,8 @@ actor LibraryCatalogService: LibraryCataloging {
                 at: now()
             )
         }
+        markGraphContentChanged()
+        return result
     }
 
     func catalogSnapshot() throws -> CatalogSnapshot {
@@ -416,12 +450,15 @@ actor LibraryCatalogService: LibraryCataloging {
                 try repository.detach(sourceID: id, fromBookID: bookID)
             }
         }
+        markGraphContentChanged()
     }
 
     func createTag(name: String) throws -> Tag {
         let tag = try Tag(name: name, createdAt: now())
         try ensureUnique(name: tag.name, excluding: nil, existing: repository.tagSummaries().map { ($0.id, $0.tag.name) })
-        return try repository.createTag(tag)
+        let created = try repository.createTag(tag)
+        markGraphContentChanged()
+        return created
     }
 
     func renameTag(_ tag: Tag, name: String) throws -> Tag {
@@ -432,11 +469,13 @@ actor LibraryCatalogService: LibraryCataloging {
             existing: repository.tagSummaries().map { ($0.id, $0.tag.name) }
         )
         try repository.updateTag(updated)
+        markGraphContentChanged()
         return updated
     }
 
     func deleteTag(_ tag: Tag) throws {
         try repository.deleteTag(id: tag.id)
+        markGraphContentChanged()
     }
 
     func mergeTag(_ source: Tag, into target: Tag) throws {
@@ -444,6 +483,7 @@ actor LibraryCatalogService: LibraryCataloging {
             throw CatalogServiceError.invalidMerge
         }
         try repository.mergeTag(sourceID: source.id, into: target.id)
+        markGraphContentChanged()
     }
 
     func createCollection(name: String, description: String?) throws -> BookCollection {
@@ -453,7 +493,9 @@ actor LibraryCatalogService: LibraryCataloging {
             excluding: nil,
             existing: repository.collectionSummaries().map { ($0.id, $0.collection.name) }
         )
-        return try repository.createCollection(collection)
+        let created = try repository.createCollection(collection)
+        markGraphContentChanged()
+        return created
     }
 
     func renameCollection(
@@ -474,11 +516,13 @@ actor LibraryCatalogService: LibraryCataloging {
             existing: repository.collectionSummaries().map { ($0.id, $0.collection.name) }
         )
         try repository.updateCollection(updated)
+        markGraphContentChanged()
         return updated
     }
 
     func deleteCollection(_ collection: BookCollection) throws {
         try repository.deleteCollection(id: collection.id)
+        markGraphContentChanged()
     }
 
     func createSource(name: String, details: String?) throws -> RecommendationSource {
@@ -488,7 +532,9 @@ actor LibraryCatalogService: LibraryCataloging {
             excluding: nil,
             existing: repository.sourceSummaries().map { ($0.id, $0.source.name) }
         )
-        return try repository.createSource(source)
+        let created = try repository.createSource(source)
+        markGraphContentChanged()
+        return created
     }
 
     func renameSource(
@@ -509,11 +555,43 @@ actor LibraryCatalogService: LibraryCataloging {
             existing: repository.sourceSummaries().map { ($0.id, $0.source.name) }
         )
         try repository.updateSource(updated)
+        markGraphContentChanged()
         return updated
     }
 
     func deleteSource(_ source: RecommendationSource) throws {
         try repository.deleteSource(id: source.id)
+        markGraphContentChanged()
+    }
+
+    func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation {
+        let created = try repository.addManualRelation(relation)
+        markGraphContentChanged()
+        return created
+    }
+
+    func deleteManualRelation(_ relation: ManualBookRelation) throws {
+        try repository.deleteManualRelation(id: relation.id)
+        markGraphContentChanged()
+    }
+
+    func graphContentRevision() -> GraphContentRevision {
+        contentRevision
+    }
+
+    func graphContentRevisions() -> AsyncStream<GraphContentRevision> {
+        let id = UUID()
+        let (stream, continuation) = AsyncStream<GraphContentRevision>.makeStream(
+            bufferingPolicy: .bufferingNewest(1)
+        )
+        revisionContinuations[id] = continuation
+        continuation.yield(contentRevision)
+        continuation.onTermination = { [weak self] _ in
+            Task {
+                await self?.removeRevisionContinuation(id)
+            }
+        }
+        return stream
     }
 
     func localGraph(
@@ -562,7 +640,8 @@ actor LibraryCatalogService: LibraryCataloging {
                 querySeconds: queryDuration.secondsValue,
                 projectionSeconds: max(0, projectionDuration.secondsValue),
                 layoutSeconds: layoutDuration.secondsValue
-            )
+            ),
+            contentRevision: contentRevision
         )
     }
 
@@ -580,7 +659,7 @@ actor LibraryCatalogService: LibraryCataloging {
     }
 
     func executeImport(_ preview: ImportPreview) throws -> ImportResult {
-        try LibraryImportCoordinator().execute(
+        let result = try LibraryImportCoordinator().execute(
             preview: preview,
             repository: repository,
             at: now(),
@@ -592,6 +671,8 @@ actor LibraryCatalogService: LibraryCataloging {
                 }
             )
         )
+        markGraphContentChanged()
+        return result
     }
 
     func discardImport(_ preview: ImportPreview) {
@@ -648,7 +729,7 @@ actor LibraryCatalogService: LibraryCataloging {
                 "Recovery Copies",
                 isDirectory: true
             )
-        return try backupCoordinator().restore(
+        let preview = try backupCoordinator().restore(
             backupURL: url,
             databaseURL: databaseURL,
             repository: &repository,
@@ -661,6 +742,19 @@ actor LibraryCatalogService: LibraryCataloging {
             ),
             progress: progress
         )
+        markGraphContentChanged()
+        return preview
+    }
+
+    private func markGraphContentChanged() {
+        contentRevision = contentRevision.advanced()
+        for continuation in revisionContinuations.values {
+            continuation.yield(contentRevision)
+        }
+    }
+
+    private func removeRevisionContinuation(_ id: UUID) {
+        revisionContinuations.removeValue(forKey: id)
     }
 
     private func backupCoordinator() -> LibraryBackupCoordinator {

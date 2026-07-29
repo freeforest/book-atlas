@@ -6,7 +6,7 @@
 
 The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 4. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, or merge transactions.
 
-The current implemented scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, and a bounded local relationship graph. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 is implemented and awaiting independent review. There is no network client entitlement, external-link action, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph. Prompt 8 adds no entitlement, dependency, network, file access, or Schema change.
+The current implemented scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, and a bounded local relationship graph. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 has completed its first independent review and is awaiting re-review after focused Canvas-pan and graph-freshness fixes. There is no network client entitlement, external-link action, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph. Prompt 8 adds no entitlement, dependency, network, file access, or Schema change.
 
 ## Build
 
@@ -20,7 +20,7 @@ xcodebuild \
   build
 ```
 
-The Prompt 7 acceptance baseline independently passed the Debug build, 114-test unit/integration suite, and 17-test UI suite with Xcode 26.6 (build 17F113), Swift 6.3.3, and an arm64 Mac running macOS 26.5.2 (build 25F84). On the same host, the final Prompt 8 evidence run produced `BUILD SUCCEEDED`, 132/132 passing unit/integration tests, and 21/21 passing UI tests, with zero failures and zero skips. The command ad-hoc signs the Debug product for local execution; the UI count comes from an unlocked interactive session that successfully initialized XCUIAutomation.
+The Prompt 7 acceptance baseline independently passed the Debug build, 114-test unit/integration suite, and 17-test UI suite with Xcode 26.6 (build 17F113), Swift 6.3.3, and an arm64 Mac running macOS 26.5.2 (build 25F84). The first Prompt 8 implementation evidence run produced `BUILD SUCCEEDED`, 132/132 passing unit/integration tests, and 21/21 passing UI tests. On the same host, the current closure produced `BUILD SUCCEEDED`, 146/146 passing unit/integration tests, and 22/22 passing macOS UI tests, with zero failures and zero skips. The command ad-hoc signs the Debug product for local execution; a UI count is valid only from an unlocked interactive session that successfully initializes XCUIAutomation.
 
 ## Unit tests
 
@@ -36,7 +36,7 @@ xcodebuild \
   test
 ```
 
-The suite contains 132 unit, integration, migration, rollback, state, and performance tests. Coverage includes:
+The suite contains 146 unit, integration, migration, rollback, state, and performance tests. Coverage includes:
 
 - domain validation, editor drafts, navigation, layout, and light/dark appearance smoke checks;
 - schema versions 1–4, duplicate-key backfill, new-store creation, data preservation, idempotence, rollback, future-version rejection, and exact per-version backup-schema object validation;
@@ -57,6 +57,8 @@ The suite contains 132 unit, integration, migration, rollback, state, and perfor
 - fixed 1,000/5,000/10,000 portability baselines and an off-main-actor parsing responsiveness check.
 - all five graph evidence families with concrete explanations, evidence merging and deduplication, deterministic weights/order, relationship filters, one/two layers, explicit node/edge/candidate limits, missing center, merged/deleted records, and intentionally separate duplicate versions;
 - deterministic empty/single/multi-node layout, fixed center, bounded iteration, cancellation, stale-center rejection, re-entry, selection, dragging, re-centering, empty/error/limit state publication, and accessibility relationship reasons;
+- production Canvas interaction-state regressions for 10/20/30 cumulative pan input, fixed pan-versus-node drag mode, zoom/pan inverse coordinates, new gesture origins, cancellation/end cleanup, and viewport reset;
+- catalog-owned graph-content revision integration across identity edits, tag/list/source/manual evidence add/remove, neighbor and center deletion, retained/source merge identities, CSV import, database restore, changed-data re-entry, unchanged-data layout retention, and stale slow-build suppression;
 - fixed 1,000/5,000/10,000 production graph query/build/layout/first-render/interaction/re-entry/memory baselines plus a 10,000-book off-main-actor responsiveness check.
 
 ## UI tests
@@ -73,7 +75,7 @@ xcodebuild \
   test
 ```
 
-The suite contains 21 macOS UI tests. It retains all Prompt 5/6/7 paths and adds detail-to-graph navigation, concrete five-family relationship accessibility, node selection and return to detail, one/two-layer switching, relation filtering, keyboard list selection, re-centering, reset, independently isolated empty/limit states, and disclosed-limit accessibility. UI tests opt into an in-memory store and fixed fictional test-only launch seeds; they do not open a real file panel, user file, or real database.
+The suite contains 22 macOS UI tests. It retains all Prompt 5/6/7 paths and adds detail-to-graph navigation, concrete five-family relationship accessibility, node selection and return to detail, one/two-layer switching, relation filtering, keyboard list selection, re-centering, reset, independently isolated empty/limit states, disclosed-limit accessibility, and loaded-graph → leave → edit → return freshness. UI tests opt into an in-memory store and fixed fictional test-only launch seeds; they do not open a real file panel, user file, or real database.
 
 ## Query baseline
 
@@ -99,11 +101,19 @@ These are local observations, not product promises. CSV parsing is measured thro
 
 | Books | Query | Projection | Layout | First render | 100 interactions | 5 re-entries | Resident-memory growth |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 1,000 | 0.0464 s | 0.0012 s | 0.0672 s | 0.0568 s | 0.0008 s | 0.5683 s | 10,829,824 B |
-| 5,000 | 0.0455 s | 0.0010 s | 0.0660 s | 0.0382 s | 0.0008 s | 0.5695 s | 12,238,848 B |
-| 10,000 | 0.0467 s | 0.0010 s | 0.0751 s | 0.0385 s | 0.0008 s | 0.5923 s | 17,760,256 B |
+| 1,000 | 0.0461 s | 0.0012 s | 0.0769 s | 0.0808 s | 0.0008 s | 0.6146 s | 12,468,224 B |
+| 5,000 | 0.0460 s | 0.0010 s | 0.0759 s | 0.0476 s | 0.0011 s | 0.6063 s | 12,222,464 B |
+| 10,000 | 0.0471 s | 0.0010 s | 0.0752 s | 0.0450 s | 0.0008 s | 0.6187 s | 17,399,808 B |
 
 All three projections reached the deliberate 80-node/79-edge bounded result from a same-author fixture and disclosed candidate truncation. A separate 10,000-book test completed the projection outside the main actor while a main-actor expectation completed within one second. These measurements are local regression evidence, not frame-rate or cross-device promises.
+
+## Graph freshness contract
+
+`LibraryCatalogService` owns a monotonic, process-local `GraphContentRevision` and publishes it through an `AsyncStream`. Successful book create/update/delete, keep-separate creation, confirmed merge, tag/list/source association changes, tag create/rename/delete/merge, list create/rename/delete, source create/rename/delete, manual-relation add/delete, confirmed CSV import, and database restore/reconnection advance the revision. Duplicate-candidate reads and ignored-pair decisions do not advance it because they do not change graph nodes or evidence.
+
+`GraphStore` records the revision embedded in each `GraphScene`. On entry it reads the current revision: if it matches and a valid scene is already loaded, selection and view-local layout are retained; otherwise the old scene, layout, status, and error are cleared and rebuilt. A published change cancels current work, increments the generation, and prevents late older-revision results from publishing. If the former center was deleted, was the source of a merge, or is absent after restore, the store clears the center and displays the explicit missing-center state. Restore never keeps pre-restore graph nodes or layout.
+
+`GraphCanvasInteractionState` fixes its mode once per gesture. Panning captures the starting translation and always applies `start + current cumulative translation`; node dragging inverse-transforms the current pointer using the unchanged viewport scale and translation. Gesture end/cancellation and viewport reset return the interaction to idle.
 
 ## Known limitations
 

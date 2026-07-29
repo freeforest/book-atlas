@@ -3,11 +3,78 @@ import Foundation
 
 enum GraphViewState: Equatable {
     case needsCenter
+    case missingCenter
+    case invalidated
     case loading
     case content
     case empty
     case cancelled
     case failed
+}
+
+struct GraphViewportState: Equatable {
+    var scale: CGFloat = 1
+    var translation: CGSize = .zero
+}
+
+enum GraphDragState: Equatable {
+    case idle
+    case panning(initialTranslation: CGSize)
+    case draggingNode(UUID)
+}
+
+enum GraphDragUpdate: Equatable {
+    case panned(CGSize)
+    case movedNode(UUID, CGPoint)
+}
+
+struct GraphCanvasInteractionState: Equatable {
+    var viewport = GraphViewportState()
+    private(set) var dragState = GraphDragState.idle
+
+    mutating func beginDrag(hitNodeID: UUID?) {
+        guard dragState == .idle else { return }
+        if let hitNodeID {
+            dragState = .draggingNode(hitNodeID)
+        } else {
+            dragState = .panning(initialTranslation: viewport.translation)
+        }
+    }
+
+    mutating func updateDrag(
+        cumulativeTranslation: CGSize,
+        location: CGPoint
+    ) -> GraphDragUpdate? {
+        switch dragState {
+        case .idle:
+            return nil
+        case let .panning(initialTranslation):
+            let updated = CGSize(
+                width: initialTranslation.width + cumulativeTranslation.width,
+                height: initialTranslation.height + cumulativeTranslation.height
+            )
+            viewport.translation = updated
+            return .panned(updated)
+        case let .draggingNode(id):
+            return .movedNode(id, graphPoint(for: location))
+        }
+    }
+
+    mutating func endDrag() {
+        dragState = .idle
+    }
+
+    mutating func reset(to viewport: GraphViewportState) {
+        self.viewport = viewport
+        dragState = .idle
+    }
+
+    func graphPoint(for location: CGPoint) -> CGPoint {
+        CGPoint(
+            x: (location.x - viewport.translation.width) / viewport.scale,
+            y: (location.y - viewport.translation.height) / viewport.scale
+        )
+    }
 }
 
 struct GraphAccessibleRelation: Identifiable, Equatable {
@@ -24,13 +91,33 @@ final class GraphStore: ObservableObject {
     @Published private(set) var centerBookID: UUID?
     @Published private(set) var options = GraphBuildOptions()
     @Published private(set) var statusMessage: String?
+    @Published private(set) var loadedRevision: GraphContentRevision?
 
     private let catalog: (any LibraryCataloging)?
     private var task: Task<Void, Never>?
+    private var revisionTask: Task<Void, Never>?
+    private var freshnessTask: Task<Void, Never>?
     private var generation: UInt64 = 0
+    private var knownRevision: GraphContentRevision?
+    private var isPresented = false
 
     init(catalog: (any LibraryCataloging)?) {
         self.catalog = catalog
+        if let catalog {
+            revisionTask = Task { @MainActor [weak self] in
+                let revisions = await catalog.graphContentRevisions()
+                for await revision in revisions {
+                    guard !Task.isCancelled else { return }
+                    self?.contentRevisionDidChange(revision)
+                }
+            }
+        }
+    }
+
+    deinit {
+        revisionTask?.cancel()
+        freshnessTask?.cancel()
+        task?.cancel()
     }
 
     var selectedNode: GraphNode? {
@@ -74,9 +161,20 @@ final class GraphStore: ObservableObject {
         startLoad()
     }
 
+    func enter(centerBookID proposedCenterBookID: UUID?) {
+        isPresented = true
+        if centerBookID == nil {
+            centerBookID = proposedCenterBookID
+        }
+        refreshIfNeeded()
+    }
+
+    func leave() {
+        isPresented = false
+    }
+
     func loadIfNeeded(centerBookID: UUID?) {
-        guard self.centerBookID == nil, let centerBookID else { return }
-        load(centerBookID: centerBookID)
+        enter(centerBookID: centerBookID)
     }
 
     func reload() {
@@ -91,6 +189,7 @@ final class GraphStore: ObservableObject {
         guard state == .loading else { return }
         generation &+= 1
         task?.cancel()
+        task = nil
         state = .cancelled
         statusMessage = "图谱构建已取消；书库未更改。"
     }
@@ -140,7 +239,38 @@ final class GraphStore: ObservableObject {
     }
 
     func waitForPendingWork() async {
+        await freshnessTask?.value
         await task?.value
+    }
+
+    private func refreshIfNeeded() {
+        guard let catalog else {
+            state = .failed
+            statusMessage = "无法读取本地图谱数据，请稍后重试。"
+            return
+        }
+        guard centerBookID != nil else {
+            state = .needsCenter
+            return
+        }
+
+        freshnessTask?.cancel()
+        let requestedGeneration = generation
+        freshnessTask = Task { @MainActor [weak self] in
+            let revision = await catalog.graphContentRevision()
+            guard !Task.isCancelled,
+                  let self,
+                  self.generation == requestedGeneration
+            else { return }
+            self.knownRevision = revision
+            if self.loadedRevision == revision,
+               self.scene != nil,
+               self.state == .content || self.state == .empty
+            {
+                return
+            }
+            self.startLoad()
+        }
     }
 
     private func startLoad() {
@@ -168,7 +298,15 @@ final class GraphStore: ObservableObject {
                 )
                 try Task.checkCancellation()
                 guard let self, self.generation == requestedGeneration else { return }
+                if let knownRevision = self.knownRevision,
+                   scene.contentRevision < knownRevision
+                {
+                    self.startLoad()
+                    return
+                }
                 self.scene = scene
+                self.knownRevision = scene.contentRevision
+                self.loadedRevision = scene.contentRevision
                 self.state = scene.snapshot.edges.isEmpty ? .empty : .content
                 if scene.snapshot.isLimited {
                     self.statusMessage = Self.limitMessage(
@@ -185,7 +323,9 @@ final class GraphStore: ObservableObject {
             } catch GraphBuildError.centerBookNotFound {
                 guard let self, self.generation == requestedGeneration else { return }
                 self.scene = nil
-                self.state = .failed
+                self.centerBookID = nil
+                self.loadedRevision = nil
+                self.state = .missingCenter
                 self.statusMessage = "中心书籍已不存在，请返回书库重新选择。"
             } catch {
                 guard let self, self.generation == requestedGeneration else { return }
@@ -193,6 +333,37 @@ final class GraphStore: ObservableObject {
                 self.state = .failed
                 self.statusMessage = "无法读取本地图谱数据；书库内容未被更改。"
             }
+        }
+    }
+
+    private func contentRevisionDidChange(_ revision: GraphContentRevision) {
+        if knownRevision == nil, loadedRevision == nil {
+            knownRevision = revision
+            return
+        }
+        if knownRevision == revision, loadedRevision == nil {
+            return
+        }
+        guard knownRevision != revision || loadedRevision != revision else { return }
+        knownRevision = revision
+        generation &+= 1
+        freshnessTask?.cancel()
+        task?.cancel()
+        task = nil
+        scene = nil
+        loadedRevision = nil
+        statusMessage = nil
+
+        guard centerBookID != nil else {
+            if state != .missingCenter {
+                state = .needsCenter
+            }
+            return
+        }
+        if isPresented {
+            startLoad()
+        } else {
+            state = .invalidated
         }
     }
 

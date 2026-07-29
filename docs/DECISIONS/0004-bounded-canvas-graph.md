@@ -18,6 +18,10 @@ Use SwiftUI `Canvas` for the bounded graph renderer, with graph interaction and 
 
 Use a deterministic, cancellable local projection and layout. The default traversal is one layer with an optional second layer. Canonical edges merge evidence from same author, shared tags, shared collections, shared sources, and directed manual relationships. Ranking contributions are manual 100–120, same author 80, collections 40–60, sources 35–50, and tags 20 each up to 60; combined weight is capped at 250. A fixed radial seed followed by at most 80 bounded force iterations provides stable positions without perpetual animation. View-local dragging, zoom, pan, selection, and filters are not persisted.
 
+Canvas interaction uses an explicit `idle` / `panning(startingTranslation)` / `draggingNode(UUID)` state machine. Hit testing and the starting viewport are captured once per gesture. Each pan update is `startingTranslation + cumulativeGestureTranslation`; node dragging applies the inverse zoom-and-pan transform. End and cancellation return to `idle`.
+
+The catalog actor is the single source of an in-process monotonic graph-content revision. Every successful mutation that can change graph nodes, display identity, or evidence advances and publishes it: book create/update/delete, organization association and catalog create/rename/delete/merge, manual-relation add/delete, confirmed book merge, CSV import, and database restore/reconnection. `GraphStore` compares its loaded revision on entry, cancels and generations invalidated work, and rejects late results built for an older revision. Re-entering without a revision change retains the current view-local layout; a changed revision clears the old projection and layout before rebuilding. A removed center produces an explicit missing-center state rather than retaining old nodes. If the center was a merge source, the same missing-center rule applies; the app does not silently redirect identity.
+
 ## Alternatives considered
 
 - **AppKit custom view:** offers lower-level drawing control, but the current native SwiftUI canvas spike meets the bounded first-release need.
@@ -38,6 +42,7 @@ Use a deterministic, cancellable local projection and layout. The default traver
 - The 80-node default intentionally favors legibility; users cannot request an unbounded whole-library graph.
 - Weighting is a deterministic display/ranking rule, not a claim about literary importance.
 - Canvas primitives remain non-semantic, so the list representation is required for every production graph.
+- The revision is a process-local invalidation token, not persisted user data or a replacement for SQLite transactions. Restore advances it only after the validated database replacement and reconnection complete.
 
 ## Privacy and security
 
@@ -54,4 +59,4 @@ CLANG_MODULE_CACHE_PATH=/tmp/bookatlas-swift-module-cache swift run --package-pa
 
 The final isolated package run passed 13 tests, including an AppKit-hosted Canvas layout test.
 
-Prompt 8 production validation uses fixed fictional Schema-4 stores. Domain/state regression tests cover all five relationship families, merged evidence, filtering, one/two layers, limits, merge/delete/kept-version behavior, deterministic layout, cancellation, stale centers, node movement, and error/empty states. The measured production 1,000/5,000/10,000-book baselines on the verified arm64 host are recorded in `docs/DEVELOPMENT.md`; at 10,000 books the bounded projection queried in approximately 46.7 ms, built in 1.0 ms, laid out in 75.1 ms, first-rendered in 38.5 ms, and grew resident memory by approximately 17.8 MB. These observations are not cross-device performance promises. Prompt 8 remains subject to independent acceptance.
+Prompt 8 production validation uses fixed fictional Schema-4 stores. Domain/state regression tests cover all five relationship families, merged evidence, filtering, one/two layers, limits, merge/delete/kept-version behavior, deterministic layout, cancellation, stale centers, node movement, and error/empty states. Closure regressions additionally drive the production Canvas interaction state machine with cumulative pan input, zoomed node coordinates, fixed drag modes, gesture reset, and viewport reset. State/integration tests cover re-entry after identity and association changes, neighbor/center deletion, merge-source removal, CSV import, database restore, unchanged-revision layout retention, and a slow old-revision build that must not publish. The measured production 1,000/5,000/10,000-book baselines on the verified arm64 host are recorded in `docs/DEVELOPMENT.md`. These observations are not cross-device performance promises. Prompt 8 remains subject to independent re-review.

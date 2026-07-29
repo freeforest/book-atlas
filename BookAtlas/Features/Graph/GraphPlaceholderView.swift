@@ -5,12 +5,10 @@ struct LocalGraphView: View {
     let defaultCenterBookID: UUID?
     let openBook: (UUID) -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var viewport = GraphViewportState()
+    @State private var interaction = GraphCanvasInteractionState()
     @State private var canvasSize = CGSize(width: 800, height: 520)
-    @State private var draggedNodeID: UUID?
-    @State private var panStart = CGSize.zero
     @State private var magnificationStart: CGFloat?
+    @GestureState private var dragIsActive = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -42,8 +40,17 @@ struct LocalGraphView: View {
         .padding()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("local-graph-page")
-        .task {
-            store.loadIfNeeded(centerBookID: defaultCenterBookID)
+        .onAppear {
+            store.enter(centerBookID: defaultCenterBookID)
+        }
+        .onDisappear {
+            interaction.endDrag()
+            store.leave()
+        }
+        .onChange(of: dragIsActive) { wasActive, isActive in
+            if wasActive, !isActive {
+                interaction.endDrag()
+            }
         }
     }
 
@@ -117,6 +124,17 @@ struct LocalGraphView: View {
                 Text("从书库详情选择“查看局部书图”，即可从该书的一层真实关系开始探索。")
             }
             .accessibilityIdentifier("graph-needs-center")
+        case .missingCenter:
+            ContentUnavailableView {
+                Label("中心书籍已不存在", systemImage: "book.closed")
+            } description: {
+                Text("书库已发生变化，旧图谱已清除。请返回书库选择一本仍然存在的书籍。")
+            }
+            .accessibilityIdentifier("graph-missing-center")
+        case .invalidated:
+            ProgressView("书库已更新，正在准备重新构建图谱…")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityIdentifier("graph-invalidated")
         case .loading:
             ProgressView("正在本地构建有限关系图…")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -211,6 +229,9 @@ struct LocalGraphView: View {
             .onChange(of: scene.snapshot.centerBookID) { _, _ in
                 resetViewport()
             }
+            .onChange(of: store.loadedRevision) { _, _ in
+                resetViewport()
+            }
             .accessibilityHidden(true)
             .accessibilityIdentifier("graph-canvas")
         }
@@ -226,10 +247,10 @@ struct LocalGraphView: View {
         } ?? []
 
         context.translateBy(
-            x: viewport.translation.width,
-            y: viewport.translation.height
+            x: interaction.viewport.translation.width,
+            y: interaction.viewport.translation.height
         )
-        context.scaleBy(x: viewport.scale, y: viewport.scale)
+        context.scaleBy(x: interaction.viewport.scale, y: interaction.viewport.scale)
 
         for edge in scene.snapshot.edges {
             guard let first = scene.layout.positions[edge.id.firstBookID],
@@ -301,7 +322,7 @@ struct LocalGraphView: View {
         SpatialTapGesture()
             .onEnded { value in
                 if let id = hitTest(
-                    at: graphPoint(for: value.location),
+                    at: interaction.graphPoint(for: value.location),
                     scene: scene
                 ) {
                     store.selectNode(id)
@@ -311,28 +332,30 @@ struct LocalGraphView: View {
 
     private func dragGesture(scene: GraphScene) -> some Gesture {
         DragGesture(minimumDistance: 2)
+            .updating($dragIsActive) { _, isActive, _ in
+                isActive = true
+            }
             .onChanged { value in
-                if draggedNodeID == nil {
-                    draggedNodeID = hitTest(
-                        at: graphPoint(for: value.startLocation),
-                        scene: scene
+                if interaction.dragState == .idle {
+                    interaction.beginDrag(
+                        hitNodeID: hitTest(
+                            at: interaction.graphPoint(for: value.startLocation),
+                            scene: scene
+                        )
                     )
-                    panStart = viewport.translation
                 }
-                if let draggedNodeID {
-                    store.moveNode(
-                        draggedNodeID,
-                        to: graphPoint(for: value.location)
-                    )
-                } else {
-                    viewport.translation = CGSize(
-                        width: panStart.width + value.translation.width,
-                        height: panStart.height + value.translation.height
-                    )
+                switch interaction.updateDrag(
+                    cumulativeTranslation: value.translation,
+                    location: value.location
+                ) {
+                case let .movedNode(id, point):
+                    store.moveNode(id, to: point)
+                case .panned, .none:
+                    break
                 }
             }
             .onEnded { _ in
-                draggedNodeID = nil
+                interaction.endDrag()
             }
     }
 
@@ -340,10 +363,10 @@ struct LocalGraphView: View {
         MagnifyGesture()
             .onChanged { value in
                 if magnificationStart == nil {
-                    magnificationStart = viewport.scale
+                    magnificationStart = interaction.viewport.scale
                 }
-                let base = magnificationStart ?? viewport.scale
-                viewport.scale = min(max(base * value.magnification, 0.4), 3)
+                let base = magnificationStart ?? interaction.viewport.scale
+                interaction.viewport.scale = min(max(base * value.magnification, 0.4), 3)
             }
             .onEnded { _ in
                 magnificationStart = nil
@@ -357,28 +380,21 @@ struct LocalGraphView: View {
         }?.id
     }
 
-    private func graphPoint(for location: CGPoint) -> CGPoint {
-        CGPoint(
-            x: (location.x - viewport.translation.width) / viewport.scale,
-            y: (location.y - viewport.translation.height) / viewport.scale
-        )
-    }
-
     private func resetViewport() {
         let scale = min(
             max(min(canvasSize.width / 1_200, canvasSize.height / 800) * 0.92, 0.4),
             1
         )
-        viewport = GraphViewportState(
-            scale: scale,
-            translation: CGSize(
-                width: (canvasSize.width - 1_200 * scale) / 2,
-                height: (canvasSize.height - 800 * scale) / 2
+        interaction.reset(
+            to: GraphViewportState(
+                scale: scale,
+                translation: CGSize(
+                    width: (canvasSize.width - 1_200 * scale) / 2,
+                    height: (canvasSize.height - 800 * scale) / 2
+                )
             )
         )
-        if reduceMotion {
-            magnificationStart = nil
-        }
+        magnificationStart = nil
     }
 }
 
@@ -509,9 +525,4 @@ private struct GraphAccessibilityPanel: View {
         focusedNodeID = nodes[nextIndex].id
         store.selectNode(nodes[nextIndex].id)
     }
-}
-
-private struct GraphViewportState: Equatable {
-    var scale: CGFloat = 1
-    var translation: CGSize = .zero
 }

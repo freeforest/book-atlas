@@ -492,6 +492,38 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testLocalGraphReloadsAfterLeavingEditingAndReturning() {
+        let app = launchInMemoryApp(seedGraph: true)
+        selectGraphCenter(in: app)
+        element("show-local-graph-button", in: app).click()
+
+        let neighbor = element(
+            "graph-node-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
+        XCTAssertTrue(neighbor.waitForExistence(timeout: 3))
+        neighbor.click()
+        element("graph-open-detail", in: app).click()
+        XCTAssertTrue(element("book-detail-view", in: app).waitForExistence(timeout: 3))
+
+        element("edit-book-button", in: app).click()
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
+        replaceText(in: element("editor-title", in: app), with: "《雾港刷新邻居》")
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForNonExistence(timeout: 3))
+
+        element("navigation-graph", in: app).click()
+        XCTAssertTrue(element("local-graph-page", in: app).waitForExistence(timeout: 3))
+        let refreshedNeighbor = element(
+            "graph-node-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
+        XCTAssertTrue(refreshedNeighbor.waitForExistence(timeout: 5))
+        XCTAssertTrue(accessibilityText(of: refreshedNeighbor).contains("雾港刷新邻居"))
+        XCTAssertFalse(accessibilityText(of: refreshedNeighbor).contains("雾港直接邻居"))
+    }
+
+    @MainActor
     func testLocalGraphKeyboardSelectionTwoLayersFilteringCenterAndReset() {
         let app = launchInMemoryApp(seedGraph: true)
         selectGraphCenter(in: app)

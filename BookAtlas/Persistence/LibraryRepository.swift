@@ -845,6 +845,16 @@ final class BookRepository {
         )
     }
 
+    func deleteManualRelation(id: UUID) throws {
+        try database.execute(
+            "DELETE FROM manual_book_relations WHERE id = ?",
+            bindings: [.text(id.uuidString)]
+        )
+        guard try database.changes() == 1 else {
+            throw BookRepositoryError.entityNotFound
+        }
+    }
+
     func duplicateCandidates(
         for probe: DuplicateProbe,
         includingPossible: Bool = true

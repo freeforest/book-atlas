@@ -34,7 +34,7 @@ Exit condition: duplicate candidates can be explained, reviewed, ignored, or mer
 ### Milestone 4 — portability and exploration
 
 - **Prompt 7:** independently accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5` with bounded staged import, export, exact versioned application-schema-validated backup, backend-authoritative restore cancellation, and interruption-safe restore.
-- **Prompt 8:** implemented and awaiting independent review; bounded local relationship projection, deterministic layout, native Canvas interaction, and accessible list.
+- **Prompt 8:** first independent review completed; focused Canvas-pan and graph-freshness fixes are implemented and awaiting independent re-review.
 - **Prompt 9:** only the Apple Books and external-link behaviors proven by experiments.
 
 Exit condition: data is portable and recoverable, relationship exploration does not compromise the core model, and integrations degrade safely.

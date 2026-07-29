@@ -554,10 +554,25 @@ struct GraphSceneMetrics: Equatable, Sendable {
     let layoutSeconds: Double
 }
 
+struct GraphContentRevision: Equatable, Comparable, Sendable {
+    static let initial = GraphContentRevision(rawValue: 0)
+
+    let rawValue: UInt64
+
+    func advanced() -> GraphContentRevision {
+        GraphContentRevision(rawValue: rawValue &+ 1)
+    }
+
+    static func < (lhs: GraphContentRevision, rhs: GraphContentRevision) -> Bool {
+        lhs.rawValue < rhs.rawValue
+    }
+}
+
 struct GraphScene: Equatable, Sendable {
     var snapshot: GraphSnapshot
     var layout: GraphLayoutResult
     let metrics: GraphSceneMetrics
+    let contentRevision: GraphContentRevision
 }
 
 private struct GraphProposal {
