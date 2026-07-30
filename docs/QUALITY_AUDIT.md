@@ -77,14 +77,71 @@ by their platform terms and are not vendored into this repository.
 unresolved. A maintainer must supply accurate values after appropriate review;
 this statement is not legal advice.
 
-## Manual checks not represented by automation
+## Manual accessibility and visual audit
 
-No complete human VoiceOver traversal, Accessibility Inspector audit, physical
-pointer review, macOS 14 runtime pass, release-signed archive inspection,
-notarization, Gatekeeper assessment, or screenshot review was performed in
-this implementation task. These remain explicit release gates. Automated
-accessibility identifiers and XCUI keyboard checks are not presented as a
-substitute for those audits.
+### Attempted environment
+
+- Date: 2026-07-30
+- Hardware: Apple M2 MacBook Air, 24 GB memory
+- Session: logged-in interactive console session, macOS 26.5.2 (25F84)
+- Build/data: local Debug build and fixed fictional in-memory seeds only
+- Appearance before the attempt: Light, default accent color, Reduce Motion
+  off
+
+Accessibility Inspector was launched from the installed Xcode 26.6 bundle and
+its `axAuditService` process was observed. That launch also appeared to
+XCUIAutomation as the frontmost `com.apple.AccessibilityInspector` window.
+The task execution surface, however, did not provide a trusted desktop-control
+bridge capable of selecting Inspector targets, reading its results, driving
+VoiceOver, changing appearance/accessibility settings, or inspecting the
+screen without exposing unrelated private desktop content. The attempted
+computer-control bridge rejected initialization because it was not running in
+its trusted runtime. The Inspector process launched for this attempt was then
+closed so it could not contaminate automated UI results.
+
+Accordingly, no item below is marked PASS. Automated identifiers, hosted-view
+smoke tests, and XCUI keyboard paths are supporting evidence only and are not
+substituted for a human result.
+
+| Required manual check | Intended path/evidence | Actual result |
+| --- | --- | --- |
+| Light and Dark appearance | Compare sidebar, list, details, forms, previews, graph, reading entries, errors, focus, contrast, truncation, and color independence in both appearances | **BLOCKED — not manually executed** |
+| Non-default system accent | Change to a non-default accent and inspect selection, buttons, focus, graph state, and contrast | **BLOCKED — not manually executed** |
+| 520×360 and normal window | Operate search, filters, sort, status, forms, previews, graph alternative list, and reading entries at both sizes | **BLOCKED — not manually executed** |
+| Reduce Motion | Enable the system setting and complete every primary flow without loss of state or action | **BLOCKED — not manually executed** |
+| VoiceOver traversal | Record focus order plus spoken label, value, state, and actions for every coverage area below | **BLOCKED — VoiceOver was not driven** |
+| Accessibility Inspector | Select every coverage area, run the official audit, and record unlabeled/duplicate/focus/contrast/hit-target findings | **BLOCKED — Inspector launched, but no target/audit could be controlled or read** |
+| Full keyboard flow | Complete navigation, search/filter/sort, CRUD, organization, duplicate, portability, graph, and reading-entry flows without pointer use | **BLOCKED as a manual audit**; automated XCUI keyboard regressions passed separately |
+
+The unresolved VoiceOver/Inspector coverage is:
+
+- sidebar and menu bar;
+- book list, search, filters, and sorting;
+- book detail, editor, and form validation errors;
+- tag, list, and source management;
+- duplicate candidates, candidate detail, and merge preview;
+- CSV import preview;
+- backup and restore confirmation;
+- graph semantic nodes and relationship list;
+- HTTPS, Apple Books fallback, and local-file reading entries.
+
+The following named checks therefore also remain unresolved: the stable spoken
+name of the Command-F `NSSearchField`; search/filter/status compression and
+operability at 520×360; non-color graph center/selection/relation/error
+semantics; and completion of all flows with Reduce Motion enabled. There is no
+manual record of spoken labels, values, states, actions, focus order, lost
+focus, truncation, overlap, low contrast, or color-only meaning.
+
+This is an environment blocker for the requested manual acceptance evidence,
+not evidence of either a product pass or product failure. A reviewer with
+direct control of an unlocked test Mac must execute the checklist above using
+only fixed fictional data before stable-release acceptance.
+
+### Other manual checks not represented by automation
+
+No physical pointer review, macOS 14 runtime pass, release-signed archive
+inspection, notarization, Gatekeeper assessment, or screenshot review was
+performed in this task. These remain explicit release gates.
 
 ## Known release risks
 
@@ -94,6 +151,10 @@ substitute for those audits.
   configured.
 - Verification is on one Apple M2 MacBook Air with 24 GB memory and macOS
   26.5.2; the declared macOS 14 minimum has not been exercised here.
+- Debug XCUIAutomation produced launch and scrolling/hitch metrics, and the
+  normal Release app produced Instruments launch traces. Release XCTest
+  discovered zero UI cases on Xcode 26.6, so Release sustained scrolling
+  remains unmeasured.
 - Backups are unencrypted, recovery copies have no automatic retention policy,
   Possible duplicate review is capped without pagination, and external
   application behavior remains outside Book Atlas's control.

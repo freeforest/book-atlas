@@ -171,8 +171,10 @@ final class LibraryStore: ObservableObject {
         }
 
         do {
+            let performanceBookCount = Self.performanceBookCount(in: arguments)
             let usesTestStore = arguments.contains("-BookAtlasUseInMemoryStore")
                 || environment["XCTestConfigurationFilePath"] != nil
+                || performanceBookCount != nil
             let catalog: LibraryCatalogService
             if usesTestStore {
                 catalog = try Self.makeInMemoryCatalog(
@@ -180,7 +182,8 @@ final class LibraryStore: ObservableObject {
                     seedMergePreviewAssociations: arguments.contains("-BookAtlasSeedMergePreviewAssociations"),
                     seedGraphUITestData: arguments.contains("-BookAtlasSeedGraphUITestData"),
                     seedGraphLimitUITestData: arguments.contains("-BookAtlasSeedGraphLimitUITestData"),
-                    seedReadingEntryUITestData: arguments.contains("-BookAtlasSeedReadingEntryUITestData")
+                    seedReadingEntryUITestData: arguments.contains("-BookAtlasSeedReadingEntryUITestData"),
+                    performanceBookCount: performanceBookCount
                 )
             } else {
                 let databaseURL = try BookAtlasDatabaseLocation.defaultURL()
@@ -240,6 +243,17 @@ final class LibraryStore: ObservableObject {
         } catch {
             return LibraryStore(initialError: .databaseUnavailable)
         }
+    }
+
+    private nonisolated static func performanceBookCount(in arguments: [String]) -> Int? {
+        guard let flagIndex = arguments.firstIndex(of: "-BookAtlasPerformanceBookCount"),
+              arguments.indices.contains(flagIndex + 1),
+              let count = Int(arguments[flagIndex + 1]),
+              [1_000, 5_000, 10_000].contains(count)
+        else {
+            return nil
+        }
+        return count
     }
 
     var selectedBook: Book? {
@@ -774,7 +788,8 @@ final class LibraryStore: ObservableObject {
         seedMergePreviewAssociations: Bool,
         seedGraphUITestData: Bool,
         seedGraphLimitUITestData: Bool,
-        seedReadingEntryUITestData: Bool
+        seedReadingEntryUITestData: Bool,
+        performanceBookCount: Int? = nil
     ) throws -> LibraryCatalogService {
         let repository = try BookRepository.inMemory()
         guard seedFictionalUITestBooks
@@ -782,11 +797,35 @@ final class LibraryStore: ObservableObject {
             || seedGraphUITestData
             || seedGraphLimitUITestData
             || seedReadingEntryUITestData
+            || performanceBookCount != nil
         else {
             return LibraryCatalogService(repository: repository)
         }
 
         let timestamp = Date(timeIntervalSince1970: 1_735_689_600)
+        if let performanceBookCount {
+            try repository.transaction {
+                for index in 0 ..< performanceBookCount {
+                    _ = try repository.create(
+                        BookDraft(
+                            title: String(format: "《固定性能书目 %05d》", index),
+                            originalTitle: String(format: "Synthetic Atlas %05d", index),
+                            author: "虚构作者 \(index % 97)",
+                            readingStatus: ReadingStatus.allCases[index % ReadingStatus.allCases.count],
+                            priority: BookPriority(rawValue: (index % 5) + 1),
+                            note: index.isMultiple(of: 11) ? "固定虚构性能备注。" : nil
+                        ),
+                        id: UUID(
+                            uuidString: String(
+                                format: "10000000-0000-0000-0000-%012d",
+                                index
+                            )
+                        )!,
+                        at: timestamp.addingTimeInterval(TimeInterval(index))
+                    )
+                }
+            }
+        }
         if seedFictionalUITestBooks || seedReadingEntryUITestData {
             _ = try repository.create(
                 BookDraft(

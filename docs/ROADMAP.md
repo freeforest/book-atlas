@@ -43,7 +43,16 @@ Exit condition: data is portable and recoverable, relationship exploration does 
 
 - **Prompt 10:** performance and accessibility checks, privacy/security audit, release documentation, and open-source preparation.
 
-Prompt 10 quality and open-source preparation is implemented and awaits independent review. Local closure evidence is successful Debug and hardened local Release builds, 173/173 unit/integration/migration/security/performance tests, and 27/27 UI tests. No stable release, tag, distribution signature, notarization, or upload has occurred.
+Prompt 10 quality and open-source preparation is implemented and awaits
+independent review. The latest local closure evidence is successful Debug and
+hardened local Release builds, 174/174 unit/integration/migration/security/
+performance tests, and 33/33 actually executed UI tests. Three-run
+fixed-fictional evidence now covers app launch, database open, first-page load,
+list scrolling/hitches, tag usage counts, and Schema 1–4→5 migration. Manual
+VoiceOver, Accessibility Inspector, appearance/accent/small-window, and Reduce
+Motion acceptance remains blocked by the current task execution environment
+and is not represented as passed. No stable release, tag, distribution
+signature, notarization, or upload has occurred.
 
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 

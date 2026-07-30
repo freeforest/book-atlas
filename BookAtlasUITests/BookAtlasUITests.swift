@@ -34,6 +34,36 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testPerformanceColdLaunchWithOneThousandBooks() {
+        measureColdLaunch(bookCount: 1_000)
+    }
+
+    @MainActor
+    func testPerformanceColdLaunchWithFiveThousandBooks() {
+        measureColdLaunch(bookCount: 5_000)
+    }
+
+    @MainActor
+    func testPerformanceColdLaunchWithTenThousandBooks() {
+        measureColdLaunch(bookCount: 10_000)
+    }
+
+    @MainActor
+    func testPerformanceSustainedListScrollingWithOneThousandBooks() {
+        measureSustainedListScrolling(bookCount: 1_000)
+    }
+
+    @MainActor
+    func testPerformanceSustainedListScrollingWithFiveThousandBooks() {
+        measureSustainedListScrolling(bookCount: 5_000)
+    }
+
+    @MainActor
+    func testPerformanceSustainedListScrollingWithTenThousandBooks() {
+        measureSustainedListScrolling(bookCount: 10_000)
+    }
+
+    @MainActor
     func testEmptyLibraryAndCommandNShowValidationWithoutWritingARecord() {
         let app = launchInMemoryApp()
 
@@ -934,6 +964,99 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[identifier]
+    }
+
+    @MainActor
+    private func measureColdLaunch(bookCount: Int) {
+        let options = XCTMeasureOptions()
+        options.iterationCount = 3
+        var invocation = 0
+        measure(
+            metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)],
+            options: options
+        ) {
+            invocation += 1
+            let app = performanceApplication(bookCount: bookCount)
+            app.terminate()
+            let start = ContinuousClock.now
+            app.launch()
+            XCTAssertTrue(
+                element("library-book-list", in: app)
+                    .waitForExistence(timeout: 45)
+            )
+            let duration = start.duration(to: .now)
+            print(
+                """
+                P10_COLD_LAUNCH_BASELINE configuration=\(buildConfiguration) \
+                books=\(bookCount) invocation=\(invocation) \
+                launch_to_loaded_list=\(seconds(duration))
+                """
+            )
+        }
+    }
+
+    @MainActor
+    private func measureSustainedListScrolling(bookCount: Int) {
+        let app = performanceApplication(bookCount: bookCount)
+        app.launch()
+        let list = element("library-book-list", in: app)
+        XCTAssertTrue(list.waitForExistence(timeout: 45))
+
+        let options = XCTMeasureOptions()
+        options.iterationCount = 3
+        var metrics: [any XCTMetric] = [
+            XCTClockMetric(),
+            XCTCPUMetric(application: app),
+            XCTMemoryMetric(application: app)
+        ]
+        if #available(macOS 26.0, *) {
+            metrics.append(XCTHitchMetric(application: app))
+        }
+
+        list.click()
+        app.typeKey(.upArrow, modifierFlags: .command)
+        var invocation = 0
+        measure(metrics: metrics, options: options) {
+            invocation += 1
+            let start = ContinuousClock.now
+            for _ in 0 ..< 2 {
+                list.scroll(byDeltaX: 0, deltaY: -4_800)
+            }
+            for _ in 0 ..< 2 {
+                list.scroll(byDeltaX: 0, deltaY: 4_800)
+            }
+            let duration = start.duration(to: .now)
+            print(
+                """
+                P10_SCROLL_BASELINE configuration=\(buildConfiguration) \
+                books=\(bookCount) invocation=\(invocation) \
+                round_trip=\(seconds(duration))
+                """
+            )
+        }
+        app.terminate()
+    }
+
+    @MainActor
+    private func performanceApplication(bookCount: Int) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-BookAtlasUseInMemoryStore",
+            "-BookAtlasPerformanceBookCount",
+            String(bookCount)
+        ]
+        return app
+    }
+
+    private var buildConfiguration: String {
+        Bundle(for: BookAtlasUITests.self).bundleURL.pathComponents
+            .contains("Debug") ? "Debug" : "Release"
+    }
+
+    private func seconds(_ duration: Duration) -> Double {
+        let components = duration.components
+        return Double(components.seconds)
+            + Double(components.attoseconds) / 1_000_000_000_000_000_000
     }
 
     @MainActor
