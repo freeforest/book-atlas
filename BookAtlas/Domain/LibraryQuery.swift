@@ -18,6 +18,9 @@ enum LibrarySortDirection: String, CaseIterable, Sendable {
 /// sources within their families use AND so every selected association must
 /// be present.
 struct LibraryQuery: Equatable, Sendable {
+    static let defaultPageSize = 200
+    static let maximumPageSize = 1_000
+
     var searchText: String = ""
     var readingStatuses: Set<ReadingStatus> = []
     var tagIDs: Set<UUID> = []
@@ -25,7 +28,7 @@ struct LibraryQuery: Equatable, Sendable {
     var sourceIDs: Set<UUID> = []
     var sortField: LibrarySortField = .updatedAt
     var sortDirection: LibrarySortDirection = .descending
-    var limit: Int = 500
+    var limit: Int = LibraryQuery.defaultPageSize
     var offset: Int = 0
 
     var normalizedSearchText: String {
@@ -49,6 +52,21 @@ struct LibraryQuery: Equatable, Sendable {
         collectionIDs = []
         sourceIDs = []
         offset = 0
+    }
+}
+
+/// One deterministic, bounded page from a `LibraryQuery`.
+///
+/// `totalCount` describes the complete filtered result rather than only the
+/// returned slice. Callers can therefore disclose truncation and request the
+/// next page without retaining the entire library in presentation state.
+struct LibraryPage: Equatable, Sendable {
+    let books: [Book]
+    let totalCount: Int
+    let offset: Int
+
+    var hasMore: Bool {
+        offset + books.count < totalCount
     }
 }
 

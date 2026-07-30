@@ -207,4 +207,166 @@ final class LibraryQueryTests: XCTestCase {
         XCTAssertEqual(query.sortDirection, .ascending)
         XCTAssertEqual(try repository.query(query).count, 1)
     }
+
+    func testPagedQueryDisclosesCompleteTotalsAndHasNoBoundaryGapsAtScale() throws {
+        try repository.transaction {
+            for index in 0 ..< 10_000 {
+                let status: ReadingStatus
+                if index < 501 {
+                    status = .reading
+                } else if index < 1_001 {
+                    status = .read
+                } else {
+                    status = .wishToRead
+                }
+                _ = try repository.create(
+                    BookDraft(
+                        title: String(format: "《分页边界 %05d》", index),
+                        author: "固定虚构作者",
+                        readingStatus: status
+                    ),
+                    id: pagedID(index),
+                    at: FictionalLibraryFixtures.timestamp
+                )
+            }
+        }
+
+        let scenarios: [(LibraryQuery, Int, Int)] = [
+            (
+                LibraryQuery(
+                    readingStatuses: [.reading],
+                    sortField: .createdAt,
+                    sortDirection: .ascending
+                ),
+                501,
+                101
+            ),
+            (
+                LibraryQuery(
+                    readingStatuses: [.reading, .read],
+                    sortField: .createdAt,
+                    sortDirection: .ascending
+                ),
+                1_001,
+                1
+            ),
+            (
+                LibraryQuery(
+                    sortField: .createdAt,
+                    sortDirection: .ascending
+                ),
+                10_000,
+                200
+            )
+        ]
+
+        for (query, expectedTotal, expectedLastPageCount) in scenarios {
+            let pages = try allPages(for: query)
+            let books = pages.flatMap(\.books)
+            XCTAssertEqual(pages.first?.offset, 0)
+            XCTAssertEqual(pages.first?.books.count, 200)
+            XCTAssertEqual(pages.last?.books.count, expectedLastPageCount)
+            XCTAssertEqual(pages.last?.hasMore, false)
+            XCTAssertEqual(
+                Set(pages.map(\.totalCount)),
+                Set([expectedTotal])
+            )
+            XCTAssertEqual(books.count, expectedTotal)
+            XCTAssertEqual(Set(books.map(\.id)).count, expectedTotal)
+            XCTAssertEqual(
+                books.map(\.id),
+                (0 ..< expectedTotal).map(pagedID),
+                "Created-time pagination must retain the UUID tie-breaker"
+            )
+        }
+
+        var oversizedQuery = LibraryQuery()
+        oversizedQuery.limit = LibraryQuery.maximumPageSize + 1
+        XCTAssertThrowsError(try repository.queryPage(oversizedQuery)) {
+            XCTAssertEqual($0 as? BookRepositoryError, .invalidQuery)
+        }
+    }
+
+    func testPagedQueryRemainsConsistentAfterDeleteAndMerge() throws {
+        var books: [Book] = []
+        try repository.transaction {
+            for index in 0 ..< 203 {
+                books.append(
+                    try repository.create(
+                        BookDraft(
+                            title: index < 2
+                                ? "《可合并分页书》"
+                                : String(format: "《分页变更 %03d》", index),
+                            author: "固定虚构作者"
+                        ),
+                        id: pagedID(index),
+                        at: FictionalLibraryFixtures.timestamp
+                            .addingTimeInterval(TimeInterval(index))
+                    )
+                )
+            }
+        }
+
+        try repository.deleteBook(id: books[150].id)
+        var pages = try allPages(
+            for: LibraryQuery(
+                sortField: .createdAt,
+                sortDirection: .ascending
+            )
+        )
+        XCTAssertEqual(pages.first?.books.count, 200)
+        XCTAssertEqual(pages.last?.books.count, 2)
+        XCTAssertEqual(pages.last?.totalCount, 202)
+        XCTAssertEqual(Set(pages.flatMap(\.books).map(\.id)).count, 202)
+
+        let preview = try repository.mergePreview(
+            targetID: books[0].id,
+            sourceID: books[1].id
+        )
+        let result = try repository.mergeBooks(
+            targetID: books[0].id,
+            sourceID: books[1].id,
+            selections: preview.defaultSelections,
+            at: FictionalLibraryFixtures.timestamp.addingTimeInterval(1_000)
+        )
+
+        pages = try allPages(
+            for: LibraryQuery(
+                sortField: .createdAt,
+                sortDirection: .ascending
+            )
+        )
+        let remainingIDs = pages.flatMap(\.books).map(\.id)
+        XCTAssertEqual(pages.last?.totalCount, 201)
+        XCTAssertEqual(Set(remainingIDs).count, 201)
+        XCTAssertTrue(remainingIDs.contains(result.retainedBook.id))
+        XCTAssertFalse(remainingIDs.contains(books[1].id))
+    }
+
+    private func allPages(for baseQuery: LibraryQuery) throws -> [LibraryPage] {
+        var pages: [LibraryPage] = []
+        var query = baseQuery
+        query.limit = LibraryQuery.defaultPageSize
+        query.offset = 0
+
+        repeat {
+            let page = try repository.queryPage(query)
+            pages.append(page)
+            query.offset += page.books.count
+            if page.books.isEmpty {
+                break
+            }
+        } while pages.last?.hasMore == true
+
+        return pages
+    }
+
+    private func pagedID(_ index: Int) -> UUID {
+        UUID(
+            uuidString: String(
+                format: "40000000-0000-0000-0000-%012d",
+                index
+            )
+        )!
+    }
 }

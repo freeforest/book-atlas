@@ -142,16 +142,21 @@ struct LibraryView: View {
                 }
             } else {
                 HStack(spacing: 0) {
-                    List(selection: $store.selectedBookID) {
-                        ForEach(store.books) { book in
-                            LibraryBookRow(book: book)
-                                .tag(book.id)
-                                .accessibilityIdentifier("library-book-\(book.id.uuidString)")
+                    VStack(spacing: 0) {
+                        List(selection: $store.selectedBookID) {
+                            ForEach(store.books) { book in
+                                LibraryBookRow(book: book)
+                                    .tag(book.id)
+                                    .accessibilityIdentifier("library-book-\(book.id.uuidString)")
+                            }
                         }
+                        .listStyle(.inset)
+                        .accessibilityIdentifier("library-book-list")
+
+                        Divider()
+                        LibraryPaginationFooter(store: store)
                     }
-                    .listStyle(.inset)
                     .frame(minWidth: 250, idealWidth: 310, maxWidth: 390)
-                    .accessibilityIdentifier("library-book-list")
 
                     Divider()
 
@@ -172,6 +177,60 @@ struct LibraryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+}
+
+private struct LibraryPaginationFooter: View {
+    @ObservedObject var store: LibraryStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(store.resultCountDescription)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .accessibilityLabel("书库结果数量")
+                    .accessibilityValue(store.accessibleResultDescription)
+                    .accessibilityIdentifier("library-result-count")
+
+                Spacer(minLength: 4)
+
+                if store.isLoadingMore {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("正在载入更多书籍")
+                } else if store.hasMoreBooks {
+                    Button(
+                        store.loadMoreError == nil ? "加载更多" : "重试",
+                        action: store.loadMore
+                    )
+                    .controlSize(.small)
+                    .accessibilityLabel(
+                        store.loadMoreError == nil
+                            ? "加载更多书籍"
+                            : "重试载入更多书籍"
+                    )
+                    .accessibilityValue(store.accessibleResultDescription)
+                    .accessibilityHint("载入下一页，已显示的结果会保留")
+                    .accessibilityIdentifier("library-load-more-button")
+                } else {
+                    Text("已全部显示")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("library-all-results-loaded")
+                }
+            }
+
+            if store.loadMoreError != nil {
+                Text("载入下一页失败；已显示结果未更改。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("library-load-more-error")
+            }
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
     }
 }
 

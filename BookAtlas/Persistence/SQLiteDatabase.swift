@@ -23,11 +23,20 @@ final class SQLiteDatabase {
     private var handle: OpaquePointer?
     private var transactionDepth = 0
 
-    init(path: String, readOnly: Bool = false) throws {
+    init(
+        path: String,
+        readOnly: Bool = false,
+        createIfMissing: Bool = true
+    ) throws {
         var database: OpaquePointer?
-        let flags = readOnly
-            ? SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
-            : SQLITE_OPEN_CREATE | SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX
+        let flags: Int32
+        if readOnly {
+            flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX
+        } else {
+            flags = SQLITE_OPEN_READWRITE
+                | SQLITE_OPEN_FULLMUTEX
+                | (createIfMissing ? SQLITE_OPEN_CREATE : 0)
+        }
         let result = sqlite3_open_v2(
             path,
             &database,

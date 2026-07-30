@@ -4,7 +4,7 @@
 
 `BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus `BookAtlasTests` and `BookAtlasUITests`. It targets macOS 14.0, uses only SwiftUI and AppKit supplied by macOS, and is sandboxed. The Debug bundle identifier is the intentional placeholder `com.example.BookAtlas`; release signing, distribution identity, and notarization are not configured.
 
-The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
+The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
 The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 9's independent evidence is a successful Debug build, 171/171 unit/integration/migration/security/performance tests, and 26/26 UI tests. Prompt 10 quality and open-source preparation is implemented and awaits independent review. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
 
@@ -34,7 +34,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo-final-debug-build \
+  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-debug-build \
   build
 
 xcodebuild \
@@ -42,7 +42,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Release \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo-final-release-build \
+  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-release-build \
   build
 ```
 
@@ -60,8 +60,8 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo-final-unit \
-  -resultBundlePath /tmp/bookatlas-p10-nogo-final-unit.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-unit-v4 \
+  -resultBundlePath /tmp/bookatlas-p10-nogo3-final-unit-v4.xcresult \
   -only-testing:BookAtlasTests
 
 xcodebuild test \
@@ -69,21 +69,28 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo-final-ui \
-  -resultBundlePath /tmp/bookatlas-p10-nogo-final-ui.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-ui-v8 \
+  -resultBundlePath /tmp/bookatlas-p10-nogo3-final-ui-v8.xcresult \
   -only-testing:BookAtlasUITests
 ```
 
-The unit/integration/migration/security/performance command executed 174
-tests: 174 passed, zero failed, zero skipped. The UI command initialized
-XCUIAutomation in the interactive macOS session and executed 33 tests: 33
+The unit/integration/migration/security/performance command executed 182
+tests: 182 passed, zero failed, zero skipped. The UI command initialized
+XCUIAutomation in the interactive macOS session and executed 34 tests: 34
 passed, zero failed, zero skipped. Prompt 10 adds the historical Schema 1–5
 domain-data matrix, explicit Command-F search-focus state and UI coverage,
 three-run database-open/first-page/tag-count and Schema 1–4→5 migration
 measurements, and three-run XCUI cold-launch and sustained-scroll metrics at
-1k/5k/10k. The final normal Release product was also measured with Apple's
-Instruments App Launch template. Exact raw values, ranges, tool failures, and
-noise are recorded in [`PERFORMANCE.md`](PERFORMANCE.md).
+1k/5k/10k. This closure additionally covers exact result counts and bounded
+pagination at 501/1,001/10,000 rows, retry-safe append failures, stable page
+boundaries, search/filter/sort resets, and mutation consistency. Exact raw
+values, ranges, tool failures, and noise are recorded in
+[`PERFORMANCE.md`](PERFORMANCE.md).
+
+The accessible result value publishes both the count and page readiness
+(`可以继续加载`, `正在加载下一页`, retry, or terminal state) as one
+observable state. This prevents a following Shift-Command-L from seeing the
+new count before the load-more action has actually become available.
 
 Accessibility Inspector was actually launched from the installed Xcode bundle,
 but the current task execution surface could not safely select targets, read
@@ -98,27 +105,36 @@ The storage/migration baseline is the unit test
 The six UI performance tests are named
 `testPerformanceColdLaunchWith{One,Five,Ten}ThousandBooks` and
 `testPerformanceSustainedListScrollingWith{One,Five,Ten}ThousandBooks`.
-Each metric uses three measured iterations. Release initial-frame traces were
-recorded against the normal Release app, one trace per repetition:
+Each metric uses three measured iterations. Launch data preparation is outside
+the `XCTApplicationLaunchMetric` closure: a separate UI-test process creates a
+fixed-fictional current Schema 5 database, closes it, and verifies its exact
+1,000/5,000/10,000 count. Every measured process opens that existing file
+without SQLite's create flag, runs the normal restore/version checks, and
+publishes the 200-row first page plus exact total.
+
+The performance arguments are test-only and accept an opaque canonical UUID,
+not a path:
 
 ```sh
-xcrun xctrace record \
-  --template 'App Launch' \
-  --time-limit 8s \
-  --output /tmp/bookatlas-release-launch.trace \
-  --no-prompt \
-  --launch -- \
-  /tmp/bookatlas-p10-nogo-final-release-build/Build/Products/Release/BookAtlas.app \
-  -BookAtlasPerformanceBookCount 10000
+-BookAtlasPerformancePrepareLibrary <UUID> 10000
+-BookAtlasPerformanceUseExistingLibrary <same UUID>
+-BookAtlasPerformanceCleanupLibrary <same UUID>
 ```
 
-Repeat with counts `1000`, `5000`, and `10000` and distinct output paths; use
-`xcrun xctrace export` on the `life-cycle-period` table and take the end of
-`Launching - Initial Frame Rendering`. Instruments leaves the launched app
-stopped on this Xcode/macOS combination, so terminate that task-created
-process before the next recording. A Release XCTest attempt is not valid
-evidence here: Xcode 26.6 hung the unit runner before connection and discovered
-zero UI cases, despite a zero exit status in one UI invocation.
+Only `1000`, `5000`, and `10000` are accepted. The UUID deterministically
+selects one child of the process temporary root; symlinks, non-regular files,
+unknown artifacts, missing databases, malformed/unknown performance flags,
+and uncontrolled paths fail closed. Invalid performance input never falls
+back to Application Support. Cleanup removes only the validated database,
+WAL/SHM/journal sidecars, and then-empty UUID directory.
+
+Release Instruments must use the same three-phase semantics: run preparation
+outside the App Launch trace, trace only the
+`-BookAtlasPerformanceUseExistingLibrary` process, verify the disclosed first
+page/total, then run cleanup. In this closure the preparation step ran, but
+authorization for the measured desktop Instruments launch was unavailable
+from the task execution surface. No Release launch value is therefore
+reported; the older in-process-seeding numbers are not a substitute.
 
 ## Unit tests
 
@@ -141,8 +157,11 @@ The independently accepted Prompt 9 run executed all 171 unit, integration, migr
 - repository book/web-link/local-file CRUD, relationships, cascades, transaction rollback, and in-memory isolation;
 - title/original-title/author/ISBN search, each structured filter, documented filter composition, filter clearing, and stable created/updated/priority sorting;
 - tag, collection, and source normalization, rename, deletion, membership removal, duplicate-safe and multiple associations, derived counts, transactional tag merge and rollback, filter cleanup, and organizer snapshot publication;
-- deterministic 1,000-, 5,000-, and 10,000-book query baselines.
-- three-run Schema 5 database-open/version checks, default 500-row first loads,
+- deterministic 1,000-, 5,000-, and 10,000-book query baselines;
+- exact-total paging at 501, 1,001, and 10,000 rows; stable first/next/last
+  pages without duplicate or missing IDs; reset after search/filter/sort;
+  and delete/merge consistency;
+- three-run Schema 5 database-open/version checks, default 200-row first loads,
   grouped 32-tag usage counts, and formal Schema 1/2/3/4→5 migration
   measurements at 1,000/5,000/10,000 fixed fictional books;
 - ISBN-10/13 validation; conservative title/author normalization; Exact/Strong/Possible boundaries; version, translation, series, similar-title, and conflicting-ISBN cases;
@@ -205,13 +224,17 @@ xcodebuild \
 
 The independent interactive run initialized XCUIAutomation and executed all 26 macOS UI tests: 26 passed, zero failed, and zero skipped. It retains all Prompt 5/6/7/8 paths and covers reading-entry empty state, HTTPS add/edit/delete and no-op open dispatch, host-only status/accessibility without path disclosure, HTTP/dangerous-scheme rejection, Apple Books limitation/confirmation/copy controls, local-file cancellation, invalid-bookmark repair/removal, separate read-only duplicate-candidate entries followed by an unchanged main detail, keyboard defaults, and the single-owner nested Escape path. UI tests opt into an in-memory store, fixed fictional test-only launch seeds, and no-op system adapters; they do not open a real file panel, external application, pasteboard, user file, or real database.
 
-The latest Prompt 10 closure retains those 27 pre-performance UI regressions
+The latest Prompt 10 closure retains those 27 pre-performance UI regressions,
+adds one keyboard/accessibility pagination regression,
 and adds six fixed-fictional performance cases: three
 `XCTApplicationLaunchMetric` cases and three real-list round-trip scroll cases
 using `XCTClockMetric`, `XCTCPUMetric`, `XCTMemoryMetric`, and the macOS 26
 `XCTHitchMetric`. The complete run initialized XCUIAutomation and passed
-33/33. Performance launch arguments accept only 1,000, 5,000, or 10,000,
-force the isolated in-memory store, and seed deterministic fictional records.
+34/34. The launch test creates its fixed-fictional Schema 5 database in a
+separate, untimed process and measures only reopening that existing controlled
+temporary database and displaying the first 200 of the verified total. The
+scroll cases separately time first-page startup, loading the next page, and
+four sustained scroll events after loading a disclosed number of pages/rows.
 The full raw result is documented in [`PERFORMANCE.md`](PERFORMANCE.md).
 
 ## Query baseline
@@ -264,6 +287,9 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
   VoiceOver/Accessibility Inspector traversal, non-default accent, Reduce
   Motion, and direct 520×360 visual review were blocked by the current task
   execution surface and remain unverified release gates.
+- Debug existing-library launch/page/scroll measurements are recorded, but the
+  equivalent Release Instruments launch could not be authorized and remains
+  an unverified release gate; no old in-process-seeding number is used.
 - Release signing, notarization, and a final non-placeholder bundle identifier remain unconfigured.
 - Duplicate heuristics intentionally do not understand every contributor order, edition, translation, or series convention; every candidate remains user-reviewed.
 - A truncated Possible lookup does not yet provide pagination; the UI states that only the first 250 deterministic raw token hits were evaluated. Exact and Strong candidates are not truncated.

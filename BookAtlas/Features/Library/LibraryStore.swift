@@ -4,6 +4,7 @@ import SwiftUI
 enum LibraryUserFacingError: Error, Equatable {
     case databaseUnavailable
     case loadFailed
+    case loadMoreFailed
     case saveFailed
     case deleteFailed
     case duplicateReviewFailed
@@ -17,6 +18,8 @@ enum LibraryUserFacingError: Error, Equatable {
             "无法打开本地书库"
         case .loadFailed:
             "无法载入书库"
+        case .loadMoreFailed:
+            "无法载入更多书籍"
         case .saveFailed:
             "无法保存书籍"
         case .deleteFailed:
@@ -38,6 +41,8 @@ enum LibraryUserFacingError: Error, Equatable {
             "请稍后重试；书籍内容未被发送到网络。"
         case .loadFailed:
             "暂时无法读取本地书库，请重试。"
+        case .loadMoreFailed:
+            "已显示的书籍保持不变，可以重试载入下一页。"
         case .saveFailed:
             "未能保存本次修改，表单内容仍会保留。"
         case .deleteFailed:
@@ -115,8 +120,11 @@ struct DuplicateReviewSession: Identifiable {
 final class LibraryStore: ObservableObject {
     @Published private(set) var loadingState: LibraryLoadingState = .loading
     @Published private(set) var books: [Book] = []
+    @Published private(set) var totalBookCount = 0
     @Published private(set) var query = LibraryQuery()
     @Published private(set) var isQuerying = false
+    @Published private(set) var isLoadingMore = false
+    @Published private(set) var loadMoreError: LibraryUserFacingError?
     @Published var selectedBookID: UUID?
     @Published var editorSession: BookEditorSession?
     @Published var deletionCandidate: Book?
@@ -138,6 +146,7 @@ final class LibraryStore: ObservableObject {
 
     private let catalog: (any LibraryCataloging)?
     private var queryTask: Task<Void, Never>?
+    private var loadMoreTask: Task<Void, Never>?
     private var duplicateTask: Task<Void, Never>?
     private var activeRequestID = UUID()
 
@@ -164,29 +173,80 @@ final class LibraryStore: ObservableObject {
 
     static func makeApplicationStore(
         arguments: [String] = ProcessInfo.processInfo.arguments,
-        environment: [String: String] = ProcessInfo.processInfo.environment
+        environment: [String: String] = ProcessInfo.processInfo.environment,
+        performanceTemporaryDirectory: URL = FileManager.default.temporaryDirectory,
+        productionDatabaseURL: () throws -> URL = {
+            try BookAtlasDatabaseLocation.defaultURL()
+        }
     ) -> LibraryStore {
         if arguments.contains("-BookAtlasForceUnavailableStore") {
             return LibraryStore(initialError: .databaseUnavailable)
         }
 
         do {
-            let performanceBookCount = Self.performanceBookCount(in: arguments)
+            let catalog: LibraryCatalogService
+            let performanceCommand = try PerformanceLibraryCommand.parse(
+                arguments: arguments
+            )
             let usesTestStore = arguments.contains("-BookAtlasUseInMemoryStore")
                 || environment["XCTestConfigurationFilePath"] != nil
-                || performanceBookCount != nil
-            let catalog: LibraryCatalogService
-            if usesTestStore {
+            let usesTestAdapters = usesTestStore || performanceCommand != nil
+
+            if let performanceCommand {
+                let sessionID: UUID
+                switch performanceCommand {
+                case let .prepare(identifier, _),
+                     let .useExisting(identifier),
+                     let .cleanup(identifier):
+                    sessionID = identifier
+                }
+                let session = PerformanceLibrarySession(
+                    sessionID: sessionID,
+                    temporaryRootURL: performanceTemporaryDirectory
+                )
+                switch performanceCommand {
+                case let .prepare(_, bookCount):
+                    let databaseURL = try session.prepare(bookCount: bookCount)
+                    catalog = LibraryCatalogService(
+                        repository: try BookRepository(
+                            existingDatabaseURL: databaseURL
+                        ),
+                        databaseURL: databaseURL
+                    )
+                case .useExisting:
+                    var databaseURL = try session.validatedExistingDatabaseURL()
+                    try LibraryBackupCoordinator().recoverInterruptedRestore(
+                        databaseURL: databaseURL
+                    )
+                    databaseURL = try session.validatedExistingDatabaseURL()
+                    catalog = LibraryCatalogService(
+                        repository: try BookRepository(
+                            existingDatabaseURL: databaseURL
+                        ),
+                        databaseURL: databaseURL
+                    )
+                case .cleanup:
+                    try session.cleanup()
+                    catalog = try Self.makeInMemoryCatalog(
+                        seedFictionalUITestBooks: false,
+                        seedMergePreviewAssociations: false,
+                        seedGraphUITestData: false,
+                        seedGraphLimitUITestData: false,
+                        seedReadingEntryUITestData: false,
+                        seedPaginationUITestData: false
+                    )
+                }
+            } else if usesTestStore {
                 catalog = try Self.makeInMemoryCatalog(
                     seedFictionalUITestBooks: arguments.contains("-BookAtlasSeedFictionalUITestBooks"),
                     seedMergePreviewAssociations: arguments.contains("-BookAtlasSeedMergePreviewAssociations"),
                     seedGraphUITestData: arguments.contains("-BookAtlasSeedGraphUITestData"),
                     seedGraphLimitUITestData: arguments.contains("-BookAtlasSeedGraphLimitUITestData"),
                     seedReadingEntryUITestData: arguments.contains("-BookAtlasSeedReadingEntryUITestData"),
-                    performanceBookCount: performanceBookCount
+                    seedPaginationUITestData: arguments.contains("-BookAtlasSeedPaginationUITestData")
                 )
             } else {
-                let databaseURL = try BookAtlasDatabaseLocation.defaultURL()
+                let databaseURL = try productionDatabaseURL()
                 try LibraryBackupCoordinator().recoverInterruptedRestore(
                     databaseURL: databaseURL
                 )
@@ -195,7 +255,7 @@ final class LibraryStore: ObservableObject {
                     databaseURL: databaseURL
                 )
             }
-            let readingEntries = usesTestStore
+            let readingEntries = usesTestAdapters
                 ? ReadingEntryStore(
                     catalog: catalog,
                     opener: FictionalUITestResourceOpener(),
@@ -245,17 +305,6 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    private nonisolated static func performanceBookCount(in arguments: [String]) -> Int? {
-        guard let flagIndex = arguments.firstIndex(of: "-BookAtlasPerformanceBookCount"),
-              arguments.indices.contains(flagIndex + 1),
-              let count = Int(arguments[flagIndex + 1]),
-              [1_000, 5_000, 10_000].contains(count)
-        else {
-            return nil
-        }
-        return count
-    }
-
     var selectedBook: Book? {
         guard let selectedBookID else {
             return nil
@@ -271,30 +320,65 @@ final class LibraryStore: ObservableObject {
         query.hasFilters
     }
 
+    var hasMoreBooks: Bool {
+        books.count < totalBookCount
+    }
+
+    var canLoadMore: Bool {
+        loadingState == .content
+            && hasMoreBooks
+            && !isQuerying
+            && !isLoadingMore
+    }
+
+    var resultCountDescription: String {
+        "已显示 \(books.count) 本，共 \(totalBookCount) 本"
+    }
+
+    var resultPageStateDescription: String {
+        if isLoadingMore {
+            return "正在加载下一页"
+        }
+        if loadMoreError != nil {
+            return "下一页加载失败，可以重试"
+        }
+        if hasMoreBooks {
+            return "可以继续加载"
+        }
+        return "已全部加载"
+    }
+
+    var accessibleResultDescription: String {
+        "\(resultCountDescription)，\(resultPageStateDescription)"
+    }
+
     func load() {
         guard catalog != nil else {
             loadingState = .failed(.databaseUnavailable)
             return
         }
+        resetPagination()
         loadingState = .loading
         organizer.load()
         scheduleQuery(delay: nil)
     }
 
     func refresh() {
+        resetPagination()
         organizer.load()
         scheduleQuery(delay: nil)
     }
 
     func focusBook(_ id: UUID) {
         query = LibraryQuery()
+        resetPagination()
         selectedBookID = id
         scheduleQuery(delay: nil)
     }
 
     func updateSearchText(_ text: String) {
         query.searchText = text
-        query.offset = 0
+        resetPagination()
         scheduleQuery(delay: .milliseconds(250))
     }
 
@@ -304,38 +388,88 @@ final class LibraryStore: ObservableObject {
 
     func toggleReadingStatus(_ status: ReadingStatus) {
         toggle(status, in: &query.readingStatuses)
-        query.offset = 0
+        resetPagination()
         scheduleQuery(delay: nil)
     }
 
     func toggleTag(_ id: UUID) {
         toggle(id, in: &query.tagIDs)
-        query.offset = 0
+        resetPagination()
         scheduleQuery(delay: nil)
     }
 
     func toggleCollection(_ id: UUID) {
         toggle(id, in: &query.collectionIDs)
-        query.offset = 0
+        resetPagination()
         scheduleQuery(delay: nil)
     }
 
     func toggleSource(_ id: UUID) {
         toggle(id, in: &query.sourceIDs)
-        query.offset = 0
+        resetPagination()
         scheduleQuery(delay: nil)
     }
 
     func setSort(field: LibrarySortField, direction: LibrarySortDirection) {
         query.sortField = field
         query.sortDirection = direction
-        query.offset = 0
+        resetPagination()
         scheduleQuery(delay: nil)
     }
 
     func clearFilters() {
         query.clearFilters()
+        resetPagination()
         scheduleQuery(delay: nil)
+    }
+
+    func loadMore() {
+        guard let catalog, canLoadMore else {
+            return
+        }
+
+        loadMoreTask?.cancel()
+        let requestID = activeRequestID
+        let expectedOffset = books.count
+        var requestedQuery = query
+        requestedQuery.limit = LibraryQuery.defaultPageSize
+        requestedQuery.offset = expectedOffset
+        isLoadingMore = true
+        loadMoreError = nil
+
+        loadMoreTask = Task { [weak self] in
+            do {
+                let page = try await catalog.queryBookPage(requestedQuery)
+                try Task.checkCancellation()
+                guard let self,
+                      self.activeRequestID == requestID,
+                      self.books.count == expectedOffset,
+                      page.offset == expectedOffset
+                else {
+                    return
+                }
+
+                let existingIDs = Set(self.books.map(\.id))
+                guard page.books.allSatisfy({ !existingIDs.contains($0.id) }) else {
+                    self.resetPagination()
+                    self.scheduleQuery(delay: nil)
+                    return
+                }
+
+                self.books.append(contentsOf: page.books)
+                self.totalBookCount = page.totalCount
+                self.isLoadingMore = false
+                self.loadMoreError = nil
+            } catch is CancellationError {
+                return
+            } catch {
+                guard let self, self.activeRequestID == requestID else {
+                    return
+                }
+                self.isLoadingMore = false
+                self.loadMoreError = .loadMoreFailed
+            }
+        }
     }
 
     func catalogDidDeleteTag(_ id: UUID) {
@@ -687,6 +821,7 @@ final class LibraryStore: ObservableObject {
 
     func waitForPendingWork() async {
         await queryTask?.value
+        await loadMoreTask?.value
         await duplicateTask?.value
         await organizer.waitForPendingWork()
         await graph.waitForPendingWork()
@@ -699,22 +834,27 @@ final class LibraryStore: ObservableObject {
         }
 
         queryTask?.cancel()
+        loadMoreTask?.cancel()
         let requestID = UUID()
         activeRequestID = requestID
-        let requestedQuery = query
+        var requestedQuery = query
+        requestedQuery.limit = LibraryQuery.defaultPageSize
+        requestedQuery.offset = 0
         isQuerying = true
+        isLoadingMore = false
+        loadMoreError = nil
         queryTask = Task { [weak self] in
             do {
                 if let delay {
                     try await Task.sleep(for: delay)
                 }
                 try Task.checkCancellation()
-                let books = try await catalog.queryBooks(requestedQuery)
+                let page = try await catalog.queryBookPage(requestedQuery)
                 try Task.checkCancellation()
                 guard let self, self.activeRequestID == requestID else {
                     return
                 }
-                self.apply(books, selecting: self.selectedBookID)
+                self.apply(page, selecting: self.selectedBookID)
             } catch is CancellationError {
                 return
             } catch {
@@ -722,8 +862,11 @@ final class LibraryStore: ObservableObject {
                     return
                 }
                 self.books = []
+                self.totalBookCount = 0
                 self.selectedBookID = nil
                 self.isQuerying = false
+                self.isLoadingMore = false
+                self.loadMoreError = nil
                 self.loadingState = .failed(.loadFailed)
             }
         }
@@ -733,28 +876,59 @@ final class LibraryStore: ObservableObject {
         guard let catalog else {
             return
         }
+        beginQueryReplacement()
+        var requestedQuery = query
+        requestedQuery.limit = LibraryQuery.defaultPageSize
+        requestedQuery.offset = 0
+        isQuerying = true
         do {
-            let refreshed = try await catalog.queryBooks(query)
+            let refreshed = try await catalog.queryBookPage(requestedQuery)
             apply(refreshed, selecting: id)
         } catch {
             books = []
+            totalBookCount = 0
             selectedBookID = nil
             isQuerying = false
+            isLoadingMore = false
+            loadMoreError = nil
             loadingState = .failed(.loadFailed)
         }
     }
 
-    private func apply(_ books: [Book], selecting id: UUID?) {
-        self.books = books
-        if let id, books.contains(where: { $0.id == id }) {
+    private func apply(_ page: LibraryPage, selecting id: UUID?) {
+        books = page.books
+        totalBookCount = page.totalCount
+        if let id, page.books.contains(where: { $0.id == id }) {
             selectedBookID = id
-        } else if let selectedBookID, books.contains(where: { $0.id == selectedBookID }) {
+        } else if let selectedBookID,
+                  page.books.contains(where: { $0.id == selectedBookID })
+        {
             self.selectedBookID = selectedBookID
         } else {
-            selectedBookID = books.first?.id
+            selectedBookID = page.books.first?.id
         }
         isQuerying = false
+        isLoadingMore = false
+        loadMoreError = nil
         loadingState = .content
+    }
+
+    private func resetPagination() {
+        query.limit = LibraryQuery.defaultPageSize
+        query.offset = 0
+        loadMoreTask?.cancel()
+        loadMoreTask = nil
+        isLoadingMore = false
+        loadMoreError = nil
+    }
+
+    private func beginQueryReplacement() {
+        loadMoreTask?.cancel()
+        activeRequestID = UUID()
+        query.limit = LibraryQuery.defaultPageSize
+        query.offset = 0
+        isLoadingMore = false
+        loadMoreError = nil
     }
 
     private func toggle<Value: Hashable>(_ value: Value, in values: inout Set<Value>) {
@@ -789,7 +963,7 @@ final class LibraryStore: ObservableObject {
         seedGraphUITestData: Bool,
         seedGraphLimitUITestData: Bool,
         seedReadingEntryUITestData: Bool,
-        performanceBookCount: Int? = nil
+        seedPaginationUITestData: Bool
     ) throws -> LibraryCatalogService {
         let repository = try BookRepository.inMemory()
         guard seedFictionalUITestBooks
@@ -797,27 +971,28 @@ final class LibraryStore: ObservableObject {
             || seedGraphUITestData
             || seedGraphLimitUITestData
             || seedReadingEntryUITestData
-            || performanceBookCount != nil
+            || seedPaginationUITestData
         else {
             return LibraryCatalogService(repository: repository)
         }
 
         let timestamp = Date(timeIntervalSince1970: 1_735_689_600)
-        if let performanceBookCount {
+        if seedPaginationUITestData {
             try repository.transaction {
-                for index in 0 ..< performanceBookCount {
+                for index in 0 ..< 501 {
                     _ = try repository.create(
                         BookDraft(
-                            title: String(format: "《固定性能书目 %05d》", index),
-                            originalTitle: String(format: "Synthetic Atlas %05d", index),
-                            author: "虚构作者 \(index % 97)",
+                            title: String(
+                                format: "《固定分页书目 %03d》",
+                                index
+                            ),
+                            author: "虚构分页作者 \(index % 17)",
                             readingStatus: ReadingStatus.allCases[index % ReadingStatus.allCases.count],
-                            priority: BookPriority(rawValue: (index % 5) + 1),
-                            note: index.isMultiple(of: 11) ? "固定虚构性能备注。" : nil
+                            priority: BookPriority(rawValue: (index % 5) + 1)
                         ),
                         id: UUID(
                             uuidString: String(
-                                format: "10000000-0000-0000-0000-%012d",
+                                format: "30000000-0000-0000-0000-%012d",
                                 index
                             )
                         )!,

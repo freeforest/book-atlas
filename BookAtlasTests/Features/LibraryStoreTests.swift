@@ -346,6 +346,501 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(store.editorSession?.id, session.id)
         XCTAssertFalse(store.handleDuplicateReviewEscape())
     }
+
+    func testStoreLoadsAllPagesWithoutSilentTruncationAndResetsForNewQuery() async throws {
+        let repository = try BookRepository.inMemory()
+        for index in 0 ..< 501 {
+            _ = try repository.create(
+                BookDraft(
+                    title: String(format: "《状态分页 %03d》", index),
+                    author: "固定虚构作者",
+                    readingStatus: index.isMultiple(of: 2)
+                        ? .reading
+                        : .wishToRead
+                ),
+                id: UUID(
+                    uuidString: String(
+                        format: "50000000-0000-0000-0000-%012d",
+                        index
+                    )
+                )!,
+                at: FictionalLibraryFixtures.timestamp
+                    .addingTimeInterval(TimeInterval(index))
+            )
+        }
+
+        let service = LibraryCatalogService(repository: repository)
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 501)
+        XCTAssertTrue(store.hasMoreBooks)
+        XCTAssertEqual(store.resultPageStateDescription, "可以继续加载")
+        XCTAssertEqual(
+            store.accessibleResultDescription,
+            "已显示 200 本，共 501 本，可以继续加载"
+        )
+        let initialSelection = store.selectedBookID
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 400)
+        XCTAssertEqual(store.selectedBookID, initialSelection)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 400)
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 501)
+        XCTAssertFalse(store.hasMoreBooks)
+        XCTAssertEqual(store.resultPageStateDescription, "已全部加载")
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 501)
+
+        store.updateSearchText("状态分页 042")
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 1)
+        XCTAssertEqual(store.totalBookCount, 1)
+        XCTAssertEqual(store.query.offset, 0)
+
+        store.clearFilters()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 501)
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 400)
+        store.setSort(field: .createdAt, direction: .ascending)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 501)
+        XCTAssertEqual(store.books.first?.id.uuidString, "50000000-0000-0000-0000-000000000000")
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        store.toggleReadingStatus(.reading)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 251)
+        XCTAssertEqual(store.query.offset, 0)
+    }
+
+    func testLoadMoreFailureKeepsRowsAndRetryPublishesOnlyNextPage() async throws {
+        let books = try (0 ..< 3).map { index in
+            try Book(
+                id: UUID(
+                    uuidString: String(
+                        format: "51000000-0000-0000-0000-%012d",
+                        index
+                    )
+                )!,
+                draft: BookDraft(
+                    title: "《重试分页 \(index)》",
+                    author: "固定虚构作者"
+                ),
+                createdAt: FictionalLibraryFixtures.timestamp
+                    .addingTimeInterval(TimeInterval(index))
+            )
+        }
+        let catalog = LoadMoreRetryCatalog(books: books)
+        let store = LibraryStore(catalog: catalog)
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(store.books.map(\.id), Array(books.prefix(2)).map(\.id))
+        XCTAssertEqual(store.totalBookCount, 3)
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.map(\.id), Array(books.prefix(2)).map(\.id))
+        XCTAssertEqual(store.loadMoreError, .loadMoreFailed)
+        XCTAssertTrue(store.canLoadMore)
+        XCTAssertEqual(store.resultPageStateDescription, "下一页加载失败，可以重试")
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.map(\.id), books.map(\.id))
+        XCTAssertEqual(store.totalBookCount, 3)
+        XCTAssertEqual(store.resultPageStateDescription, "已全部加载")
+        XCTAssertNil(store.loadMoreError)
+        XCTAssertFalse(store.hasMoreBooks)
+    }
+
+    func testPagedStoreMutationsKeepTotalsUniqueAndSelectionDeterministic() async throws {
+        let repository = try BookRepository.inMemory()
+        var seededBooks: [Book] = []
+        for index in 0 ..< 203 {
+            seededBooks.append(
+                try repository.create(
+                    BookDraft(
+                        title: index < 2
+                            ? "《分页合并候选》"
+                            : String(format: "《分页变更 %03d》", index),
+                        author: "固定虚构作者"
+                    ),
+                    id: UUID(
+                        uuidString: String(
+                            format: "52000000-0000-0000-0000-%012d",
+                            index
+                        )
+                    )!,
+                    at: FictionalLibraryFixtures.timestamp
+                        .addingTimeInterval(TimeInterval(index))
+                )
+            )
+        }
+        let service = LibraryCatalogService(
+            repository: repository,
+            now: {
+                FictionalLibraryFixtures.timestamp
+                    .addingTimeInterval(20_000)
+            }
+        )
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        store.loadMore()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 203)
+
+        let updatedID = seededBooks[100].id
+        store.selectedBookID = updatedID
+        store.beginEdit()
+        let editSession = try XCTUnwrap(store.editorSession)
+        guard case .success = await store.save(
+            BookEditorDraft(
+                title: "《分页更新后》",
+                author: "固定虚构作者"
+            ),
+            for: editSession
+        ) else {
+            return XCTFail("Expected the paged edit to succeed")
+        }
+        XCTAssertEqual(store.selectedBookID, updatedID)
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 203)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+
+        store.beginCreate()
+        let createSession = try XCTUnwrap(store.editorSession)
+        guard case .success = await store.save(
+            BookEditorDraft(
+                title: "《分页中新建》",
+                author: "另一位固定虚构作者"
+            ),
+            for: createSession
+        ) else {
+            return XCTFail("Expected the paged create to succeed")
+        }
+        var createdQuery = LibraryQuery()
+        createdQuery.searchText = "分页中新建"
+        createdQuery.limit = 10
+        let createdBooks = try await service.queryBooks(createdQuery)
+        let createdID = try XCTUnwrap(createdBooks.first?.id)
+        XCTAssertEqual(store.selectedBookID, createdID)
+        XCTAssertTrue(store.books.contains(where: { $0.id == createdID }))
+        XCTAssertEqual(store.totalBookCount, 204)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+
+        store.beginDelete()
+        store.confirmDelete()
+        await store.waitForPendingWork()
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertEqual(store.totalBookCount, 203)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        let mergeSource = seededBooks[0]
+        let mergeTarget = seededBooks[1]
+        XCTAssertTrue(store.books.contains(where: { $0.id == mergeSource.id }))
+        store.selectedBookID = mergeSource.id
+        store.reviewSelectedBookForDuplicates()
+        await store.waitForPendingWork()
+        XCTAssertTrue(
+            try XCTUnwrap(store.duplicateReview)
+                .candidates
+                .contains(where: { $0.id == mergeTarget.id })
+        )
+        store.selectedDuplicateID = mergeTarget.id
+        store.beginMergePreview()
+        await store.waitForPendingWork()
+        store.confirmMerge()
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(store.selectedBookID, mergeTarget.id)
+        XCTAssertEqual(store.totalBookCount, 202)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, store.books.count)
+        store.loadMore()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.count, 202)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 202)
+        XCTAssertTrue(store.books.contains(where: { $0.id == mergeTarget.id }))
+        XCTAssertFalse(store.books.contains(where: { $0.id == mergeSource.id }))
+    }
+
+    func testPerformanceLibraryUsesOnlyControlledExistingTemporaryDatabase() async throws {
+        let temporaryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "BookAtlas-Performance-Session-Tests-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(
+            at: temporaryRoot,
+            withIntermediateDirectories: false
+        )
+        defer { try? FileManager.default.removeItem(at: temporaryRoot) }
+
+        let sessionID = UUID()
+        let session = PerformanceLibrarySession(
+            sessionID: sessionID,
+            temporaryRootURL: temporaryRoot
+        )
+        let databaseURL = try session.prepare(bookCount: 1_000)
+        XCTAssertEqual(
+            databaseURL.deletingLastPathComponent(),
+            session.directoryURL
+        )
+
+        let repository = try BookRepository(existingDatabaseURL: databaseURL)
+        let page = try repository.queryPage(LibraryQuery())
+        XCTAssertEqual(repository.schemaVersion, 5)
+        XCTAssertEqual(page.books.count, 200)
+        XCTAssertEqual(page.totalCount, 1_000)
+        try repository.close()
+
+        for suffix in ["-wal", "-shm"] {
+            FileManager.default.createFile(
+                atPath: databaseURL.path + suffix,
+                contents: Data(),
+                attributes: nil
+            )
+        }
+        try session.cleanup()
+        XCTAssertFalse(
+            FileManager.default.fileExists(atPath: session.directoryURL.path)
+        )
+    }
+
+    func testInvalidPerformanceArgumentsAndMissingFileNeverFallBackToProduction() {
+        let temporaryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "BookAtlas-Performance-Rejection-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        XCTAssertNoThrow(
+            try FileManager.default.createDirectory(
+                at: temporaryRoot,
+                withIntermediateDirectories: false
+            )
+        )
+        defer { try? FileManager.default.removeItem(at: temporaryRoot) }
+
+        var productionLocationWasRequested = false
+        let malformed = LibraryStore.makeApplicationStore(
+            arguments: [
+                "BookAtlas",
+                "-BookAtlasPerformanceUseExistingLibrary",
+                "/tmp/not-a-session"
+            ],
+            environment: [:],
+            performanceTemporaryDirectory: temporaryRoot,
+            productionDatabaseURL: {
+                productionLocationWasRequested = true
+                throw PerformanceLibraryError.unsafeTemporaryLocation
+            }
+        )
+        XCTAssertEqual(malformed.loadingState, .failed(.databaseUnavailable))
+        XCTAssertFalse(productionLocationWasRequested)
+
+        let missing = LibraryStore.makeApplicationStore(
+            arguments: [
+                "BookAtlas",
+                "-BookAtlasPerformanceUseExistingLibrary",
+                UUID().uuidString
+            ],
+            environment: [:],
+            performanceTemporaryDirectory: temporaryRoot,
+            productionDatabaseURL: {
+                productionLocationWasRequested = true
+                throw PerformanceLibraryError.unsafeTemporaryLocation
+            }
+        )
+        XCTAssertEqual(missing.loadingState, .failed(.databaseUnavailable))
+        XCTAssertFalse(productionLocationWasRequested)
+
+        let legacy = LibraryStore.makeApplicationStore(
+            arguments: [
+                "BookAtlas",
+                "-BookAtlasPerformanceBookCount",
+                "1000"
+            ],
+            environment: [:],
+            performanceTemporaryDirectory: temporaryRoot,
+            productionDatabaseURL: {
+                productionLocationWasRequested = true
+                throw PerformanceLibraryError.unsafeTemporaryLocation
+            }
+        )
+        XCTAssertEqual(legacy.loadingState, .failed(.databaseUnavailable))
+        XCTAssertFalse(productionLocationWasRequested)
+
+        let unsupportedCount = LibraryStore.makeApplicationStore(
+            arguments: [
+                "BookAtlas",
+                "-BookAtlasPerformancePrepareLibrary",
+                UUID().uuidString,
+                "999"
+            ],
+            environment: [:],
+            performanceTemporaryDirectory: temporaryRoot,
+            productionDatabaseURL: {
+                productionLocationWasRequested = true
+                throw PerformanceLibraryError.unsafeTemporaryLocation
+            }
+        )
+        XCTAssertEqual(
+            unsupportedCount.loadingState,
+            .failed(.databaseUnavailable)
+        )
+        XCTAssertFalse(productionLocationWasRequested)
+
+        let unknownFlag = LibraryStore.makeApplicationStore(
+            arguments: [
+                "BookAtlas",
+                "-BookAtlasPerformanceUnknown",
+                UUID().uuidString
+            ],
+            environment: [:],
+            performanceTemporaryDirectory: temporaryRoot,
+            productionDatabaseURL: {
+                productionLocationWasRequested = true
+                throw PerformanceLibraryError.unsafeTemporaryLocation
+            }
+        )
+        XCTAssertEqual(unknownFlag.loadingState, .failed(.databaseUnavailable))
+        XCTAssertFalse(productionLocationWasRequested)
+    }
+
+    func testPerformanceLibraryRejectsSymlinkAndNonRegularDatabase() throws {
+        let temporaryRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "BookAtlas-Performance-Node-Rejection-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        let symlinkTarget = FileManager.default.temporaryDirectory
+            .appendingPathComponent(
+                "BookAtlas-Performance-Symlink-Target-\(UUID().uuidString)",
+                isDirectory: true
+            )
+        try FileManager.default.createDirectory(
+            at: temporaryRoot,
+            withIntermediateDirectories: false
+        )
+        try FileManager.default.createDirectory(
+            at: symlinkTarget,
+            withIntermediateDirectories: false
+        )
+        defer {
+            try? FileManager.default.removeItem(at: temporaryRoot)
+            try? FileManager.default.removeItem(at: symlinkTarget)
+        }
+
+        let session = PerformanceLibrarySession(
+            sessionID: UUID(),
+            temporaryRootURL: temporaryRoot
+        )
+        try FileManager.default.createSymbolicLink(
+            at: session.directoryURL,
+            withDestinationURL: symlinkTarget
+        )
+        XCTAssertThrowsError(try session.validatedExistingDatabaseURL()) {
+            XCTAssertEqual(
+                $0 as? PerformanceLibraryError,
+                .unsafeTemporaryLocation
+            )
+        }
+
+        try FileManager.default.removeItem(at: session.directoryURL)
+        try FileManager.default.createDirectory(
+            at: session.directoryURL,
+            withIntermediateDirectories: false
+        )
+        try FileManager.default.createDirectory(
+            at: session.databaseURL,
+            withIntermediateDirectories: false
+        )
+        XCTAssertThrowsError(try session.validatedExistingDatabaseURL()) {
+            XCTAssertEqual(
+                $0 as? PerformanceLibraryError,
+                .unsafeTemporaryLocation
+            )
+        }
+
+        try FileManager.default.removeItem(at: session.databaseURL)
+        XCTAssertTrue(
+            FileManager.default.createFile(
+                atPath: session.databaseURL.path,
+                contents: Data(),
+                attributes: nil
+            )
+        )
+        XCTAssertTrue(
+            FileManager.default.createFile(
+                atPath: session.directoryURL
+                    .appendingPathComponent("unexpected.txt")
+                    .path,
+                contents: Data(),
+                attributes: nil
+            )
+        )
+        XCTAssertThrowsError(try session.validatedExistingDatabaseURL()) {
+            XCTAssertEqual(
+                $0 as? PerformanceLibraryError,
+                .unexpectedTemporaryArtifact
+            )
+        }
+    }
+}
+
+private actor LoadMoreRetryCatalog: LibraryCataloging {
+    private let books: [Book]
+    private var shouldFailNextPage = true
+
+    init(books: [Book]) {
+        self.books = books
+    }
+
+    func queryBooks(_ query: LibraryQuery) throws -> [Book] {
+        Array(books.dropFirst(query.offset).prefix(query.limit))
+    }
+
+    func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage {
+        if query.offset > 0, shouldFailNextPage {
+            shouldFailNextPage = false
+            throw TestFailure.failed
+        }
+        let pageSize = query.offset == 0 ? 2 : query.limit
+        return LibraryPage(
+            books: Array(books.dropFirst(query.offset).prefix(pageSize)),
+            totalCount: books.count,
+            offset: query.offset
+        )
+    }
+
+    func createBook(from editor: BookEditorDraft) throws -> Book {
+        throw TestFailure.failed
+    }
+
+    func updateBook(_ book: Book, from editor: BookEditorDraft) throws -> Book {
+        throw TestFailure.failed
+    }
+
+    func deleteBook(_ book: Book) throws {
+        throw TestFailure.failed
+    }
+
+    private enum TestFailure: Error {
+        case failed
+    }
 }
 
 private actor FailingCatalog: LibraryCataloging {

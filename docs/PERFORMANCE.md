@@ -10,8 +10,8 @@ promise or a release acceptance result.
 - macOS: 26.5.2 (25F84)
 - Xcode: 26.6 (17F113)
 - Swift: 6.3.3
-- Configuration: Debug XCTest/XCUIAutomation plus a Release-optimized local
-  Instruments trace build, arm64, macOS destination
+- Configuration: Debug XCTest/XCUIAutomation plus Debug and Release production
+  builds, arm64, macOS destination
 - Data: fixed fictional records in fresh in-memory or temporary SQLite stores
 - Repetitions: three per measured workload
 - Reporting: median with observed minimum–maximum range
@@ -26,40 +26,48 @@ discarding them.
 ## Launch, open, first load, and tag counts
 
 Cold launch uses Apple's
-`XCTApplicationLaunchMetric(waitUntilResponsive: true)` in Debug. The separate
-Release-optimized measurements use Instruments' **App Launch** template and
-report the trace timestamp at the end of **Initial Frame Rendering**. These
-metrics are related but not identical and should not be compared as a compiler
-speedup ratio.
+`XCTApplicationLaunchMetric(waitUntilResponsive: true)` in Debug. Before the
+metric starts, a separate application process creates, closes, and verifies a
+fixed-fictional current Schema 5 database with the requested exact count.
+Every measured process receives only the session UUID, opens that existing
+regular file without SQLite create fallback, runs normal interrupted-restore
+and migration/version checks, and publishes the first 200 rows plus exact
+total. The assertion after each launch confirms that the measured process saw
+1,000/5,000/10,000 rows; it does not add preparation to the launch metric.
 
 | Configuration | Books | Three raw runs (s) | Median | Range |
 | --- | ---: | --- | ---: | ---: |
-| Debug XCTest | 1,000 | 1.268940, 1.293977, 1.350821 | 1.293977 | 1.268940–1.350821 |
-| Debug XCTest | 5,000 | 3.816601, 3.677170, 3.812545 | 3.812545 | 3.677170–3.816601 |
-| Debug XCTest | 10,000 | 8.457591, 8.374219, 8.866668 | 8.457591 | 8.374219–8.866668 |
-| Release Instruments | 1,000 | 1.776590, 1.191468, 1.251082 | 1.251082 | 1.191468–1.776590 |
-| Release Instruments | 5,000 | 3.315764, 3.199479, 3.219467 | 3.219467 | 3.199479–3.315764 |
-| Release Instruments | 10,000 | 5.663961, 6.075030, 5.765581 | 5.765581 | 5.663961–6.075030 |
+| Debug XCTest | 1,000 | 0.712955, 0.718106, 0.766268 | 0.718106 | 0.712955–0.766268 |
+| Debug XCTest | 5,000 | 0.804914, 0.717128, 0.718841 | 0.718841 | 0.717128–0.804914 |
+| Debug XCTest | 10,000 | 1.065805, 0.963944, 0.852062 | 0.963944 | 0.852062–1.065805 |
 
-The Release traces launched the final normal Release build (without
-`ENABLE_TESTABILITY`) with the fixed-fictional performance seed argument and
-ended after the Instruments time limit. On this Xcode/macOS combination,
-Instruments left the launched app stopped, so task-created instances were
-explicitly terminated between runs. They did not read the user's application
-container. The first 1,000-book trace is a visible cold-cache outlier and
-remains in the range.
+Each session is a UUID-named child of the process temporary root. The
+test-only entry rejects uncontrolled paths, unknown or malformed performance
+arguments, unsupported counts, symlinks, non-regular/missing database files,
+and unexpected artifacts; it never falls back to Application Support.
+Cleanup removes the validated database and WAL/SHM/journal sidecars and then
+the empty session directory. Arguments and output contain no absolute path.
+
+The same prepare → use-existing → cleanup protocol is implemented in the
+Release product so Instruments can measure identical semantics. This closure
+completed the unmeasured Release preparation process, but the measured
+interactive Instruments App Launch request could not be authorized from the
+task execution surface. No Release launch value is reported. Previous numbers
+that generated the test library inside the timed launch are superseded because
+they measured setup plus launch rather than opening an existing library.
 
 Database open measures `SQLiteDatabase` construction plus the production
 repository's migration/version check on an already-current Schema 5 file.
-First load is the production default `LibraryQuery` (the documented 500-row
-page), not a physical-frame rendering measurement. Tag usage is the production
-grouped tag-summary query over 32 tags and one association per book.
+First load is the production default `LibraryQuery`: 200 rows plus an exact
+filtered `COUNT(*)`, not a physical-frame rendering measurement. Tag usage is
+the production grouped tag-summary query over 32 tags and one association per
+book.
 
-| Books | Database open, raw (s) | Open median (range) | First 500 rows, raw (s) | First-load median (range) | Tag usage, raw (s) | Tag median (range) |
+| Books | Database open, raw (s) | Open median (range) | First 200 + total, raw (s) | First-load median (range) | Tag usage, raw (s) | Tag median (range) |
 | ---: | --- | ---: | --- | ---: | --- | ---: |
-| 1,000 | 0.000181, 0.000156, 0.000225 | 0.000181 (0.000156–0.000225) | 0.138198, 0.138849, 0.139008 | 0.138849 (0.138198–0.139008) | 0.009207, 0.009247, 0.009178 | 0.009207 (0.009178–0.009247) |
-| 5,000 | 0.000185, 0.000166, 0.000224 | 0.000185 (0.000166–0.000224) | 0.137316, 0.139740, 0.148077 | 0.139740 (0.137316–0.148077) | 0.010483, 0.010581, 0.010952 | 0.010581 (0.010483–0.010952) |
-| 10,000 | 0.000213, 0.000183, 0.000219 | 0.000213 (0.000183–0.000219) | 0.137718, 0.148031, 0.140263 | 0.140263 (0.137718–0.148031) | 0.012212, 0.012204, 0.012107 | 0.012204 (0.012107–0.012212) |
+| 1,000 | 0.000170833, 0.000156167, 0.000173417 | 0.000170833 (0.000156167–0.000173417) | 0.055528500, 0.055268083, 0.058563708 | 0.055528500 (0.055268083–0.058563708) | 0.009201500, 0.008988041, 0.009313125 | 0.009201500 (0.008988041–0.009313125) |
+| 5,000 | 0.000214291, 0.000273792, 0.000316875 | 0.000273792 (0.000214291–0.000316875) | 0.059006750, 0.057775125, 0.059154458 | 0.059006750 (0.057775125–0.059154458) | 0.010996708, 0.011078875, 0.010837250 | 0.010996708 (0.010837250–0.011078875) |
+| 10,000 | 0.000214541, 0.000171250, 0.000217708 | 0.000214541 (0.000171250–0.000217708) | 0.056063500, 0.056790750, 0.057258917 | 0.056790750 (0.056063500–0.057258917) | 0.011848709, 0.012385209, 0.012358375 | 0.012358375 (0.011848709–0.012385209) |
 
 These repository microbenchmarks ran in the Debug XCTest host. A Release
 XCTest attempt was actually executed, but Xcode 26.6 hung the Release unit
@@ -67,33 +75,70 @@ test runner before it established a connection; a Release UI attempt
 initialized its runner but discovered zero cases. Neither attempt is reported
 as a performance result.
 
+## Pagination correctness and workload
+
+The production first page is 200 rows and the repository rejects page sizes
+above 1,000. Fixed-fictional 501-, 1,001-, and 10,000-row tests walk the first,
+next, and final pages and compare every UUID with a single deterministic
+created-time/UUID order: no duplicate, missing, or reordered boundary was
+observed. Separate state tests cover search/filter/sort reset, selection after
+create/update/delete/merge, and next-page failure followed by retry while
+retaining the already displayed rows. The interactive UI regression loads
+501 rows as 200 → 400 → 501 through Shift-Command-L and checks both the
+accessible “已显示 N 本，共 T 本” status and the final no-more-results state.
+
+The XCUI next-page workload starts its clock before invoking the production
+Shift-Command-L load-more command and stops after the accessible count status
+changes atomically from “已显示 200 本，共 T 本，可以继续加载” to
+“已显示 400 本，共 T 本，可以继续加载”. Publishing the count together
+with the page-readiness state prevents a following keyboard command from
+observing a new count while the load-more control is still disabled. The
+separate 501-row UI regression verifies the visible load-more button's label,
+value, keyboard command, and terminal state. The performance workload is
+intentionally an end-to-end automation observation, not a SQLite-only query
+duration; accessibility-tree traversal and WindowServer scheduling dominate
+it.
+
+| Existing library | Three raw 200→400 runs (s) | Median | Range |
+| ---: | --- | ---: | ---: |
+| 1,000 | 7.028902750, 7.319285834, 7.045332167 | 7.045332167 | 7.028902750–7.319285834 |
+| 5,000 | 6.971824375, 6.778178208, 6.455659125 | 6.778178208 | 6.455659125–6.971824375 |
+| 10,000 | 6.617088000, 6.964226708, 6.969441292 | 6.964226708 | 6.617088000–6.969441292 |
+
 ## Sustained library scrolling
 
 XCUIAutomation focuses the real production list, performs two 4,800-point
 downward and two upward scroll-wheel deltas, and measures three round trips
 with `XCTClockMetric`, `XCTMemoryMetric`, `XCTCPUMetric`, and, on macOS 26,
-`XCTHitchMetric`. The table retains the exact order emitted by the result
-bundle.
+`XCTHitchMetric`. Before measurement it loads a deliberately different
+bounded workload for each existing library: all 5 pages/1,000 rows for the 1k
+store, 10 pages/2,000 rows for the 5k store, and 15 pages/3,000 rows for the
+10k store. Page preparation is outside the scroll metric and every step checks
+the exact visible/total count. No workload puts all 5k or 10k rows in SwiftUI
+state.
 
-| Books | Clock raw (s) | Hitch count raw | Hitch duration raw (s) | Peak physical memory raw (kB) |
-| ---: | --- | --- | --- | --- |
-| 1,000 | 13.163990, 13.261486, 12.389271 | 11, 12, 7 | 6.716423, 3.216579, 3.066580 | 198165.632, 206800.000, 223446.168 |
-| 5,000 | 12.984002, 12.603667, 12.206184 | 7, 11, 8 | 1.416633, 5.366482, 1.233302 | 215254.168, 227034.240, 257688.752 |
-| 10,000 | 12.896391, 12.430073, 13.502227 | 7, 9, 8 | 2.433246, 2.666575, 2.116585 | 228017.304, 249218.200, 270435.504 |
+| Existing library | Loaded pages / rows | Clock raw (s) | Hitch count raw | Hitch duration raw (s) | Peak physical memory raw (kB) |
+| ---: | ---: | --- | --- | --- | --- |
+| 1,000 | 5 / 1,000 | 21.245346, 21.215965, 20.194839 | 1, 0, 1 | 2.916550, 0, 0.549996 | 232408.360, 224593.192, 236651.816 |
+| 5,000 | 10 / 2,000 | 20.413260, 21.362711, 20.650200 | 2, 0, 1 | 3.516546, 0, 2.883218 | 222627.112, 237667.624, 228263.232 |
+| 10,000 | 15 / 3,000 | 20.842938, 20.638021, 21.575160 | 6, 3, 4 | 6.433097, 0.049998, 6.716423 | 242238.760, 233080.104, 238077.248 |
 
-Clock medians were 13.163990 / 12.603667 / 12.896391 seconds. Hitch-count
-medians were 11 / 8 / 8 and peak-memory medians were 206800.000 / 227034.240 /
-249218.200 kB. Hitch time ratios were respectively
-`502.049, 238.670, 243.559`, `107.360, 418.975, 99.423`, and
-`185.658, 211.094, 154.250` ms/s. Their broad ranges show substantial
-WindowServer/automation noise; no frame-rate promise or regression threshold
-is inferred.
+Clock medians were 21.215965 / 20.650200 / 20.842938 seconds. Hitch-count
+medians were 1 / 1 / 4, hitch-duration medians were
+0.549996 / 2.883218 / 6.433097 seconds, and peak-memory medians were
+232408.360 / 228263.232 / 238077.248 kB. Process physical-memory deltas were
+6,553.552/7,995.440/8,044.568 kB for 1k; 4,374.552/14,827.520/−4,800.488 kB
+for 5k; and 16,449.536/−3,604.456/7,110.656 kB for 10k. Negative deltas
+reflect allocator/process sampling noise rather than negative allocation.
+Broad hitch and memory ranges show substantial
+WindowServer/XCUIAutomation/accessibility-tree noise. They are not a physical
+frame-rate measurement, a product threshold, or evidence that dataset size
+has no effect.
 
-The same test code was invoked against a Release TestAction. Xcode 26.6
-completed with zero discovered UI cases, so there is no Release scrolling
-number. Instruments launch traces do not simulate a user scroll, and this
-execution surface could not safely control the interactive desktop. Release
-scrolling remains an explicit unverified gate.
+There is no Release scrolling number. Instruments App Launch does not
+simulate a user scroll, and Release UI TestAction did not provide a reliable
+case-execution surface on this Xcode/macOS combination. Release scrolling
+remains an explicit unverified gate.
 
 ## Historical migration to Schema 5
 
@@ -104,18 +149,18 @@ final version, book count, and `foreign_key_check`.
 
 | Source → 5 | Books | Three raw runs (s) | Median | Range |
 | --- | ---: | --- | ---: | ---: |
-| 1 → 5 | 1,000 | 0.220136, 0.227036, 0.221168 | 0.221168 | 0.220136–0.227036 |
-| 2 → 5 | 1,000 | 0.218386, 0.220838, 0.220874 | 0.220838 | 0.218386–0.220874 |
-| 3 → 5 | 1,000 | 0.223276, 0.223231, 0.223638 | 0.223276 | 0.223231–0.223638 |
-| 4 → 5 | 1,000 | 0.002076, 0.001343, 0.001230 | 0.001343 | 0.001230–0.002076 |
-| 1 → 5 | 5,000 | 1.110918, 1.110890, 1.119885 | 1.110918 | 1.110890–1.119885 |
-| 2 → 5 | 5,000 | 1.108541, 1.114122, 1.110669 | 1.110669 | 1.108541–1.114122 |
-| 3 → 5 | 5,000 | 1.121896, 1.112315, 1.113862 | 1.113862 | 1.112315–1.121896 |
-| 4 → 5 | 5,000 | 0.001639, 0.001228, 0.001246 | 0.001246 | 0.001228–0.001639 |
-| 1 → 5 | 10,000 | 2.256332, 2.248088, 2.240435 | 2.248088 | 2.240435–2.256332 |
-| 2 → 5 | 10,000 | 2.239509, 2.259295, 2.244865 | 2.244865 | 2.239509–2.259295 |
-| 3 → 5 | 10,000 | 2.239877, 2.246382, 2.240865 | 2.240865 | 2.239877–2.246382 |
-| 4 → 5 | 10,000 | 0.001620, 0.001642, 0.001836 | 0.001642 | 0.001620–0.001836 |
+| 1 → 5 | 1,000 | 0.223299750, 0.233619209, 0.226658750 | 0.226658750 | 0.223299750–0.233619209 |
+| 2 → 5 | 1,000 | 0.228160791, 0.236771667, 0.234224375 | 0.234224375 | 0.228160791–0.236771667 |
+| 3 → 5 | 1,000 | 0.232759917, 0.235621583, 0.234288125 | 0.234288125 | 0.232759917–0.235621583 |
+| 4 → 5 | 1,000 | 0.001441791, 0.001407708, 0.001449000 | 0.001441791 | 0.001407708–0.001449000 |
+| 1 → 5 | 5,000 | 1.127231542, 1.153490959, 1.142468208 | 1.142468208 | 1.127231542–1.153490959 |
+| 2 → 5 | 5,000 | 1.177228542, 1.165987125, 1.165597125 | 1.165987125 | 1.165597125–1.177228542 |
+| 3 → 5 | 5,000 | 1.142767375, 1.151058583, 1.137588041 | 1.142767375 | 1.137588041–1.151058583 |
+| 4 → 5 | 5,000 | 0.001600625, 0.001227083, 0.001239375 | 0.001239375 | 0.001227083–0.001600625 |
+| 1 → 5 | 10,000 | 2.288446958, 2.275376208, 2.287382417 | 2.287382417 | 2.275376208–2.288446958 |
+| 2 → 5 | 10,000 | 2.285026125, 2.293042209, 2.284350709 | 2.285026125 | 2.284350709–2.293042209 |
+| 3 → 5 | 10,000 | 2.285627041, 2.289707875, 2.284058417 | 2.285627041 | 2.284058417–2.289707875 |
+| 4 → 5 | 10,000 | 0.001771666, 0.001282084, 0.001580333 | 0.001580333 | 0.001282084–0.001771666 |
 
 These migration numbers are Debug XCTest observations. The large difference
 for 4 → 5 is expected because that step adds the local-file-reference objects
@@ -178,10 +223,9 @@ expectation responsive in 3/3 repetitions.
 
 ## What this run does not measure
 
-No metric here represents Release sustained scrolling, a reliable display
-frame rate, energy use, a memory-pressure kill, minimum-supported macOS 14, or
-cross-device behavior. Graph first render remains an `NSHostingView`
-measurement, not a physical-display frame-rate test. Release Instruments
-measures the initial frame, not completion of the first 500-row query. Those
-items remain manual/release gates and must not be inferred from the tables
-above.
+No metric here represents Release existing-library launch or sustained
+scrolling, a reliable display frame rate, energy use, a memory-pressure kill,
+minimum-supported macOS 14, or cross-device behavior. Graph first render
+remains an `NSHostingView` measurement, not a physical-display frame-rate
+test. Those items remain manual/release gates and must not be inferred from
+the tables above.

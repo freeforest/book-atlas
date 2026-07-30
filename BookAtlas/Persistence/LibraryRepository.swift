@@ -289,6 +289,12 @@ enum BookRepositoryError: Error, Equatable {
     case invalidQuery
 }
 
+private struct LibraryQueryComponents {
+    let whereClause: String
+    let orderClause: String
+    let bindings: [SQLiteValue]
+}
+
 final class BookRepository {
     let database: SQLiteDatabase
 
@@ -305,6 +311,15 @@ final class BookRepository {
             withIntermediateDirectories: true
         )
         try self.init(database: SQLiteDatabase(path: databaseURL.path))
+    }
+
+    convenience init(existingDatabaseURL: URL) throws {
+        try self.init(
+            database: SQLiteDatabase(
+                path: existingDatabaseURL.path,
+                createIfMissing: false
+            )
+        )
     }
 
     static func inMemory() throws -> BookRepository {
@@ -452,6 +467,43 @@ final class BookRepository {
             throw BookRepositoryError.invalidQuery
         }
 
+        let components = queryComponents(for: query)
+        var bindings = components.bindings
+        bindings.append(.integer(Int64(limit)))
+        bindings.append(.integer(Int64(query.offset)))
+        return try database.query(
+            """
+            SELECT \(bookColumns) FROM books
+            \(components.whereClause)
+            ORDER BY \(components.orderClause)
+            LIMIT ? OFFSET ?
+            """,
+            bindings: bindings,
+            row: decodeBook
+        )
+    }
+
+    func queryPage(_ query: LibraryQuery) throws -> LibraryPage {
+        let books = try self.query(query)
+        let components = queryComponents(for: query)
+        let rawTotal = try database.scalarInt(
+            """
+            SELECT COUNT(*) FROM books
+            \(components.whereClause)
+            """,
+            bindings: components.bindings
+        ) ?? 0
+        guard rawTotal >= 0, rawTotal <= Int64(Int.max) else {
+            throw BookRepositoryError.invalidStoredRecord
+        }
+        return LibraryPage(
+            books: books,
+            totalCount: Int(rawTotal),
+            offset: query.offset
+        )
+    }
+
+    private func queryComponents(for query: LibraryQuery) -> LibraryQueryComponents {
         var predicates: [String] = []
         var bindings: [SQLiteValue] = []
 
@@ -516,17 +568,10 @@ final class BookRepository {
             orderClause = "priority IS NULL ASC, priority \(direction), id ASC"
         }
 
-        bindings.append(.integer(Int64(limit)))
-        bindings.append(.integer(Int64(query.offset)))
-        return try database.query(
-            """
-            SELECT \(bookColumns) FROM books
-            \(whereClause)
-            ORDER BY \(orderClause)
-            LIMIT ? OFFSET ?
-            """,
-            bindings: bindings,
-            row: decodeBook
+        return LibraryQueryComponents(
+            whereClause: whereClause,
+            orderClause: orderClause,
+            bindings: bindings
         )
     }
 
@@ -1717,7 +1762,7 @@ final class BookRepository {
     }
 
     private func checkedLimit(_ limit: Int) throws -> Int {
-        guard (1 ... 1_000).contains(limit) else {
+        guard (1 ... LibraryQuery.maximumPageSize).contains(limit) else {
             throw BookRepositoryError.invalidQuery
         }
         return limit

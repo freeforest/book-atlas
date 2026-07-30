@@ -48,7 +48,7 @@ A user-selected local reading entry contains a stable reference UUID, owning boo
 
 ## Production schema and persistence rules
 
-The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is accessed only through `BookRepository`. The production application opens `Application Support/BookAtlas/book-atlas.sqlite`; XCTest and explicit UI-test launches use an in-memory store.
+The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is accessed only through `BookRepository`. The production application opens `Application Support/BookAtlas/book-atlas.sqlite`; tests use isolated in-memory or temporary stores. The launch benchmark alone reopens a pre-generated fixed-fictional Schema 5 file beneath a controlled process-temporary directory and never resolves the production location.
 
 - Schema version is recorded in both SQLite `user_version` and the append-only `schema_migrations` table.
 - Version 1 creates `books`, `tags`, `book_tags`, `book_collections`, `book_collections_books`, `recommendation_sources`, `book_sources`, `external_links`, and `manual_book_relations`.

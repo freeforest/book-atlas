@@ -11,10 +11,16 @@ Verify release quality and prepare an accurate, privacy-conscious open-source re
 Prompt 10 implementation is complete and awaits independent review. It is not
 a release, tag, signed distribution, notarization, upload, or acceptance.
 Local closure evidence is successful Debug and hardened local Release builds,
-174/174 unit/integration/migration/security/performance tests, and 33/33 UI
+182/182 unit/integration/migration/security/performance tests, and 34/34 UI
 tests with XCUIAutomation initialized. The fixed-fictional performance record
-now includes three-run app launch, database open, first-page load,
+now separates test-data preparation from three-run existing-library launch,
+database open, 200-row first-page load, next-page load, disclosed multi-page
 scrolling/hitch, tag-count, and Schema 1–4→5 migration measurements. The
+ordinary list discloses exact result counts and appends bounded 200-row pages
+through an accessible keyboard action; it no longer silently truncates at
+500. Release Instruments existing-library launch remains unverified because
+the measured desktop trace could not be authorized from this execution
+surface. The
 required human VoiceOver/Accessibility Inspector and appearance/accent/
 small-window/Reduce Motion audit could not be controlled from the current task
 execution surface and remains an explicit unverified release gate.
@@ -48,5 +54,8 @@ execution surface and remains an explicit unverified release gate.
 - manually exercise Light/Dark, a non-default accent, 520×360 and normal
   windows, VoiceOver, Accessibility Inspector, Reduce Motion, the complete
   keyboard path, and macOS 14;
+- run three authorized Release Instruments launches against each
+  pre-generated 1k/5k/10k Schema 5 library and record the same exact-count
+  verification used by Debug;
 - configure release signing, archive verification, notarization, Gatekeeper
   validation, screenshots, release notes, tag, and upload.

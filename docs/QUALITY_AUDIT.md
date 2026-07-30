@@ -10,6 +10,14 @@ release signing/notarization occurred.
   organization, duplicate decisions and transactional merge rollback,
   portability, strict backup/restore and interruption recovery, graph
   invalidation, HTTPS/bookmark safety, and external-reading state isolation.
+- The ordinary library list now fetches a deterministic 200-row first page,
+  exposes the exact filtered total, and keeps a bounded presentation array.
+  “加载更多” and Shift-Command-L append one page; search, filter, sort, and
+  mutation refreshes restart from the first page. Failure retains the rows
+  already shown and exposes a retry action. The status “已显示 N 本，共 T 本”
+  and its page-readiness value are published atomically to keyboard and
+  accessibility clients, so rows after 500 are no longer silently hidden and
+  a following keyboard command cannot race a still-disabled control.
 - The historical migration matrix starts from every formal Schema 1–5
   definition, migrates to Schema 5 twice, and checks the data families
   available at that source version: books/notes, tags, lists/descriptions,
@@ -30,6 +38,15 @@ release signing/notarization occurred.
 - Every UI test launches an in-memory library with fixed fictional seeds and
   fake/no-op external integrations. It never opens a real file picker,
   browser, Apple Books item, pasteboard, user database, or user file.
+- Existing-library launch measurements are the sole exception to the
+  in-memory rule and remain isolated: an unmeasured test process creates a
+  fixed-fictional Schema 5 database in a UUID-named child of the process
+  temporary directory; measured processes can only reopen that exact regular
+  file without SQLite create fallback. Unknown arguments, unsupported sizes,
+  symlinks, non-regular files, unexpected artifacts, and missing databases
+  fail closed rather than resolving the production Application Support path.
+  The test closes the database and removes its database/WAL/SHM/journal files
+  and controlled directory on every normal completion path.
 
 ## Error recovery
 
@@ -151,10 +168,13 @@ performed in this task. These remain explicit release gates.
   configured.
 - Verification is on one Apple M2 MacBook Air with 24 GB memory and macOS
   26.5.2; the declared macOS 14 minimum has not been exercised here.
-- Debug XCUIAutomation produced launch and scrolling/hitch metrics, and the
-  normal Release app produced Instruments launch traces. Release XCTest
-  discovered zero UI cases on Xcode 26.6, so Release sustained scrolling
-  remains unmeasured.
+- Debug XCUIAutomation produced existing-library launch, page-load, and
+  scrolling/hitch metrics. A Release Instruments run using the same
+  pre-generated-library protocol could not be authorized through the current
+  execution surface after its unmeasured preparation step; therefore no
+  Release launch or scrolling number is reported in this closure. Earlier
+  launch numbers that included in-process test-data generation are explicitly
+  superseded and are not treated as an existing-library launch baseline.
 - Backups are unencrypted, recovery copies have no automatic retention policy,
   Possible duplicate review is capped without pagination, and external
   application behavior remains outside Book Atlas's control.

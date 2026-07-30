@@ -1,5 +1,15 @@
 import XCTest
 
+private enum LibraryQueryPageSize {
+    static let value = 200
+}
+
+private enum PerformanceLibraryMode {
+    case prepare
+    case useExisting
+    case cleanup
+}
+
 final class BookAtlasUITests: XCTestCase {
     private let pages = [
         ("library", "书库"),
@@ -147,6 +157,52 @@ final class BookAtlasUITests: XCTestCase {
         element("edit-book-button", in: app).click()
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
         XCTAssertEqual(element("editor-title", in: app).value as? String, "A101")
+    }
+
+    @MainActor
+    func testLibraryPaginationDisclosesCountAndLoadsEveryPageFromKeyboard() {
+        let app = launchInMemoryApp(seedPagination: true)
+        let status = element("library-result-count", in: app)
+        XCTAssertTrue(status.waitForExistence(timeout: 10))
+        XCTAssertTrue(
+            waitForLibraryCount(
+                displayed: 200,
+                total: 501,
+                in: app,
+                timeout: 10
+            )
+        )
+
+        let loadMore = element("library-load-more-button", in: app)
+        XCTAssertTrue(loadMore.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            accessibilityText(of: loadMore).contains("加载更多书籍")
+        )
+
+        app.typeKey("l", modifierFlags: [.command, .shift])
+        XCTAssertTrue(
+            waitForLibraryCount(
+                displayed: 400,
+                total: 501,
+                in: app,
+                timeout: 10
+            )
+        )
+
+        app.typeKey("l", modifierFlags: [.command, .shift])
+        XCTAssertTrue(
+            waitForLibraryCount(
+                displayed: 501,
+                total: 501,
+                in: app,
+                timeout: 10
+            )
+        )
+        XCTAssertTrue(
+            element("library-all-results-loaded", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(loadMore.waitForNonExistence(timeout: 3))
     }
 
     @MainActor
@@ -968,39 +1024,146 @@ final class BookAtlasUITests: XCTestCase {
 
     @MainActor
     private func measureColdLaunch(bookCount: Int) {
+        let sessionID = UUID()
+        preparePerformanceLibrary(
+            sessionID: sessionID,
+            bookCount: bookCount
+        )
+        var measuredApplication: XCUIApplication?
+        defer {
+            measuredApplication?.terminate()
+            cleanupPerformanceLibrary(sessionID: sessionID)
+        }
+
         let options = XCTMeasureOptions()
         options.iterationCount = 3
-        var invocation = 0
         measure(
             metrics: [XCTApplicationLaunchMetric(waitUntilResponsive: true)],
             options: options
         ) {
-            invocation += 1
-            let app = performanceApplication(bookCount: bookCount)
-            app.terminate()
-            let start = ContinuousClock.now
+            measuredApplication?.terminate()
+            let app = performanceApplication(
+                mode: .useExisting,
+                sessionID: sessionID,
+                bookCount: bookCount
+            )
+            measuredApplication = app
             app.launch()
             XCTAssertTrue(
                 element("library-book-list", in: app)
-                    .waitForExistence(timeout: 45)
+                    .waitForExistence(timeout: 30)
             )
-            let duration = start.duration(to: .now)
-            print(
-                """
-                P10_COLD_LAUNCH_BASELINE configuration=\(buildConfiguration) \
-                books=\(bookCount) invocation=\(invocation) \
-                launch_to_loaded_list=\(seconds(duration))
-                """
+            XCTAssertTrue(
+                waitForLibraryCount(
+                    displayed: LibraryQueryPageSize.value,
+                    total: bookCount,
+                    in: app,
+                    timeout: 30
+                ),
+                "Measured process must open the pre-generated \(bookCount)-book library"
             )
         }
     }
 
     @MainActor
     private func measureSustainedListScrolling(bookCount: Int) {
-        let app = performanceApplication(bookCount: bookCount)
+        let sessionID = UUID()
+        preparePerformanceLibrary(
+            sessionID: sessionID,
+            bookCount: bookCount
+        )
+        var activeApplication: XCUIApplication?
+        defer {
+            activeApplication?.terminate()
+            cleanupPerformanceLibrary(sessionID: sessionID)
+        }
+
+        for run in 1 ... 3 {
+            let pageApplication = performanceApplication(
+                mode: .useExisting,
+                sessionID: sessionID,
+                bookCount: bookCount
+            )
+            activeApplication = pageApplication
+            pageApplication.launch()
+            XCTAssertTrue(
+                waitForLibraryCount(
+                    displayed: LibraryQueryPageSize.value,
+                    total: bookCount,
+                    in: pageApplication,
+                    timeout: 30
+                )
+            )
+
+            let pageStart = ContinuousClock.now
+            guard loadNextPerformancePage(
+                expectedDisplayed: LibraryQueryPageSize.value * 2,
+                total: bookCount,
+                in: pageApplication,
+                timeout: 30
+            ) else {
+                XCTFail("The measured next page did not finish loading")
+                return
+            }
+            let pageDuration = pageStart.duration(to: .now)
+            print(
+                """
+                P10_PAGE_LOAD_BASELINE configuration=\(buildConfiguration) \
+                books=\(bookCount) run=\(run) from=\(LibraryQueryPageSize.value) \
+                to=\(LibraryQueryPageSize.value * 2) \
+                next_page=\(seconds(pageDuration))
+                """
+            )
+            pageApplication.terminate()
+            activeApplication = nil
+        }
+
+        let app = performanceApplication(
+            mode: .useExisting,
+            sessionID: sessionID,
+            bookCount: bookCount
+        )
+        activeApplication = app
         app.launch()
         let list = element("library-book-list", in: app)
-        XCTAssertTrue(list.waitForExistence(timeout: 45))
+        XCTAssertTrue(list.waitForExistence(timeout: 30))
+        XCTAssertTrue(
+            waitForLibraryCount(
+                displayed: LibraryQueryPageSize.value,
+                total: bookCount,
+                in: app,
+                timeout: 30
+            )
+        )
+
+        let targetLoadedRows: Int
+        switch bookCount {
+        case 1_000:
+            targetLoadedRows = 1_000
+        case 5_000:
+            targetLoadedRows = 2_000
+        default:
+            targetLoadedRows = 3_000
+        }
+        var loadedRows = LibraryQueryPageSize.value
+        while loadedRows < targetLoadedRows {
+            let expectedRows = min(
+                loadedRows + LibraryQueryPageSize.value,
+                targetLoadedRows
+            )
+            guard loadNextPerformancePage(
+                expectedDisplayed: expectedRows,
+                total: bookCount,
+                in: app,
+                timeout: 30
+            ) else {
+                XCTFail(
+                    "Paging stopped at \(loadedRows) of \(targetLoadedRows) rows"
+                )
+                return
+            }
+            loadedRows = expectedRows
+        }
 
         let options = XCTMeasureOptions()
         options.iterationCount = 3
@@ -1015,37 +1178,126 @@ final class BookAtlasUITests: XCTestCase {
 
         list.click()
         app.typeKey(.upArrow, modifierFlags: .command)
-        var invocation = 0
+        print(
+            """
+            P10_SCROLL_WORKLOAD configuration=\(buildConfiguration) \
+            books=\(bookCount) \
+            loaded_pages=\(targetLoadedRows / LibraryQueryPageSize.value) \
+            loaded_rows=\(targetLoadedRows) scroll_events=4 \
+            absolute_delta_per_event=4800
+            """
+        )
         measure(metrics: metrics, options: options) {
-            invocation += 1
-            let start = ContinuousClock.now
-            for _ in 0 ..< 2 {
-                list.scroll(byDeltaX: 0, deltaY: -4_800)
-            }
-            for _ in 0 ..< 2 {
-                list.scroll(byDeltaX: 0, deltaY: 4_800)
-            }
-            let duration = start.duration(to: .now)
-            print(
-                """
-                P10_SCROLL_BASELINE configuration=\(buildConfiguration) \
-                books=\(bookCount) invocation=\(invocation) \
-                round_trip=\(seconds(duration))
-                """
-            )
+            list.scroll(byDeltaX: 0, deltaY: -4_800)
+            list.scroll(byDeltaX: 0, deltaY: -4_800)
+            list.scroll(byDeltaX: 0, deltaY: 4_800)
+            list.scroll(byDeltaX: 0, deltaY: 4_800)
         }
+        app.terminate()
+        activeApplication = nil
+    }
+
+    @MainActor
+    private func preparePerformanceLibrary(
+        sessionID: UUID,
+        bookCount: Int
+    ) {
+        let app = performanceApplication(
+            mode: .prepare,
+            sessionID: sessionID,
+            bookCount: bookCount
+        )
+        app.launch()
+        XCTAssertTrue(
+            waitForLibraryCount(
+                displayed: LibraryQueryPageSize.value,
+                total: bookCount,
+                in: app,
+                timeout: 120
+            ),
+            "Performance data preparation must finish before the timed process"
+        )
         app.terminate()
     }
 
     @MainActor
-    private func performanceApplication(bookCount: Int) -> XCUIApplication {
+    private func cleanupPerformanceLibrary(sessionID: UUID) {
+        let app = performanceApplication(
+            mode: .cleanup,
+            sessionID: sessionID,
+            bookCount: nil
+        )
+        app.launch()
+        XCTAssertTrue(
+            element("library-empty-state", in: app)
+                .waitForExistence(timeout: 30),
+            "The controlled performance library and SQLite sidecars must be removed"
+        )
+        app.terminate()
+    }
+
+    @MainActor
+    private func performanceApplication(
+        mode: PerformanceLibraryMode,
+        sessionID: UUID,
+        bookCount: Int?
+    ) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = [
-            "-BookAtlasUseInMemoryStore",
-            "-BookAtlasPerformanceBookCount",
-            String(bookCount)
-        ]
+        switch mode {
+        case .prepare:
+            app.launchArguments = [
+                "-BookAtlasPerformancePrepareLibrary",
+                sessionID.uuidString,
+                String(bookCount ?? 0)
+            ]
+        case .useExisting:
+            app.launchArguments = [
+                "-BookAtlasPerformanceUseExistingLibrary",
+                sessionID.uuidString
+            ]
+        case .cleanup:
+            app.launchArguments = [
+                "-BookAtlasPerformanceCleanupLibrary",
+                sessionID.uuidString
+            ]
+        }
         return app
+    }
+
+    @MainActor
+    private func waitForLibraryCount(
+        displayed: Int,
+        total: Int,
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> Bool {
+        let status = app.staticTexts["library-result-count"]
+        guard status.waitForExistence(timeout: timeout) else {
+            return false
+        }
+        let state = displayed < total ? "可以继续加载" : "已全部加载"
+        return waitForAccessibilityText(
+            status,
+            containing: "已显示 \(displayed) 本，共 \(total) 本，\(state)",
+            timeout: timeout
+        )
+    }
+
+    @MainActor
+    private func loadNextPerformancePage(
+        expectedDisplayed: Int,
+        total: Int,
+        in app: XCUIApplication,
+        timeout: TimeInterval
+    ) -> Bool {
+        app.activate()
+        app.typeKey("l", modifierFlags: [.command, .shift])
+        return waitForLibraryCount(
+            displayed: expectedDisplayed,
+            total: total,
+            in: app,
+            timeout: timeout
+        )
     }
 
     private var buildConfiguration: String {
@@ -1069,7 +1321,8 @@ final class BookAtlasUITests: XCTestCase {
         seedRestoreInspection: Bool = false,
         seedGraph: Bool = false,
         seedGraphLimit: Bool = false,
-        seedReadingEntries: Bool = false
+        seedReadingEntries: Bool = false,
+        seedPagination: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
@@ -1099,6 +1352,9 @@ final class BookAtlasUITests: XCTestCase {
         }
         if seedReadingEntries {
             app.launchArguments.append("-BookAtlasSeedReadingEntryUITestData")
+        }
+        if seedPagination {
+            app.launchArguments.append("-BookAtlasSeedPaginationUITestData")
         }
         app.launch()
         return app
@@ -1185,6 +1441,24 @@ final class BookAtlasUITests: XCTestCase {
     ) -> Bool {
         let predicate = NSPredicate(format: "exists == true AND hasKeyboardFocus == true")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func waitForAccessibilityText(
+        _ element: XCUIElement,
+        containing text: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        let predicate = NSPredicate(
+            format: "label CONTAINS %@ OR value CONTAINS %@",
+            text,
+            text
+        )
+        let expectation = XCTNSPredicateExpectation(
+            predicate: predicate,
+            object: element
+        )
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
     }
 

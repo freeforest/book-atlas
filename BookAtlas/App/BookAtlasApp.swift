@@ -56,6 +56,13 @@ struct BookAtlasCommands: Commands {
             }
             .disabled(selection != .library || !libraryStore.hasSelection)
 
+            Button("加载更多书籍") {
+                selection = .library
+                libraryStore.loadMore()
+            }
+            .keyboardShortcut("l", modifiers: [.command, .shift])
+            .disabled(selection != .library || !libraryStore.canLoadMore)
+
             Button("删除所选书籍") {
                 libraryStore.beginDelete()
             }

@@ -119,14 +119,16 @@ final class LibraryQueryBenchmarkTests: XCTestCase {
                 let openDuration = openStart.duration(to: .now)
 
                 let listStart = ContinuousClock.now
-                let books = try repository.query(LibraryQuery())
+                let page = try repository.queryPage(LibraryQuery())
                 let listDuration = listStart.duration(to: .now)
 
                 let tagStart = ContinuousClock.now
                 let tags = try repository.tagSummaries()
                 let tagDuration = tagStart.duration(to: .now)
 
-                XCTAssertEqual(books.count, 500)
+                XCTAssertEqual(page.books.count, LibraryQuery.defaultPageSize)
+                XCTAssertEqual(page.totalCount, size)
+                XCTAssertEqual(page.hasMore, size > LibraryQuery.defaultPageSize)
                 XCTAssertEqual(tags.count, 32)
                 XCTAssertEqual(tags.reduce(0) { $0 + $1.bookCount }, size)
                 try database.close()
