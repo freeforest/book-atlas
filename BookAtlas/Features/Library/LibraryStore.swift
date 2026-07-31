@@ -65,6 +65,29 @@ enum LibraryLoadingState: Equatable {
     case failed(LibraryUserFacingError)
 }
 
+enum LibrarySelectionIssue: Equatable {
+    case requestedBookUnavailable
+    case outsideCurrentResults
+
+    var title: String {
+        switch self {
+        case .requestedBookUnavailable:
+            "找不到请求的书籍"
+        case .outsideCurrentResults:
+            "所选书籍不在当前结果中"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .requestedBookUnavailable:
+            "这本书可能已被删除。书库列表保持不变，可以选择其他书籍。"
+        case .outsideCurrentResults:
+            "书籍可能已被删除或不符合当前搜索与筛选条件；没有改选其他书籍。"
+        }
+    }
+}
+
 struct BookEditorSession: Identifiable {
     enum Mode {
         case create
@@ -116,6 +139,22 @@ struct DuplicateReviewSession: Identifiable {
     let possibleLookupWasTruncated: Bool
 }
 
+private enum LibrarySelectionRequest {
+    case automatic
+    case exact(UUID, missingIssue: LibrarySelectionIssue)
+}
+
+private enum ResolvedLibrarySelection {
+    case automatic
+    case exact(Book)
+    case unavailable(LibrarySelectionIssue)
+}
+
+private struct ResolvedLibraryPage {
+    let page: LibraryPage
+    let selection: ResolvedLibrarySelection
+}
+
 @MainActor
 final class LibraryStore: ObservableObject {
     @Published private(set) var loadingState: LibraryLoadingState = .loading
@@ -125,6 +164,8 @@ final class LibraryStore: ObservableObject {
     @Published private(set) var isQuerying = false
     @Published private(set) var isLoadingMore = false
     @Published private(set) var loadMoreError: LibraryUserFacingError?
+    @Published private(set) var focusedBook: Book?
+    @Published private(set) var selectionIssue: LibrarySelectionIssue?
     @Published var selectedBookID: UUID?
     @Published var editorSession: BookEditorSession?
     @Published var deletionCandidate: Book?
@@ -279,9 +320,9 @@ final class LibraryStore: ObservableObject {
                 store.portability.seedRestoreInspectionForUITesting()
             }
             if arguments.contains("-BookAtlasSeedReadingEntryUITestData") {
-                store.selectedBookID = UUID(
+                store.focusBook(UUID(
                     uuidString: "00000000-0000-0000-0000-000000000101"
-                )!
+                )!)
             }
             if arguments.contains("-BookAtlasSeedGraphUITestData")
                 || arguments.contains("-BookAtlasSeedGraphLimitUITestData")
@@ -289,12 +330,26 @@ final class LibraryStore: ObservableObject {
                 let graphCenterID = UUID(
                     uuidString: "00000000-0000-0000-0000-000000000601"
                 )!
-                store.selectedBookID = graphCenterID
+                store.focusBook(graphCenterID)
                 if arguments.contains("-BookAtlasSeedGraphLimitUITestData") {
                     store.graph.load(
                         centerBookID: graphCenterID,
                         options: GraphBuildOptions(maximumNodes: 20, maximumEdges: 50)
                     )
+                }
+            }
+            if arguments.contains("-BookAtlasSeedPaginationUITestData") {
+                let centerID = UUID(
+                    uuidString: "30000000-0000-0000-0000-000000000500"
+                )!
+                let targetID = UUID(
+                    uuidString: "30000000-0000-0000-0000-000000000042"
+                )!
+                store.graph.load(centerBookID: centerID)
+                Task { @MainActor [weak store] in
+                    guard let store else { return }
+                    await store.graph.waitForPendingWork()
+                    store.graph.selectNode(targetID)
                 }
             }
             return store
@@ -310,6 +365,19 @@ final class LibraryStore: ObservableObject {
             return nil
         }
         return books.first { $0.id == selectedBookID }
+            ?? focusedBook.flatMap {
+                $0.id == selectedBookID ? $0 : nil
+            }
+    }
+
+    var pinnedFocusedBook: Book? {
+        guard let focusedBook,
+              selectedBookID == focusedBook.id,
+              !books.contains(where: { $0.id == focusedBook.id })
+        else {
+            return nil
+        }
+        return focusedBook
     }
 
     var hasSelection: Bool {
@@ -332,7 +400,10 @@ final class LibraryStore: ObservableObject {
     }
 
     var resultCountDescription: String {
-        "已显示 \(books.count) 本，共 \(totalBookCount) 本"
+        let base = "已显示 \(books.count) 本，共 \(totalBookCount) 本"
+        return pinnedFocusedBook == nil
+            ? base
+            : "\(base)，另显示 1 本定位书籍"
     }
 
     var resultPageStateDescription: String {
@@ -373,7 +444,23 @@ final class LibraryStore: ObservableObject {
         query = LibraryQuery()
         resetPagination()
         selectedBookID = id
-        scheduleQuery(delay: nil)
+        focusedBook = nil
+        selectionIssue = nil
+        scheduleQuery(
+            delay: nil,
+            selectionRequest: .exact(
+                id,
+                missingIssue: .requestedBookUnavailable
+            )
+        )
+    }
+
+    func selectBook(_ id: UUID?) {
+        selectedBookID = id
+        selectionIssue = nil
+        if focusedBook?.id != id {
+            focusedBook = nil
+        }
     }
 
     func updateSearchText(_ text: String) {
@@ -458,6 +545,11 @@ final class LibraryStore: ObservableObject {
 
                 self.books.append(contentsOf: page.books)
                 self.totalBookCount = page.totalCount
+                if let focusedBook = self.focusedBook,
+                   page.books.contains(where: { $0.id == focusedBook.id })
+                {
+                    self.focusedBook = nil
+                }
                 self.isLoadingMore = false
                 self.loadMoreError = nil
             } catch is CancellationError {
@@ -827,12 +919,20 @@ final class LibraryStore: ObservableObject {
         await graph.waitForPendingWork()
     }
 
-    private func scheduleQuery(delay: Duration?) {
+    private func scheduleQuery(
+        delay: Duration?,
+        selectionRequest explicitSelectionRequest: LibrarySelectionRequest? = nil
+    ) {
         guard let catalog else {
             loadingState = .failed(.databaseUnavailable)
             return
         }
 
+        let selectionRequest = explicitSelectionRequest
+            ?? selectedBookID.map {
+                .exact($0, missingIssue: .outsideCurrentResults)
+            }
+            ?? .automatic
         queryTask?.cancel()
         loadMoreTask?.cancel()
         let requestID = UUID()
@@ -849,12 +949,17 @@ final class LibraryStore: ObservableObject {
                     try await Task.sleep(for: delay)
                 }
                 try Task.checkCancellation()
-                let page = try await catalog.queryBookPage(requestedQuery)
-                try Task.checkCancellation()
-                guard let self, self.activeRequestID == requestID else {
+                guard let self,
+                      let resolved = try await self.resolvePage(
+                        catalog: catalog,
+                        query: requestedQuery,
+                        selectionRequest: selectionRequest,
+                        requestID: requestID
+                      )
+                else {
                     return
                 }
-                self.apply(page, selecting: self.selectedBookID)
+                self.apply(resolved)
             } catch is CancellationError {
                 return
             } catch {
@@ -864,6 +969,8 @@ final class LibraryStore: ObservableObject {
                 self.books = []
                 self.totalBookCount = 0
                 self.selectedBookID = nil
+                self.focusedBook = nil
+                self.selectionIssue = nil
                 self.isQuerying = false
                 self.isLoadingMore = false
                 self.loadMoreError = nil
@@ -876,18 +983,41 @@ final class LibraryStore: ObservableObject {
         guard let catalog else {
             return
         }
-        beginQueryReplacement()
+        let requestID = beginQueryReplacement()
         var requestedQuery = query
         requestedQuery.limit = LibraryQuery.defaultPageSize
         requestedQuery.offset = 0
+        let selectionRequest = id.map {
+            LibrarySelectionRequest.exact(
+                $0,
+                missingIssue: .outsideCurrentResults
+            )
+        } ?? .automatic
+        selectedBookID = id
+        focusedBook = nil
+        selectionIssue = nil
         isQuerying = true
         do {
-            let refreshed = try await catalog.queryBookPage(requestedQuery)
-            apply(refreshed, selecting: id)
+            guard let resolved = try await resolvePage(
+                catalog: catalog,
+                query: requestedQuery,
+                selectionRequest: selectionRequest,
+                requestID: requestID
+            ) else {
+                return
+            }
+            apply(resolved)
+        } catch is CancellationError {
+            return
         } catch {
+            guard activeRequestID == requestID else {
+                return
+            }
             books = []
             totalBookCount = 0
             selectedBookID = nil
+            focusedBook = nil
+            selectionIssue = nil
             isQuerying = false
             isLoadingMore = false
             loadMoreError = nil
@@ -895,17 +1025,63 @@ final class LibraryStore: ObservableObject {
         }
     }
 
-    private func apply(_ page: LibraryPage, selecting id: UUID?) {
-        books = page.books
-        totalBookCount = page.totalCount
-        if let id, page.books.contains(where: { $0.id == id }) {
-            selectedBookID = id
-        } else if let selectedBookID,
-                  page.books.contains(where: { $0.id == selectedBookID })
-        {
-            self.selectedBookID = selectedBookID
-        } else {
-            selectedBookID = page.books.first?.id
+    private func resolvePage(
+        catalog: any LibraryCataloging,
+        query: LibraryQuery,
+        selectionRequest: LibrarySelectionRequest,
+        requestID: UUID
+    ) async throws -> ResolvedLibraryPage? {
+        let resolved: ResolvedLibraryPage
+        switch selectionRequest {
+        case .automatic:
+            let page = try await catalog.queryBookPage(query)
+            resolved = ResolvedLibraryPage(
+                page: page,
+                selection: .automatic
+            )
+        case let .exact(id, missingIssue):
+            let focused = try await catalog.queryBookPage(
+                query,
+                focusedBookID: id
+            )
+            if let book = focused.focusedBook, book.id == id {
+                resolved = ResolvedLibraryPage(
+                    page: focused.page,
+                    selection: .exact(book)
+                )
+            } else {
+                resolved = ResolvedLibraryPage(
+                    page: focused.page,
+                    selection: .unavailable(missingIssue)
+                )
+            }
+        }
+
+        try Task.checkCancellation()
+        guard activeRequestID == requestID else {
+            return nil
+        }
+        return resolved
+    }
+
+    private func apply(_ resolved: ResolvedLibraryPage) {
+        books = resolved.page.books
+        totalBookCount = resolved.page.totalCount
+        switch resolved.selection {
+        case .automatic:
+            selectedBookID = books.first?.id
+            focusedBook = nil
+            selectionIssue = nil
+        case let .exact(book):
+            selectedBookID = book.id
+            focusedBook = books.contains(where: { $0.id == book.id })
+                ? nil
+                : book
+            selectionIssue = nil
+        case let .unavailable(issue):
+            selectedBookID = nil
+            focusedBook = nil
+            selectionIssue = issue
         }
         isQuerying = false
         isLoadingMore = false
@@ -922,13 +1098,16 @@ final class LibraryStore: ObservableObject {
         loadMoreError = nil
     }
 
-    private func beginQueryReplacement() {
+    @discardableResult
+    private func beginQueryReplacement() -> UUID {
         loadMoreTask?.cancel()
-        activeRequestID = UUID()
+        let requestID = UUID()
+        activeRequestID = requestID
         query.limit = LibraryQuery.defaultPageSize
         query.offset = 0
         isLoadingMore = false
         loadMoreError = nil
+        return requestID
     }
 
     private func toggle<Value: Hashable>(_ value: Value, in values: inout Set<Value>) {
@@ -1000,6 +1179,22 @@ final class LibraryStore: ObservableObject {
                     )
                 }
             }
+            _ = try repository.addManualRelation(
+                try ManualBookRelation(
+                    id: UUID(
+                        uuidString: "30000000-0000-0000-0000-000000000900"
+                    )!,
+                    sourceBookID: UUID(
+                        uuidString: "30000000-0000-0000-0000-000000000500"
+                    )!,
+                    targetBookID: UUID(
+                        uuidString: "30000000-0000-0000-0000-000000000042"
+                    )!,
+                    kind: .related,
+                    note: "固定虚构分页定位关系",
+                    createdAt: timestamp
+                )
+            )
         }
         if seedFictionalUITestBooks || seedReadingEntryUITestData {
             _ = try repository.create(

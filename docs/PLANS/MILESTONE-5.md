@@ -11,14 +11,17 @@ Verify release quality and prepare an accurate, privacy-conscious open-source re
 Prompt 10 implementation is complete and awaits independent review. It is not
 a release, tag, signed distribution, notarization, upload, or acceptance.
 Local closure evidence is successful Debug and hardened local Release builds,
-182/182 unit/integration/migration/security/performance tests, and 34/34 UI
+188/188 unit/integration/migration/security/performance tests, and 35/35 UI
 tests with XCUIAutomation initialized. The fixed-fictional performance record
 now separates test-data preparation from three-run existing-library launch,
 database open, 200-row first-page load, next-page load, disclosed multi-page
 scrolling/hitch, tag-count, and Schema 1–4→5 migration measurements. The
 ordinary list discloses exact result counts and appends bounded 200-row pages
 through an accessible keyboard action; it no longer silently truncates at
-500. Release Instruments existing-library launch remains unverified because
+500. Graph focus and create/edit/merge refreshes preserve an explicit UUID
+beyond the first page with a bounded first-page-plus-one lookup; missing or
+excluded targets clear selection instead of selecting an unrelated first
+row. Release Instruments existing-library launch remains unverified because
 the measured desktop trace could not be authorized from this execution
 surface. The
 required human VoiceOver/Accessibility Inspector and appearance/accent/

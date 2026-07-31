@@ -70,6 +70,16 @@ struct LibraryPage: Equatable, Sendable {
     }
 }
 
+/// A bounded list page plus one explicitly requested book when that identity
+/// belongs to the same query but falls outside the page.
+///
+/// The focused book is presentation state, not another list page. This keeps
+/// UUID-based navigation exact without loading every preceding row.
+struct FocusedLibraryPage: Equatable, Sendable {
+    let page: LibraryPage
+    let focusedBook: Book?
+}
+
 struct TagSummary: Identifiable, Equatable, Sendable {
     let tag: Tag
     let bookCount: Int

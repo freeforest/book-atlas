@@ -839,6 +839,18 @@ private actor GraphRevisionRaceCatalog: LibraryCataloging {
     }
 
     func queryBooks(_ query: LibraryQuery) throws -> [Book] { [] }
+    func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage {
+        LibraryPage(books: [], totalCount: 0, offset: query.offset)
+    }
+    func queryBookPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) async throws -> FocusedLibraryPage {
+        FocusedLibraryPage(
+            page: try queryBookPage(query),
+            focusedBook: nil
+        )
+    }
     func createBook(from editor: BookEditorDraft) throws -> Book {
         throw BookRepositoryError.entityNotFound
     }
@@ -906,6 +918,18 @@ private actor GraphCatalogProbe: LibraryCataloging {
     }
 
     func queryBooks(_ query: LibraryQuery) throws -> [Book] { [] }
+    func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage {
+        LibraryPage(books: [], totalCount: 0, offset: query.offset)
+    }
+    func queryBookPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) async throws -> FocusedLibraryPage {
+        FocusedLibraryPage(
+            page: try queryBookPage(query),
+            focusedBook: nil
+        )
+    }
     func createBook(from editor: BookEditorDraft) throws -> Book {
         throw BookRepositoryError.entityNotFound
     }

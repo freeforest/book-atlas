@@ -8,6 +8,10 @@ enum CatalogServiceError: Error, Equatable {
 protocol LibraryCataloging: Actor {
     func queryBooks(_ query: LibraryQuery) throws -> [Book]
     func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage
+    func queryBookPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) async throws -> FocusedLibraryPage
     func createBook(from editor: BookEditorDraft) throws -> Book
     func updateBook(_ book: Book, from editor: BookEditorDraft) throws -> Book
     func deleteBook(_ book: Book) throws
@@ -104,15 +108,6 @@ protocol LibraryCataloging: Actor {
 }
 
 extension LibraryCataloging {
-    func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage {
-        let books = try queryBooks(query)
-        return LibraryPage(
-            books: books,
-            totalCount: query.offset + books.count,
-            offset: query.offset
-        )
-    }
-
     func duplicateCandidates(
         for editor: BookEditorDraft,
         proposedID: UUID,
@@ -309,6 +304,13 @@ actor LibraryCatalogService: LibraryCataloging {
 
     func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage {
         try repository.queryPage(query)
+    }
+
+    func queryBookPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) async throws -> FocusedLibraryPage {
+        try repository.queryPage(query, focusedBookID: focusedBookID)
     }
 
     func createBook(from editor: BookEditorDraft) throws -> Book {

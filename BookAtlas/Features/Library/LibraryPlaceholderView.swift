@@ -143,7 +143,34 @@ struct LibraryView: View {
             } else {
                 HStack(spacing: 0) {
                     VStack(spacing: 0) {
-                        List(selection: $store.selectedBookID) {
+                        if let focusedBook = store.pinnedFocusedBook {
+                            GroupBox("已定位书籍") {
+                                Button {
+                                    store.selectBook(focusedBook.id)
+                                } label: {
+                                    LibraryBookRow(book: focusedBook)
+                                        .frame(
+                                            maxWidth: .infinity,
+                                            alignment: .leading
+                                        )
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier(
+                                    "library-book-\(focusedBook.id.uuidString)"
+                                )
+                            }
+                            .padding(.horizontal, 8)
+                            .padding(.top, 8)
+                            .accessibilityIdentifier(
+                                "library-focused-book-section"
+                            )
+                        }
+                        List(
+                            selection: Binding(
+                                get: { store.selectedBookID },
+                                set: { store.selectBook($0) }
+                            )
+                        ) {
                             ForEach(store.books) { book in
                                 LibraryBookRow(book: book)
                                     .tag(book.id)
@@ -166,6 +193,22 @@ struct LibraryView: View {
                             readingEntries: store.readingEntries,
                             onShowGraph: onShowGraph
                         )
+                    } else if let issue = store.selectionIssue {
+                        ContentUnavailableView {
+                            Label(issue.title, systemImage: "book.closed")
+                        } description: {
+                            Text(issue.message)
+                        }
+                        .accessibilityIdentifier(
+                            "library-selection-unavailable"
+                        )
+                    } else if store.isQuerying {
+                        ContentUnavailableView(
+                            "正在定位书籍",
+                            systemImage: "scope",
+                            description: Text("正在读取本地书库中的目标记录。")
+                        )
+                        .accessibilityIdentifier("library-selection-loading")
                     } else {
                         ContentUnavailableView(
                             "选择一本书",

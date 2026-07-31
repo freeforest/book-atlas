@@ -577,6 +577,239 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertFalse(store.books.contains(where: { $0.id == mergeSource.id }))
     }
 
+    func testFocusBookKeepsThirdPageIdentityAndMissingTargetNeverSelectsFirstRow() async throws {
+        let (service, seededBooks) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+
+        let target = seededBooks[42]
+        XCTAssertFalse(store.books.contains(where: { $0.id == target.id }))
+        store.focusBook(target.id)
+        await store.waitForPendingWork()
+        await Task.yield()
+
+        XCTAssertEqual(store.selectedBookID, target.id)
+        XCTAssertEqual(store.selectedBook?.id, target.id)
+        XCTAssertEqual(store.selectedBook?.title, target.title)
+        XCTAssertEqual(store.pinnedFocusedBook?.id, target.id)
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 501)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+        XCTAssertNil(store.selectionIssue)
+        XCTAssertTrue(
+            store.resultCountDescription.contains("另显示 1 本定位书籍")
+        )
+
+        let loadedIDs = store.books.map(\.id)
+        store.focusBook(
+            UUID(uuidString: "53000000-0000-0000-ffff-000000000999")!
+        )
+        await store.waitForPendingWork()
+
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertNil(store.selectedBook)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertEqual(
+            store.selectionIssue,
+            .requestedBookUnavailable
+        )
+        XCTAssertEqual(store.books.map(\.id), loadedIDs)
+        XCTAssertEqual(store.totalBookCount, 501)
+    }
+
+    func testFilteringOutFocusedBookClearsSelectionWithoutChoosingAnotherBook() async throws {
+        let (service, seededBooks) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+
+        let target = seededBooks[42]
+        store.focusBook(target.id)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.selectedBookID, target.id)
+
+        store.updateSearchText("分页身份 001")
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(store.books.map(\.id), [seededBooks[1].id])
+        XCTAssertEqual(store.totalBookCount, 1)
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertNil(store.selectedBook)
+        XCTAssertEqual(store.selectionIssue, .outsideCurrentResults)
+        XCTAssertNotEqual(store.selectedBookID, seededBooks[1].id)
+    }
+
+    func testCreateAndEditKeepOffPageIdentityWithoutLoadingTheWholeResult() async throws {
+        let (service, seededBooks) = try await makePagedCatalog(
+            now: {
+                FictionalLibraryFixtures.timestamp
+                    .addingTimeInterval(10_000)
+            }
+        )
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        store.setSort(field: .createdAt, direction: .ascending)
+        await store.waitForPendingWork()
+
+        store.beginCreate()
+        let createSession = try XCTUnwrap(store.editorSession)
+        guard case .success = await store.save(
+            BookEditorDraft(
+                title: "《分页末尾新书》",
+                author: "固定新书作者"
+            ),
+            for: createSession
+        ) else {
+            return XCTFail("Expected the off-page create to succeed")
+        }
+
+        let createdID = try XCTUnwrap(store.selectedBookID)
+        XCTAssertEqual(store.selectedBook?.id, createdID)
+        XCTAssertEqual(store.selectedBook?.title, "《分页末尾新书》")
+        XCTAssertEqual(store.pinnedFocusedBook?.id, createdID)
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 502)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+        XCTAssertFalse(store.books.contains(where: { $0.id == createdID }))
+
+        store.loadMore()
+        await store.waitForPendingWork()
+        store.loadMore()
+        await store.waitForPendingWork()
+        let editTarget = seededBooks[450]
+        XCTAssertTrue(store.books.contains(where: { $0.id == editTarget.id }))
+        store.selectBook(editTarget.id)
+        store.beginEdit()
+        let editSession = try XCTUnwrap(store.editorSession)
+        guard case .success = await store.save(
+            BookEditorDraft(
+                title: "《分页末尾已更新》",
+                author: editTarget.author
+            ),
+            for: editSession
+        ) else {
+            return XCTFail("Expected the off-page edit to succeed")
+        }
+
+        XCTAssertEqual(store.selectedBookID, editTarget.id)
+        XCTAssertEqual(store.selectedBook?.id, editTarget.id)
+        XCTAssertEqual(store.selectedBook?.title, "《分页末尾已更新》")
+        XCTAssertEqual(store.pinnedFocusedBook?.id, editTarget.id)
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 502)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+        XCTAssertFalse(store.books.contains(where: { $0.id == editTarget.id }))
+    }
+
+    func testMergeKeepsOffPageRetainedIdentityAndRemovesSourceWithoutSelectingFirstRow() async throws {
+        let (service, seededBooks) = try await makePagedCatalog(
+            duplicatePair: [450, 451]
+        ) {
+            FictionalLibraryFixtures.timestamp
+                .addingTimeInterval(10_000)
+        }
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        store.setSort(field: .createdAt, direction: .ascending)
+        await store.waitForPendingWork()
+        store.loadMore()
+        await store.waitForPendingWork()
+        store.loadMore()
+        await store.waitForPendingWork()
+
+        let retained = seededBooks[450]
+        let source = seededBooks[451]
+        store.selectBook(source.id)
+        store.reviewSelectedBookForDuplicates()
+        await store.waitForPendingWork()
+        XCTAssertTrue(
+            try XCTUnwrap(store.duplicateReview)
+                .candidates
+                .contains(where: { $0.id == retained.id })
+        )
+        store.selectedDuplicateID = retained.id
+        store.beginMergePreview()
+        await store.waitForPendingWork()
+        store.confirmMerge()
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(store.selectedBookID, retained.id)
+        XCTAssertEqual(store.selectedBook?.id, retained.id)
+        XCTAssertEqual(store.pinnedFocusedBook?.id, retained.id)
+        XCTAssertEqual(store.totalBookCount, 500)
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+        XCTAssertFalse(store.books.contains(where: { $0.id == source.id }))
+        XCTAssertNotEqual(store.selectedBookID, store.books.first?.id)
+
+        let sourceLookup = try await service.queryBookPage(
+            LibraryQuery(
+                sortField: .createdAt,
+                sortDirection: .ascending
+            ),
+            focusedBookID: source.id
+        )
+        XCTAssertNil(sourceLookup.focusedBook)
+    }
+
+    func testLateOldFocusCannotOverrideNewerFocusedIdentityOrPage() async throws {
+        let slow = try Book(
+            id: UUID(
+                uuidString: "54000000-0000-0000-0000-000000000001"
+            )!,
+            draft: BookDraft(
+                title: "《迟到定位 A》",
+                author: "固定虚构作者"
+            ),
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+        let fast = try Book(
+            id: UUID(
+                uuidString: "54000000-0000-0000-0000-000000000002"
+            )!,
+            draft: BookDraft(
+                title: "《最新定位 B》",
+                author: "固定虚构作者"
+            ),
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+        let first = try Book(
+            id: UUID(
+                uuidString: "54000000-0000-0000-0000-000000000003"
+            )!,
+            draft: BookDraft(
+                title: "《首批无关书籍》",
+                author: "固定虚构作者"
+            ),
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+        let catalog = FocusRaceCatalog(
+            slowBook: slow,
+            fastBook: fast,
+            firstBook: first
+        )
+        let store = LibraryStore(catalog: catalog)
+        await store.waitForPendingWork()
+
+        store.focusBook(slow.id)
+        await catalog.waitUntilSlowFocusStarts()
+        store.focusBook(fast.id)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.selectedBookID, fast.id)
+        XCTAssertEqual(store.selectedBook?.title, fast.title)
+        XCTAssertEqual(store.totalBookCount, 3)
+
+        await catalog.releaseSlowFocus()
+        try await Task.sleep(for: .milliseconds(20))
+
+        XCTAssertEqual(store.selectedBookID, fast.id)
+        XCTAssertEqual(store.selectedBook?.id, fast.id)
+        XCTAssertEqual(store.selectedBook?.title, fast.title)
+        XCTAssertEqual(store.pinnedFocusedBook?.id, fast.id)
+        XCTAssertEqual(store.books.map(\.id), [first.id])
+        XCTAssertEqual(store.totalBookCount, 3)
+        XCTAssertNil(store.selectionIssue)
+    }
+
     func testPerformanceLibraryUsesOnlyControlledExistingTemporaryDatabase() async throws {
         let temporaryRoot = FileManager.default.temporaryDirectory
             .appendingPathComponent(
@@ -799,6 +1032,131 @@ final class LibraryStoreTests: XCTestCase {
             )
         }
     }
+
+}
+
+private func makePagedCatalog(
+    count: Int = 501,
+    duplicatePair: Set<Int> = [],
+    now: @escaping @Sendable () -> Date = Date.init
+) async throws -> (LibraryCatalogService, [Book]) {
+    try await Task.detached {
+        let repository = try BookRepository.inMemory()
+        var books: [Book] = []
+        try repository.transaction {
+            for index in 0 ..< count {
+                let isDuplicate = duplicatePair.contains(index)
+                books.append(
+                    try repository.create(
+                        BookDraft(
+                            title: isDuplicate
+                                ? "《分页合并身份》"
+                                : String(format: "《分页身份 %03d》", index),
+                            author: isDuplicate
+                                ? "固定合并作者"
+                                : String(format: "固定虚构作者 %03d", index)
+                        ),
+                        id: UUID(
+                            uuidString: String(
+                                format: "53000000-0000-0000-0000-%012d",
+                                index
+                            )
+                        )!,
+                        at: FictionalLibraryFixtures.timestamp
+                            .addingTimeInterval(TimeInterval(index))
+                    )
+                )
+            }
+        }
+        return (
+            LibraryCatalogService(repository: repository, now: now),
+            books
+        )
+    }.value
+}
+
+private actor FocusRaceCatalog: LibraryCataloging {
+    private let slowBook: Book
+    private let fastBook: Book
+    private let firstBook: Book
+    private var slowFocusStarted = false
+    private var slowFocusStartWaiters: [CheckedContinuation<Void, Never>] = []
+    private var slowFocusContinuation: CheckedContinuation<Void, Never>?
+
+    init(slowBook: Book, fastBook: Book, firstBook: Book) {
+        self.slowBook = slowBook
+        self.fastBook = fastBook
+        self.firstBook = firstBook
+    }
+
+    func waitUntilSlowFocusStarts() async {
+        if slowFocusStarted {
+            return
+        }
+        await withCheckedContinuation { continuation in
+            slowFocusStartWaiters.append(continuation)
+        }
+    }
+
+    func releaseSlowFocus() {
+        slowFocusContinuation?.resume()
+        slowFocusContinuation = nil
+    }
+
+    func queryBooks(_ query: LibraryQuery) throws -> [Book] {
+        [firstBook]
+    }
+
+    func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage {
+        LibraryPage(
+            books: [firstBook],
+            totalCount: 3,
+            offset: query.offset
+        )
+    }
+
+    func queryBookPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) async throws -> FocusedLibraryPage {
+        if focusedBookID == slowBook.id {
+            slowFocusStarted = true
+            let waiters = slowFocusStartWaiters
+            slowFocusStartWaiters.removeAll()
+            waiters.forEach { $0.resume() }
+            await withCheckedContinuation { continuation in
+                slowFocusContinuation = continuation
+            }
+            return FocusedLibraryPage(
+                page: LibraryPage(
+                    books: [slowBook],
+                    totalCount: 1,
+                    offset: 0
+                ),
+                focusedBook: slowBook
+            )
+        }
+        return FocusedLibraryPage(
+            page: try queryBookPage(query),
+            focusedBook: focusedBookID == fastBook.id ? fastBook : nil
+        )
+    }
+
+    func createBook(from editor: BookEditorDraft) throws -> Book {
+        throw TestFailure.failed
+    }
+
+    func updateBook(_ book: Book, from editor: BookEditorDraft) throws -> Book {
+        throw TestFailure.failed
+    }
+
+    func deleteBook(_ book: Book) throws {
+        throw TestFailure.failed
+    }
+
+    private enum TestFailure: Error {
+        case failed
+    }
 }
 
 private actor LoadMoreRetryCatalog: LibraryCataloging {
@@ -823,6 +1181,17 @@ private actor LoadMoreRetryCatalog: LibraryCataloging {
             books: Array(books.dropFirst(query.offset).prefix(pageSize)),
             totalCount: books.count,
             offset: query.offset
+        )
+    }
+
+    func queryBookPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) async throws -> FocusedLibraryPage {
+        let page = try queryBookPage(query)
+        return FocusedLibraryPage(
+            page: page,
+            focusedBook: books.first { $0.id == focusedBookID }
         )
     }
 
@@ -857,6 +1226,28 @@ private actor FailingCatalog: LibraryCataloging {
             throw TestFailure.failed
         }
         return books
+    }
+
+    func queryBookPage(_ query: LibraryQuery) throws -> LibraryPage {
+        let books = try queryBooks(query)
+        return LibraryPage(
+            books: Array(
+                books.dropFirst(query.offset).prefix(query.limit)
+            ),
+            totalCount: books.count,
+            offset: query.offset
+        )
+    }
+
+    func queryBookPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) async throws -> FocusedLibraryPage {
+        let page = try queryBookPage(query)
+        return FocusedLibraryPage(
+            page: page,
+            focusedBook: books.first { $0.id == focusedBookID }
+        )
     }
 
     func createBook(from editor: BookEditorDraft) throws -> Book {

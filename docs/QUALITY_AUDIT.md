@@ -18,6 +18,13 @@ release signing/notarization occurred.
   and its page-readiness value are published atomically to keyboard and
   accessibility clients, so rows after 500 are no longer silently hidden and
   a following keyboard command cannot race a still-disabled control.
+- Explicit UUID focus from the graph and after create/edit/merge is identity
+  preserving across page boundaries. The catalog returns the normal first
+  page plus at most one query-filtered UUID match; the detail and a separate
+  accessible “已定位书籍” row remain bound to that identity. Missing, deleted,
+  or excluded targets clear selection and show a redacted recoverable state
+  instead of substituting another book. Cancellation plus request-generation
+  checks reject late focus/query/page results.
 - The historical migration matrix starts from every formal Schema 1–5
   definition, migrates to Schema 5 twice, and checks the data families
   available at that source version: books/notes, tags, lists/descriptions,

@@ -343,6 +343,48 @@ final class LibraryQueryTests: XCTestCase {
         XCTAssertFalse(remainingIDs.contains(books[1].id))
     }
 
+    func testFocusedPageReturnsOneMatchingOffPageIdentityWithoutExpandingThePage() throws {
+        try repository.transaction {
+            for index in 0 ..< 501 {
+                _ = try repository.create(
+                    BookDraft(
+                        title: String(format: "《有界定位 %03d》", index),
+                        author: "固定虚构作者"
+                    ),
+                    id: pagedID(index),
+                    at: FictionalLibraryFixtures.timestamp
+                        .addingTimeInterval(TimeInterval(index))
+                )
+            }
+        }
+
+        let targetID = pagedID(450)
+        let query = LibraryQuery(
+            sortField: .createdAt,
+            sortDirection: .ascending
+        )
+        let focused = try repository.queryPage(
+            query,
+            focusedBookID: targetID
+        )
+
+        XCTAssertEqual(focused.page.books.count, 200)
+        XCTAssertEqual(focused.page.totalCount, 501)
+        XCTAssertFalse(focused.page.books.contains(where: { $0.id == targetID }))
+        XCTAssertEqual(focused.focusedBook?.id, targetID)
+        XCTAssertEqual(focused.focusedBook?.title, "《有界定位 450》")
+
+        var excludedQuery = query
+        excludedQuery.searchText = "有界定位 001"
+        let excluded = try repository.queryPage(
+            excludedQuery,
+            focusedBookID: targetID
+        )
+        XCTAssertEqual(excluded.page.books.map(\.id), [pagedID(1)])
+        XCTAssertEqual(excluded.page.totalCount, 1)
+        XCTAssertNil(excluded.focusedBook)
+    }
+
     private func allPages(for baseQuery: LibraryQuery) throws -> [LibraryPage] {
         var pages: [LibraryPage] = []
         var query = baseQuery

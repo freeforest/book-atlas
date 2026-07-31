@@ -4,7 +4,7 @@
 
 `BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus `BookAtlasTests` and `BookAtlasUITests`. It targets macOS 14.0, uses only SwiftUI and AppKit supplied by macOS, and is sandboxed. The Debug bundle identifier is the intentional placeholder `com.example.BookAtlas`; release signing, distribution identity, and notarization are not configured.
 
-The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
+The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. An explicit focus request returns that same bounded page plus at most one book selected by UUID under the same filters; it does not scan preceding pages or expand the page size. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
 The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 9's independent evidence is a successful Debug build, 171/171 unit/integration/migration/security/performance tests, and 26/26 UI tests. Prompt 10 quality and open-source preparation is implemented and awaits independent review. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
 
@@ -34,7 +34,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-debug-build \
+  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-debug \
   build
 
 xcodebuild \
@@ -42,7 +42,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Release \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-release-build \
+  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-release \
   build
 ```
 
@@ -60,8 +60,8 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-unit-v4 \
-  -resultBundlePath /tmp/bookatlas-p10-nogo3-final-unit-v4.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-unit \
+  -resultBundlePath /tmp/bookatlas-p10-nogo4-final-unit.xcresult \
   -only-testing:BookAtlasTests
 
 xcodebuild test \
@@ -69,21 +69,24 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo3-final-ui-v8 \
-  -resultBundlePath /tmp/bookatlas-p10-nogo3-final-ui-v8.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-ui-v5 \
+  -resultBundlePath /tmp/bookatlas-p10-nogo4-final-ui-v5.xcresult \
   -only-testing:BookAtlasUITests
 ```
 
-The unit/integration/migration/security/performance command executed 182
-tests: 182 passed, zero failed, zero skipped. The UI command initialized
-XCUIAutomation in the interactive macOS session and executed 34 tests: 34
+The unit/integration/migration/security/performance command executed 188
+tests: 188 passed, zero failed, zero skipped. The UI command initialized
+XCUIAutomation in the interactive macOS session and executed 35 tests: 35
 passed, zero failed, zero skipped. Prompt 10 adds the historical Schema 1–5
 domain-data matrix, explicit Command-F search-focus state and UI coverage,
 three-run database-open/first-page/tag-count and Schema 1–4→5 migration
 measurements, and three-run XCUI cold-launch and sustained-scroll metrics at
 1k/5k/10k. This closure additionally covers exact result counts and bounded
 pagination at 501/1,001/10,000 rows, retry-safe append failures, stable page
-boundaries, search/filter/sort resets, and mutation consistency. Exact raw
+boundaries, search/filter/sort resets, mutation consistency, and page-out UUID
+identity after graph focus and create/edit/merge. A missing, deleted, or
+filter-excluded explicit target clears selection and publishes a redacted
+recoverable state; it never falls back to the first row. Exact raw
 values, ranges, tool failures, and noise are recorded in
 [`PERFORMANCE.md`](PERFORMANCE.md).
 
@@ -91,6 +94,15 @@ The accessible result value publishes both the count and page readiness
 (`可以继续加载`, `正在加载下一页`, retry, or terminal state) as one
 observable state. This prevents a following Shift-Command-L from seeing the
 new count before the load-more action has actually become available.
+
+The catalog protocol requires every implementation to return an exact
+`totalCount`; there is no default `offset + returnedCount` approximation.
+Explicit selection requests are resolved with the first page and, only when
+needed, one query-filtered primary-key lookup. The requested target is exposed
+as a separate accessible “已定位书籍” row until normal pagination reaches it.
+Query/focus tasks carry a request generation and verify cancellation after
+each await, so a late focus, query, or page result cannot replace a newer
+selection and page atomically published by the store.
 
 Accessibility Inspector was actually launched from the installed Xcode bundle,
 but the current task execution surface could not safely select targets, read
@@ -225,17 +237,26 @@ xcodebuild \
 The independent interactive run initialized XCUIAutomation and executed all 26 macOS UI tests: 26 passed, zero failed, and zero skipped. It retains all Prompt 5/6/7/8 paths and covers reading-entry empty state, HTTPS add/edit/delete and no-op open dispatch, host-only status/accessibility without path disclosure, HTTP/dangerous-scheme rejection, Apple Books limitation/confirmation/copy controls, local-file cancellation, invalid-bookmark repair/removal, separate read-only duplicate-candidate entries followed by an unchanged main detail, keyboard defaults, and the single-owner nested Escape path. UI tests opt into an in-memory store, fixed fictional test-only launch seeds, and no-op system adapters; they do not open a real file panel, external application, pasteboard, user file, or real database.
 
 The latest Prompt 10 closure retains those 27 pre-performance UI regressions,
-adds one keyboard/accessibility pagination regression,
+adds the keyboard/accessibility pagination regression and the graph-to-library
+page-out identity regression,
 and adds six fixed-fictional performance cases: three
 `XCTApplicationLaunchMetric` cases and three real-list round-trip scroll cases
 using `XCTClockMetric`, `XCTCPUMetric`, `XCTMemoryMetric`, and the macOS 26
 `XCTHitchMetric`. The complete run initialized XCUIAutomation and passed
-34/34. The launch test creates its fixed-fictional Schema 5 database in a
+35/35. The launch test creates its fixed-fictional Schema 5 database in a
 separate, untimed process and measures only reopening that existing controlled
 temporary database and displaying the first 200 of the verified total. The
 scroll cases separately time first-page startup, loading the next page, and
 four sustained scroll events after loading a disclosed number of pages/rows.
 The full raw result is documented in [`PERFORMANCE.md`](PERFORMANCE.md).
+
+The pagination identity closure additionally exercises a 501-book graph-to-
+library transition through the production `focusBook` path. Accessibility
+assertions require the requested off-page UUID and title, the separate focused
+row, and the unchanged exact count; an unrelated first-page detail is
+explicitly rejected. State tests cover missing and filtered-out targets,
+off-page create/edit/merge selection, and slow-old/fast-new request
+arbitration.
 
 ## Query baseline
 

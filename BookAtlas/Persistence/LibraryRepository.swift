@@ -503,6 +503,36 @@ final class BookRepository {
         )
     }
 
+    func queryPage(
+        _ query: LibraryQuery,
+        focusedBookID: UUID
+    ) throws -> FocusedLibraryPage {
+        let page = try queryPage(query)
+        if let book = page.books.first(where: { $0.id == focusedBookID }) {
+            return FocusedLibraryPage(page: page, focusedBook: book)
+        }
+
+        let components = queryComponents(for: query)
+        let focusedWhereClause = components.whereClause.isEmpty
+            ? "WHERE books.id = ?"
+            : "\(components.whereClause) AND books.id = ?"
+        var bindings = components.bindings
+        bindings.append(.text(focusedBookID.uuidString))
+        let focusedBooks = try database.query(
+            """
+            SELECT \(bookColumns) FROM books
+            \(focusedWhereClause)
+            LIMIT 1
+            """,
+            bindings: bindings,
+            row: decodeBook
+        )
+        return FocusedLibraryPage(
+            page: page,
+            focusedBook: focusedBooks.first
+        )
+    }
+
     private func queryComponents(for query: LibraryQuery) -> LibraryQueryComponents {
         var predicates: [String] = []
         var bindings: [SQLiteValue] = []

@@ -44,11 +44,15 @@ Exit condition: data is portable and recoverable, relationship exploration does 
 - **Prompt 10:** performance and accessibility checks, privacy/security audit, release documentation, and open-source preparation.
 
 Prompt 10 quality and open-source preparation is implemented and awaits
-independent review. The latest local closure evidence is successful Debug and
-hardened local Release builds, 182/182 unit/integration/migration/security/
-performance tests, and 34/34 actually executed UI tests. The ordinary library
+independent review and the documented human gates. The latest local closure
+evidence is successful Debug and hardened local Release builds, 188/188
+unit/integration/migration/security/performance tests, and 35/35 actually
+executed UI tests. The ordinary library
 now exposes exact result counts and bounded 200-row pagination rather than
-silently stopping at 500. Three-run fixed-fictional evidence covers reopening
+silently stopping at 500. Explicit UUID focus from the graph and mutation
+refreshes use a bounded first-page-plus-one lookup, preserve the requested
+identity beyond page one, and never substitute the first row when a target is
+missing or excluded. Three-run fixed-fictional evidence covers reopening
 pre-generated Schema 5 libraries, database open, first/next-page load,
 disclosed multi-page list scrolling/hitches, tag usage counts, and Schema
 1–4→5 migration; data generation is outside the measured launch window.

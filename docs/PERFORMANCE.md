@@ -37,9 +37,9 @@ total. The assertion after each launch confirms that the measured process saw
 
 | Configuration | Books | Three raw runs (s) | Median | Range |
 | --- | ---: | --- | ---: | ---: |
-| Debug XCTest | 1,000 | 0.712955, 0.718106, 0.766268 | 0.718106 | 0.712955–0.766268 |
-| Debug XCTest | 5,000 | 0.804914, 0.717128, 0.718841 | 0.718841 | 0.717128–0.804914 |
-| Debug XCTest | 10,000 | 1.065805, 0.963944, 0.852062 | 0.963944 | 0.852062–1.065805 |
+| Debug XCTest | 1,000 | 0.650830, 0.670892, 0.667705 | 0.667705 | 0.650830–0.670892 |
+| Debug XCTest | 5,000 | 0.665359, 0.670500, 0.695031 | 0.670500 | 0.665359–0.695031 |
+| Debug XCTest | 10,000 | 0.678458, 0.663082, 0.678608 | 0.678458 | 0.663082–0.678608 |
 
 Each session is a UUID-named child of the process temporary root. The
 test-only entry rejects uncontrolled paths, unknown or malformed performance
@@ -65,9 +65,9 @@ book.
 
 | Books | Database open, raw (s) | Open median (range) | First 200 + total, raw (s) | First-load median (range) | Tag usage, raw (s) | Tag median (range) |
 | ---: | --- | ---: | --- | ---: | --- | ---: |
-| 1,000 | 0.000170833, 0.000156167, 0.000173417 | 0.000170833 (0.000156167–0.000173417) | 0.055528500, 0.055268083, 0.058563708 | 0.055528500 (0.055268083–0.058563708) | 0.009201500, 0.008988041, 0.009313125 | 0.009201500 (0.008988041–0.009313125) |
-| 5,000 | 0.000214291, 0.000273792, 0.000316875 | 0.000273792 (0.000214291–0.000316875) | 0.059006750, 0.057775125, 0.059154458 | 0.059006750 (0.057775125–0.059154458) | 0.010996708, 0.011078875, 0.010837250 | 0.010996708 (0.010837250–0.011078875) |
-| 10,000 | 0.000214541, 0.000171250, 0.000217708 | 0.000214541 (0.000171250–0.000217708) | 0.056063500, 0.056790750, 0.057258917 | 0.056790750 (0.056063500–0.057258917) | 0.011848709, 0.012385209, 0.012358375 | 0.012358375 (0.011848709–0.012385209) |
+| 1,000 | 0.000167500, 0.000163416, 0.000164666 | 0.000164666 (0.000163416–0.000167500) | 0.055601750, 0.055447875, 0.056238958 | 0.055601750 (0.055447875–0.056238958) | 0.009333000, 0.009214333, 0.009164042 | 0.009214333 (0.009164042–0.009333000) |
+| 5,000 | 0.000183125, 0.000154792, 0.000213959 | 0.000183125 (0.000154792–0.000213959) | 0.055298083, 0.055863625, 0.060349750 | 0.055863625 (0.055298083–0.060349750) | 0.010229625, 0.010720708, 0.013271458 | 0.010720708 (0.010229625–0.013271458) |
+| 10,000 | 0.000223208, 0.000151750, 0.000231625 | 0.000223208 (0.000151750–0.000231625) | 0.055433958, 0.056390625, 0.056329208 | 0.056329208 (0.055433958–0.056390625) | 0.012143417, 0.012892708, 0.012686708 | 0.012686708 (0.012143417–0.012892708) |
 
 These repository microbenchmarks ran in the Debug XCTest host. A Release
 XCTest attempt was actually executed, but Xcode 26.6 hung the Release unit
@@ -87,6 +87,17 @@ retaining the already displayed rows. The interactive UI regression loads
 501 rows as 200 → 400 → 501 through Shift-Command-L and checks both the
 accessible “已显示 N 本，共 T 本” status and the final no-more-results state.
 
+Exact UUID focus does not change the paging workload. It queries the normal
+200-row page and exact count, then performs at most one indexed UUID lookup
+under the same search/filter predicates if the target is not already loaded.
+The focused record is presented separately until ordinary pagination reaches
+it; intervening pages are not fetched. Fixed-fictional 501-book repository,
+state, and graph-to-library UI regressions verify third-page focus, while
+missing or excluded targets clear selection rather than selecting row one.
+The existing 1k/5k/10k launch, next-page, and sustained-scroll measurements
+therefore retain their documented workload and do not include library-wide
+target scanning or data generation.
+
 The XCUI next-page workload starts its clock before invoking the production
 Shift-Command-L load-more command and stops after the accessible count status
 changes atomically from “已显示 200 本，共 T 本，可以继续加载” to
@@ -101,9 +112,9 @@ it.
 
 | Existing library | Three raw 200→400 runs (s) | Median | Range |
 | ---: | --- | ---: | ---: |
-| 1,000 | 7.028902750, 7.319285834, 7.045332167 | 7.045332167 | 7.028902750–7.319285834 |
-| 5,000 | 6.971824375, 6.778178208, 6.455659125 | 6.778178208 | 6.455659125–6.971824375 |
-| 10,000 | 6.617088000, 6.964226708, 6.969441292 | 6.964226708 | 6.617088000–6.969441292 |
+| 1,000 | 6.732388709, 6.718926250, 6.696181875 | 6.718926250 | 6.696181875–6.732388709 |
+| 5,000 | 6.685939834, 6.745147250, 6.664272333 | 6.685939834 | 6.664272333–6.745147250 |
+| 10,000 | 6.667712708, 6.714792208, 6.740694292 | 6.714792208 | 6.667712708–6.740694292 |
 
 ## Sustained library scrolling
 
@@ -119,18 +130,19 @@ state.
 
 | Existing library | Loaded pages / rows | Clock raw (s) | Hitch count raw | Hitch duration raw (s) | Peak physical memory raw (kB) |
 | ---: | ---: | --- | --- | --- | --- |
-| 1,000 | 5 / 1,000 | 21.245346, 21.215965, 20.194839 | 1, 0, 1 | 2.916550, 0, 0.549996 | 232408.360, 224593.192, 236651.816 |
-| 5,000 | 10 / 2,000 | 20.413260, 21.362711, 20.650200 | 2, 0, 1 | 3.516546, 0, 2.883218 | 222627.112, 237667.624, 228263.232 |
-| 10,000 | 15 / 3,000 | 20.842938, 20.638021, 21.575160 | 6, 3, 4 | 6.433097, 0.049998, 6.716423 | 242238.760, 233080.104, 238077.248 |
+| 1,000 | 5 / 1,000 | 18.572304, 19.635145, 18.409691 | 8, 5, 7 | 6.199788, 6.416447, 3.549881 | 330106.152, 345294.144, 354895.168 |
+| 5,000 | 10 / 2,000 | 19.453783, 19.597245, 19.561401 | 4, 2, 2 | 8.516344, 0.516646, 0.516646 | 328664.360, 338806.056, 348063.016 |
+| 10,000 | 15 / 3,000 | 18.466320, 19.543076, 19.703817 | 4, 6, 6 | 4.966468, 4.299867, 7.116442 | 345867.584, 355337.536, 365675.840 |
 
-Clock medians were 21.215965 / 20.650200 / 20.842938 seconds. Hitch-count
-medians were 1 / 1 / 4, hitch-duration medians were
-0.549996 / 2.883218 / 6.433097 seconds, and peak-memory medians were
-232408.360 / 228263.232 / 238077.248 kB. Process physical-memory deltas were
-6,553.552/7,995.440/8,044.568 kB for 1k; 4,374.552/14,827.520/−4,800.488 kB
-for 5k; and 16,449.536/−3,604.456/7,110.656 kB for 10k. Negative deltas
-reflect allocator/process sampling noise rather than negative allocation.
-Broad hitch and memory ranges show substantial
+Clock medians were 18.572304 / 19.561401 / 19.543076 seconds. Hitch-count
+medians were 7 / 2 / 6, hitch-duration medians were
+6.199788 / 0.516646 / 4.966468 seconds, and peak-memory medians were
+345294.144 / 338806.056 / 355337.536 kB. The corresponding process
+`Memory Physical` samples were 17121.328/17612.824/10813.440 kB for 1k,
+11337.752/12140.544/11272.192 kB for 5k, and
+16924.720/11386.880/11763.712 kB for 10k; these are Apple metric samples,
+not a claim that the application allocated exactly those amounts. Broad
+hitch and memory ranges show substantial
 WindowServer/XCUIAutomation/accessibility-tree noise. They are not a physical
 frame-rate measurement, a product threshold, or evidence that dataset size
 has no effect.
