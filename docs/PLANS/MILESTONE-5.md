@@ -11,7 +11,7 @@ Verify release quality and prepare an accurate, privacy-conscious open-source re
 Prompt 10 implementation is complete and awaits independent review. It is not
 a release, tag, signed distribution, notarization, upload, or acceptance.
 Local closure evidence is successful Debug and hardened local Release builds,
-188/188 unit/integration/migration/security/performance tests, and 35/35 UI
+190/190 unit/integration/migration/security/performance tests, and 37/37 UI
 tests with XCUIAutomation initialized. The fixed-fictional performance record
 now separates test-data preparation from three-run existing-library launch,
 database open, 200-row first-page load, next-page load, disclosed multi-page
@@ -27,6 +27,15 @@ surface. The
 required human VoiceOver/Accessibility Inspector and appearance/accent/
 small-window/Reduce Motion audit could not be controlled from the current task
 execution surface and remains an explicit unverified release gate.
+
+The fifth closure also makes the precise missing/excluded selection issue win
+over generic empty/no-results placeholders when a bounded query returns zero
+rows. The excluded state includes an accessible clear-query action, and both
+paths have Store plus real XCUI regressions without changing the 200-row page
+or 1,000-row repository hard limit. A second manual-audit attempt on
+2026-08-03 started only a fixed-fictional in-memory Debug app, but the native
+Computer Use pipe closed before any Book Atlas desktop or AX state could be read; all
+human gates remain blocked rather than inferred from automation.
 
 ## Gates
 

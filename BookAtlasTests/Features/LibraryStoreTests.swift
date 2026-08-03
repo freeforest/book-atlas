@@ -617,6 +617,25 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(store.totalBookCount, 501)
     }
 
+    func testMissingFocusInEmptyLibraryPublishesSpecificSelectionIssue() async throws {
+        let repository = try BookRepository.inMemory()
+        let store = LibraryStore(
+            catalog: LibraryCatalogService(repository: repository)
+        )
+        await store.waitForPendingWork()
+
+        store.focusBook(UUID(
+            uuidString: "55000000-0000-0000-0000-000000000404"
+        )!)
+        await store.waitForPendingWork()
+
+        XCTAssertTrue(store.books.isEmpty)
+        XCTAssertEqual(store.totalBookCount, 0)
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertNil(store.selectedBook)
+        XCTAssertEqual(store.selectionIssue, .requestedBookUnavailable)
+    }
+
     func testFilteringOutFocusedBookClearsSelectionWithoutChoosingAnotherBook() async throws {
         let (service, seededBooks) = try await makePagedCatalog()
         let store = LibraryStore(catalog: service)
@@ -636,6 +655,36 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertNil(store.selectedBook)
         XCTAssertEqual(store.selectionIssue, .outsideCurrentResults)
         XCTAssertNotEqual(store.selectedBookID, seededBooks[1].id)
+    }
+
+    func testZeroResultSearchShowsFocusedBookIssueAndClearingRecoversList() async throws {
+        let (service, seededBooks) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+
+        let target = seededBooks[42]
+        store.focusBook(target.id)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.selectedBookID, target.id)
+        XCTAssertEqual(store.pinnedFocusedBook?.id, target.id)
+
+        store.updateSearchText("不存在的固定虚构分页书籍")
+        await store.waitForPendingWork()
+
+        XCTAssertTrue(store.books.isEmpty)
+        XCTAssertEqual(store.totalBookCount, 0)
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertNil(store.selectedBook)
+        XCTAssertEqual(store.selectionIssue, .outsideCurrentResults)
+
+        store.clearFilters()
+        await store.waitForPendingWork()
+
+        XCTAssertEqual(store.books.count, 200)
+        XCTAssertEqual(store.totalBookCount, 501)
+        XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
+        XCTAssertNil(store.selectionIssue)
+        XCTAssertEqual(store.selectedBookID, store.books.first?.id)
     }
 
     func testCreateAndEditKeepOffPageIdentityWithoutLoadingTheWholeResult() async throws {

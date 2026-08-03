@@ -25,6 +25,12 @@ release signing/notarization occurred.
   or excluded targets clear selection and show a redacted recoverable state
   instead of substituting another book. Cancellation plus request-generation
   checks reject late focus/query/page results.
+- The same identity failure state now has presentation priority even when the
+  ordinary page contains zero books. A missing requested UUID renders the
+  specific redacted unavailable state; a query-excluded UUID renders the
+  distinct outside-current-results state and a keyboard/accessibility clear
+  action. Neither can be hidden by the generic empty-library or no-results
+  placeholders, and neither selects an unrelated row.
 - The historical migration matrix starts from every formal Schema 1–5
   definition, migrates to Schema 5 twice, and checks the data families
   available at that source version: books/notes, tags, lists/descriptions,
@@ -122,6 +128,15 @@ screen without exposing unrelated private desktop content. The attempted
 computer-control bridge rejected initialization because it was not running in
 its trusted runtime. The Inspector process launched for this attempt was then
 closed so it could not contaminate automated UI results.
+
+A second attempt was made on 2026-08-03 after starting the local Debug product
+with the explicit in-memory store and fixed fictional UI seed. The production
+database path was never opened. The supported Computer Use runtime initialized
+and enumerated running applications, but its native pipe closed before the
+first Book Atlas app-state/accessibility-tree response. Because no Book Atlas
+desktop or AX state could be read, the attempt did not change appearance, accent, window
+size, Reduce Motion, VoiceOver, or Inspector settings and did not claim any
+manual result. The fictional app process was then terminated.
 
 Accordingly, no item below is marked PASS. Automated identifiers, hosted-view
 smoke tests, and XCUI keyboard paths are supporting evidence only and are not

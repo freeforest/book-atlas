@@ -34,7 +34,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-debug \
+  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-debug \
   build
 
 xcodebuild \
@@ -42,7 +42,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Release \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-release \
+  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-release \
   build
 ```
 
@@ -60,8 +60,8 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-unit \
-  -resultBundlePath /tmp/bookatlas-p10-nogo4-final-unit.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-tests \
+  -resultBundlePath /tmp/bookatlas-p10-nogo5-final-tests.xcresult \
   -only-testing:BookAtlasTests
 
 xcodebuild test \
@@ -69,14 +69,14 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo4-final-ui-v5 \
-  -resultBundlePath /tmp/bookatlas-p10-nogo4-final-ui-v5.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-ui-v4 \
+  -resultBundlePath /tmp/bookatlas-p10-nogo5-final-ui-v4.xcresult \
   -only-testing:BookAtlasUITests
 ```
 
-The unit/integration/migration/security/performance command executed 188
-tests: 188 passed, zero failed, zero skipped. The UI command initialized
-XCUIAutomation in the interactive macOS session and executed 35 tests: 35
+The unit/integration/migration/security/performance command executed 190
+tests: 190 passed, zero failed, zero skipped. The UI command initialized
+XCUIAutomation in the interactive macOS session and executed 37 tests: 37
 passed, zero failed, zero skipped. Prompt 10 adds the historical Schema 1–5
 domain-data matrix, explicit Command-F search-focus state and UI coverage,
 three-run database-open/first-page/tag-count and Schema 1–4→5 migration
@@ -89,6 +89,14 @@ filter-excluded explicit target clears selection and publishes a redacted
 recoverable state; it never falls back to the first row. Exact raw
 values, ranges, tool failures, and noise are recorded in
 [`PERFORMANCE.md`](PERFORMANCE.md).
+
+The missing/excluded state is rendered before generic empty-library and
+no-results placeholders even when the bounded page contains zero rows.
+`requestedBookUnavailable` shows “找不到请求的书籍”.
+`outsideCurrentResults` shows “所选书籍不在当前结果中” and an independently
+identified keyboard/accessibility Button that clears search and filters.
+Store and real XCUI regressions cover both zero-row states, verify that no
+unrelated detail appears, and verify recovery to the normal 200-row page.
 
 The accessible result value publishes both the count and page readiness
 (`可以继续加载`, `正在加载下一页`, retry, or terminal state) as one
@@ -104,11 +112,14 @@ Query/focus tasks carry a request generation and verify cancellation after
 each await, so a late focus, query, or page result cannot replace a newer
 selection and page atomically published by the store.
 
-Accessibility Inspector was actually launched from the installed Xcode bundle,
-but the current task execution surface could not safely select targets, read
-Inspector results, drive VoiceOver, change system accessibility/appearance
-settings, or inspect the desktop. No human accessibility or visual item is
-therefore reported as passed. The per-area BLOCKED record is in
+Accessibility Inspector was actually launched during the earlier attempt. On
+2026-08-03 a second attempt started the Debug app against an in-memory fixed
+fictional seed. The supported Computer Use runtime enumerated running
+applications, but its native pipe closed before the first Book Atlas app-state
+or accessibility-tree response. The task execution surface therefore still could
+not safely select Inspector targets, read results, drive VoiceOver, change
+system accessibility/appearance settings, or inspect the desktop. No human
+accessibility or visual item is reported as passed. The per-area BLOCKED record is in
 [`QUALITY_AUDIT.md`](QUALITY_AUDIT.md). These are implementation results
 awaiting independent review, not a Prompt 10 acceptance decision.
 
@@ -238,12 +249,13 @@ The independent interactive run initialized XCUIAutomation and executed all 26 m
 
 The latest Prompt 10 closure retains those 27 pre-performance UI regressions,
 adds the keyboard/accessibility pagination regression and the graph-to-library
-page-out identity regression,
+page-out identity regression, and adds two zero-row precise-selection-state
+regressions,
 and adds six fixed-fictional performance cases: three
 `XCTApplicationLaunchMetric` cases and three real-list round-trip scroll cases
 using `XCTClockMetric`, `XCTCPUMetric`, `XCTMemoryMetric`, and the macOS 26
 `XCTHitchMetric`. The complete run initialized XCUIAutomation and passed
-35/35. The launch test creates its fixed-fictional Schema 5 database in a
+37/37. The launch test creates its fixed-fictional Schema 5 database in a
 separate, untimed process and measures only reopening that existing controlled
 temporary database and displaying the first 200 of the verified total. The
 scroll cases separately time first-page startup, loading the next page, and

@@ -352,6 +352,11 @@ final class LibraryStore: ObservableObject {
                     store.graph.selectNode(targetID)
                 }
             }
+            if arguments.contains("-BookAtlasFocusMissingBookUITestState") {
+                store.focusBook(UUID(
+                    uuidString: "55000000-0000-0000-0000-000000000404"
+                )!)
+            }
             return store
         } catch PortabilityError.recoveryRequired {
             return LibraryStore(initialError: .restoreRecoveryRequired)

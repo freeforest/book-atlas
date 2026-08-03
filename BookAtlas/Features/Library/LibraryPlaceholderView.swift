@@ -120,7 +120,12 @@ struct LibraryView: View {
             Divider()
 
             if store.books.isEmpty {
-                if store.hasActiveFilters {
+                if let issue = store.selectionIssue {
+                    LibrarySelectionIssueView(
+                        issue: issue,
+                        clearFilters: store.clearFilters
+                    )
+                } else if store.hasActiveFilters {
                     ContentUnavailableView {
                         Label("没有匹配的书籍", systemImage: "line.3.horizontal.decrease.circle")
                     } description: {
@@ -194,13 +199,9 @@ struct LibraryView: View {
                             onShowGraph: onShowGraph
                         )
                     } else if let issue = store.selectionIssue {
-                        ContentUnavailableView {
-                            Label(issue.title, systemImage: "book.closed")
-                        } description: {
-                            Text(issue.message)
-                        }
-                        .accessibilityIdentifier(
-                            "library-selection-unavailable"
+                        LibrarySelectionIssueView(
+                            issue: issue,
+                            clearFilters: store.clearFilters
                         )
                     } else if store.isQuerying {
                         ContentUnavailableView(
@@ -220,6 +221,30 @@ struct LibraryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+}
+
+private struct LibrarySelectionIssueView: View {
+    let issue: LibrarySelectionIssue
+    let clearFilters: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            ContentUnavailableView {
+                Label(issue.title, systemImage: "book.closed")
+            } description: {
+                Text(issue.message)
+            }
+            .accessibilityIdentifier("library-selection-unavailable")
+
+            if issue == .outsideCurrentResults {
+                Button("清除搜索和筛选", action: clearFilters)
+                    .accessibilityIdentifier(
+                        "clear-filters-selection-issue"
+                    )
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

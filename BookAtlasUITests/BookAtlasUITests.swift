@@ -271,6 +271,84 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testMissingFocusInEmptyLibraryShowsSpecificAccessibleIssue() {
+        let app = launchInMemoryApp(focusMissingBook: true)
+        let unavailable = element("library-selection-unavailable", in: app)
+
+        XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["找不到请求的书籍"]
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertFalse(element("library-empty-state", in: app).exists)
+        XCTAssertFalse(element("library-no-results", in: app).exists)
+        XCTAssertFalse(element("book-detail-view", in: app).exists)
+    }
+
+    @MainActor
+    func testZeroResultSearchShowsFocusedIssueAndClearRecoversLibrary() {
+        let app = launchInMemoryApp(seedPagination: true)
+        XCTAssertTrue(
+            waitForLibraryCount(
+                displayed: 200,
+                total: 501,
+                in: app,
+                timeout: 10
+            )
+        )
+
+        app.typeKey("4", modifierFlags: .command)
+        XCTAssertTrue(
+            element("local-graph-page", in: app)
+                .waitForExistence(timeout: 5)
+        )
+        app.activate()
+        app.typeKey(.enter, modifierFlags: [])
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                element("book-detail-title", in: app),
+                containing: "《固定分页书目 042》",
+                timeout: 10
+            )
+        )
+
+        app.typeKey("f", modifierFlags: .command)
+        let searchField = app.searchFields.firstMatch
+        XCTAssertTrue(searchField.waitForExistence(timeout: 3))
+        replaceText(
+            in: searchField,
+            with: "不存在的固定虚构分页书籍"
+        )
+
+        let unavailable = element("library-selection-unavailable", in: app)
+        XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["所选书籍不在当前结果中"]
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertFalse(element("library-no-results", in: app).exists)
+        XCTAssertFalse(element("library-empty-state", in: app).exists)
+        XCTAssertFalse(element("book-detail-view", in: app).exists)
+
+        let clearFilters = app.buttons["clear-filters-selection-issue"]
+        XCTAssertTrue(clearFilters.waitForExistence(timeout: 3))
+        clearFilters.click()
+        XCTAssertTrue(
+            waitForLibraryCount(
+                displayed: 200,
+                total: 501,
+                in: app,
+                timeout: 10
+            )
+        )
+        XCTAssertTrue(
+            element("library-book-list", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(unavailable.waitForNonExistence(timeout: 3))
+    }
+
+    @MainActor
     func testSearchCombinesWithStatusFilterAndCanBeCleared() {
         let app = launchInMemoryApp(seedFictionalBooks: true)
         XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
@@ -296,9 +374,16 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(a101Row.exists)
 
         replaceText(in: searchField, with: "不存在的虚构书")
-        XCTAssertTrue(element("library-no-results", in: app).waitForExistence(timeout: 3))
+        let unavailable = element("library-selection-unavailable", in: app)
+        XCTAssertTrue(unavailable.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            app.staticTexts["所选书籍不在当前结果中"]
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertFalse(element("library-no-results", in: app).exists)
         element("clear-filters-button", in: app).click()
         XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(unavailable.waitForNonExistence(timeout: 3))
 
         element("library-sort-menu", in: app).click()
         app.typeKey(.downArrow, modifierFlags: [])
@@ -1408,7 +1493,8 @@ final class BookAtlasUITests: XCTestCase {
         seedGraph: Bool = false,
         seedGraphLimit: Bool = false,
         seedReadingEntries: Bool = false,
-        seedPagination: Bool = false
+        seedPagination: Bool = false,
+        focusMissingBook: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-BookAtlasUseInMemoryStore"]
@@ -1441,6 +1527,9 @@ final class BookAtlasUITests: XCTestCase {
         }
         if seedPagination {
             app.launchArguments.append("-BookAtlasSeedPaginationUITestData")
+        }
+        if focusMissingBook {
+            app.launchArguments.append("-BookAtlasFocusMissingBookUITestState")
         }
         app.launch()
         return app
