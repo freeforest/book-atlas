@@ -45,7 +45,7 @@ Exit condition: data is portable and recoverable, relationship exploration does 
 
 Prompt 10 quality and open-source preparation is implemented and awaits
 independent review and the documented human gates. The latest local closure
-evidence is successful Debug and hardened local Release builds, 193/193
+evidence is successful Debug and hardened local Release builds, 197/197
 unit/integration/migration/security/performance tests, and 37/37 actually
 executed UI tests. The ordinary library
 now exposes exact result counts and bounded 200-row pagination rather than
@@ -84,6 +84,14 @@ QoS diagnostics remain separately recorded. The supported Computer Use
 runtime initialized and enumerated running applications, but its native pipe
 closed before the first fixed-fictional Book Atlas app-state/AX-tree response;
 there is still no manual visual or accessibility result.
+
+The eighth closure makes Store selection fully idempotent at the remaining
+focus boundary: nil focus is not rewritten to nil, matching page-out focus is
+retained, and only an actual non-nil identity mismatch is cleared. Four direct
+publication regressions passed within the 197/197 complete non-UI suite; the
+latest 37/37 UI activity tree continues to contain zero SwiftUI view-update
+publication warnings. This does not change the blocked human gates or Prompt
+10 acceptance state.
 
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 

@@ -30,7 +30,91 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(state.generation, 4)
     }
 
-    func testSelectingCurrentOffPageIdentityIsIdempotentAndPreservesFocus() async throws {
+    func testSelectingCurrentInPageIdentityDoesNotPublishWhenFocusAndIssueAreNil() async throws {
+        let (service, _) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        let selectedBook = try XCTUnwrap(store.selectedBook)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+
+        var publicationCount = 0
+        let observation = store.objectWillChange.sink {
+            publicationCount += 1
+        }
+        defer { observation.cancel() }
+
+        store.selectBook(selectedBook.id)
+
+        XCTAssertEqual(publicationCount, 0)
+        XCTAssertEqual(store.selectedBookID, selectedBook.id)
+        XCTAssertEqual(store.selectedBook?.id, selectedBook.id)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+    }
+
+    func testSelectingNilFromEmptySelectionDoesNotPublish() async throws {
+        let repository = try BookRepository.inMemory()
+        let store = LibraryStore(
+            catalog: LibraryCatalogService(repository: repository)
+        )
+        await store.waitForPendingWork()
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertNil(store.selectedBook)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+
+        var publicationCount = 0
+        let observation = store.objectWillChange.sink {
+            publicationCount += 1
+        }
+        defer { observation.cancel() }
+
+        store.selectBook(nil)
+
+        XCTAssertEqual(publicationCount, 0)
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertNil(store.selectedBook)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+    }
+
+    func testSelectingDifferentIdentityClearsExistingFocusedBook() async throws {
+        let (service, seededBooks) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        let focusedTarget = seededBooks[42]
+        let inPageTarget = try XCTUnwrap(store.books.first)
+        store.focusBook(focusedTarget.id)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.pinnedFocusedBook?.id, focusedTarget.id)
+
+        store.selectBook(inPageTarget.id)
+
+        XCTAssertEqual(store.selectedBookID, inPageTarget.id)
+        XCTAssertEqual(store.selectedBook?.id, inPageTarget.id)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+    }
+
+    func testSelectingNilClearsExistingFocusedBook() async throws {
+        let (service, seededBooks) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        let focusedTarget = seededBooks[42]
+        store.focusBook(focusedTarget.id)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.pinnedFocusedBook?.id, focusedTarget.id)
+
+        store.selectBook(nil)
+
+        XCTAssertNil(store.selectedBookID)
+        XCTAssertNil(store.selectedBook)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+    }
+
+    func testSelectingMatchingFocusedIdentityIsIdempotentAndPreservesFocus() async throws {
         let (service, seededBooks) = try await makePagedCatalog()
         let store = LibraryStore(catalog: service)
         await store.waitForPendingWork()

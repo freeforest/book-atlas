@@ -11,7 +11,7 @@ Verify release quality and prepare an accurate, privacy-conscious open-source re
 Prompt 10 implementation is complete and awaits independent review. It is not
 a release, tag, signed distribution, notarization, upload, or acceptance.
 Local closure evidence is successful Debug and hardened local Release builds,
-193/193 unit/integration/migration/security/performance tests, and 37/37 UI
+197/197 unit/integration/migration/security/performance tests, and 37/37 UI
 tests with XCUIAutomation initialized. The fixed-fictional performance record
 now separates test-data preparation from three-run existing-library launch,
 database open, 200-row first-page load, next-page load, disclosed multi-page
@@ -61,6 +61,15 @@ the complete 37/37 UI bundle contain zero SwiftUI view-update publication
 warnings. Six complete-suite tests still contain an independent Xcode internal
 QoS diagnostic; it is recorded separately and is not represented as a product
 finding. The final non-UI suite passed 193/193.
+
+The eighth closure removes the last Store-side no-op publication. A nil
+`focusedBook` is no longer assigned nil when an ordinary in-page UUID is
+reselected; a matching page-out focus is preserved, while an actual non-nil
+mismatch is still cleared for a different UUID or nil selection. Direct
+`objectWillChange` regressions cover all four boundaries. The latest complete
+non-UI suite passed 197/197, and the complete 37/37 UI activity tree still
+contains zero SwiftUI view-update publication warnings. The six Xcode internal
+QoS diagnostics remain separately classified.
 
 ## Gates
 

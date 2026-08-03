@@ -34,7 +34,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-debug \
+  -derivedDataPath /tmp/bookatlas-p10-nogo8-debug \
   build
 
 xcodebuild \
@@ -42,7 +42,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Release \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-release \
+  -derivedDataPath /tmp/bookatlas-p10-nogo8-release \
   build
 ```
 
@@ -60,8 +60,8 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-tests-sealed2 \
-  -resultBundlePath /tmp/bookatlas-p10-nogo7-final-tests-sealed2.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo8-tests \
+  -resultBundlePath /tmp/bookatlas-p10-nogo8-tests.xcresult \
   -only-testing:BookAtlasTests
 
 xcodebuild test \
@@ -69,15 +69,15 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-ui \
-  -resultBundlePath /tmp/bookatlas-p10-nogo7-final-ui.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo8-final-ui \
+  -resultBundlePath /tmp/bookatlas-p10-nogo8-final-ui.xcresult \
   -parallel-testing-enabled NO \
   -maximum-parallel-testing-workers 1 \
   -only-testing:BookAtlasUITests
 ```
 
-The unit/integration/migration/security/performance command executed 193
-tests: 193 passed, zero failed, zero skipped. The UI command initialized
+The unit/integration/migration/security/performance command executed 197
+tests: 197 passed, zero failed, zero skipped. The UI command initialized
 XCUIAutomation in the interactive macOS session and executed 37 tests: 37
 passed, zero failed, zero skipped. Prompt 10 adds the historical Schema 1–5
 domain-data matrix, explicit Command-F search-focus state and UI coverage,
@@ -290,10 +290,18 @@ without feedback, and repeated UUID selection is idempotent. The Store no
 longer publishes unchanged selection state or clears a matching off-page
 focused book.
 
+The eighth closure removes the remaining Store-side no-op publication:
+`selectBook` clears `focusedBook` only when a non-nil focus has an identity
+different from the requested selection. Re-selecting an ordinary in-page UUID
+with nil focus/issue, re-selecting nil from an empty selection, and selecting a
+matching page-out focus publish no state. Selecting a different UUID or nil
+still clears an existing mismatched focus. Four focused regressions subscribe
+to `objectWillChange` and verify these boundaries directly.
+
 The final-code search and keyboard-selection results each contain ten
 relaunch-enabled, no-retry passed repetitions. The unique complete result
 bundle parsed through both `xcresulttool` summary and tests tree as 37 passed,
-zero failed, zero skipped; the complete non-UI result parsed as 193/193.
+zero failed, zero skipped; the latest complete non-UI result parsed as 197/197.
 Activities for all 20 focused repetitions and all 37 complete-suite cases
 contain zero SwiftUI view-update publication warnings. The keyboard 10-run
 bundle retains ten Xcode internal QoS diagnostics and the complete bundle has

@@ -229,6 +229,24 @@ and the complete suite contains six such diagnostics in six cases. Those are
 tracked separately from the resolved SwiftUI warning; the activities provide
 no evidence that they originate in the production selection code.
 
+### Eighth-closure selection idempotence evidence
+
+The Store now clears a focused page-out book only when that focus is non-nil
+and its UUID differs from the requested selection. Four new state regressions
+observe `objectWillChange`: repeated ordinary in-page UUID and repeated empty
+nil selection emit zero publications; matching focused identity is retained
+without publication; and a different UUID or nil clears an existing focus.
+The complete non-UI result bundle parsed as 197 passed, zero failed, and zero
+skipped. The complete UI result bundle parsed as 37 passed, zero failed, and
+zero skipped. Its 37 activity trees contain zero SwiftUI view-update
+publication warnings. Six Xcode internal QoS diagnostics remain in six tests
+and are tracked separately from product behavior.
+
+An initial focused UI command used an incomplete XCTest selector and executed
+zero tests despite `xcodebuild` reporting success. It is retained as a
+non-evidence command error; the corrected focused result executed 4/4 key
+selection paths, and the unique complete bundle executed all 37 tests.
+
 ### Other manual checks not represented by automation
 
 No physical pointer review, macOS 14 runtime pass, release-signed archive

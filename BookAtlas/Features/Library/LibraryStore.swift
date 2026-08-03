@@ -467,8 +467,8 @@ final class LibraryStore: ObservableObject {
         if selectionIssue != nil {
             selectionIssue = nil
         }
-        if focusedBook?.id != id {
-            focusedBook = nil
+        if let focusedBook, focusedBook.id != id {
+            self.focusedBook = nil
         }
     }
 
