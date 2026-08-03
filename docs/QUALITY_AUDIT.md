@@ -131,12 +131,13 @@ closed so it could not contaminate automated UI results.
 
 A second attempt was made on 2026-08-03 after starting the local Debug product
 with the explicit in-memory store and fixed fictional UI seed. The production
-database path was never opened. The supported Computer Use runtime initialized
-and enumerated running applications, but its native pipe closed before the
-first Book Atlas app-state/accessibility-tree response. Because no Book Atlas
-desktop or AX state could be read, the attempt did not change appearance, accent, window
-size, Reduce Motion, VoiceOver, or Inspector settings and did not claim any
-manual result. The fictional app process was then terminated.
+database path was never opened. The supported Computer Use runtime loaded, but
+its native pipe failed for both the first Book Atlas app-state/accessibility-
+tree request and the fallback running-application-list request. Because no
+Book Atlas desktop or AX state could be read, the attempt did not change
+appearance, accent, window size, Reduce Motion, VoiceOver, or Inspector
+settings and did not claim any manual result. The fictional app process was
+then terminated.
 
 Accordingly, no item below is marked PASS. Automated identifiers, hosted-view
 smoke tests, and XCUI keyboard paths are supporting evidence only and are not

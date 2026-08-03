@@ -69,8 +69,10 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-ui-v4 \
-  -resultBundlePath /tmp/bookatlas-p10-nogo5-final-ui-v4.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-ui-clean \
+  -resultBundlePath /tmp/bookatlas-p10-nogo5-final-ui-clean.xcresult \
+  -parallel-testing-enabled NO \
+  -maximum-parallel-testing-workers 1 \
   -only-testing:BookAtlasUITests
 ```
 
