@@ -272,6 +272,29 @@ explicitly rejected. State tests cover missing and filtered-out targets,
 off-page create/edit/merge selection, and slow-old/fast-new request
 arbitration.
 
+The sixth NO-GO closure changed only the UI-test precondition and shared text
+input arbitration. `testSearchCombinesWithStatusFilterAndCanBeCleared`
+explicitly clicks the fixed A101 UUID row and verifies its detail title before
+and after applying the status filter; it no longer relies on an implicit first
+row selection. All calls to `replaceText` now supply their application. The
+helper activates it, waits for foreground/window/element existence, clicks,
+requires `hasKeyboardFocus`, and permits exactly one bounded
+reactivate/reclick before failing. It does not sleep, loop, or request XCTest
+retry-on-failure.
+
+The final-code search result contains ten relaunch-enabled, no-retry passed
+repetitions. The two precise zero-result UI tests passed 2/2. The unique sealed
+complete result bundle parsed through both `xcresulttool` summary and tests
+tree as 37 passed, zero failed, zero skipped; the complete non-UI result parsed
+as 190/190. Earlier evidence is not discarded: the first full run was 36/37,
+and that failure plus one focused duplicate-draft rerun failed at temporary
+helper assertions which treated SwiftUI `TextEditor`'s unreliable
+`hittable`/`enabled` AX
+attributes as input authority even though later click/focus/type steps worked.
+Post-click keyboard focus is the final authority. The result trees also retain
+non-failing SwiftUI view-update and QoS runtime warnings; this closure does not
+claim those diagnostics are resolved.
+
 ## Query baseline
 
 `LibraryQueryBenchmarkTests` generates fixed fictional records in a fresh in-memory store for each size and records query construction, bulk tag association, search, multi-filter, and sort durations separately. On the environment above, the recorded Prompt 5 evidence for 1,000/5,000/10,000 books was approximately 1.0/2.2/4.1 ms for search and 9.5/27.4/28.1 ms for the priority-sorted multi-filter query. These are environment-specific evidence, not pass/fail thresholds or performance promises.

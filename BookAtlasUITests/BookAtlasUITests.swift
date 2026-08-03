@@ -95,7 +95,7 @@ final class BookAtlasUITests: XCTestCase {
 
         element("edit-book-button", in: app).click()
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
-        replaceText(in: element("editor-title", in: app), with: "A202")
+        replaceText(in: element("editor-title", in: app), with: "A202", using: app)
 
         app.typeKey(.escape, modifierFlags: [])
         XCTAssertTrue(element("editor-continue-editing", in: app).waitForExistence(timeout: 3))
@@ -110,7 +110,7 @@ final class BookAtlasUITests: XCTestCase {
         element("edit-book-button", in: app).click()
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
         XCTAssertEqual(element("editor-title", in: app).value as? String, "A101")
-        replaceText(in: element("editor-title", in: app), with: "A202")
+        replaceText(in: element("editor-title", in: app), with: "A202", using: app)
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(element("book-detail-title", in: app).waitForExistence(timeout: 3))
 
@@ -317,7 +317,8 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(searchField.waitForExistence(timeout: 3))
         replaceText(
             in: searchField,
-            with: "不存在的固定虚构分页书籍"
+            with: "不存在的固定虚构分页书籍",
+            using: app
         )
 
         let unavailable = element("library-selection-unavailable", in: app)
@@ -355,7 +356,7 @@ final class BookAtlasUITests: XCTestCase {
 
         let searchField = app.searchFields.firstMatch
         XCTAssertTrue(searchField.waitForExistence(timeout: 3))
-        replaceText(in: searchField, with: "A101")
+        replaceText(in: searchField, with: "A101", using: app)
         let a101Row = element(
             "library-book-00000000-0000-0000-0000-000000000101",
             in: app
@@ -366,14 +367,37 @@ final class BookAtlasUITests: XCTestCase {
         )
         XCTAssertTrue(a101Row.waitForExistence(timeout: 3))
         XCTAssertFalse(b202Row.exists)
+        a101Row.click()
+        let detailTitle = element("book-detail-title", in: app)
+        XCTAssertTrue(detailTitle.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                detailTitle,
+                containing: "A101",
+                timeout: 3
+            ),
+            "Selecting the fixed A101 UUID row must publish the A101 detail"
+        )
 
         element("library-filter-menu", in: app).click()
         app.typeKey(.downArrow, modifierFlags: [])
         app.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(element("active-filter-summary", in: app).waitForExistence(timeout: 3))
         XCTAssertTrue(a101Row.exists)
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                detailTitle,
+                containing: "A101",
+                timeout: 3
+            ),
+            "Applying the status filter must retain the explicitly selected A101"
+        )
 
-        replaceText(in: searchField, with: "不存在的虚构书")
+        replaceText(
+            in: searchField,
+            with: "不存在的虚构书",
+            using: app
+        )
         let unavailable = element("library-selection-unavailable", in: app)
         XCTAssertTrue(unavailable.waitForExistence(timeout: 3))
         XCTAssertTrue(
@@ -432,7 +456,11 @@ final class BookAtlasUITests: XCTestCase {
         app.typeKey("2", modifierFlags: .command)
         XCTAssertTrue(element("page-title-collections", in: app).waitForExistence(timeout: 3))
         element("add-collection-button", in: app).click()
-        replaceText(in: element("collection-name-field", in: app), with: "North Shelf")
+        replaceText(
+            in: element("collection-name-field", in: app),
+            with: "North Shelf",
+            using: app
+        )
         app.typeKey(.tab, modifierFlags: [])
         app.typeText("Fictional collection")
         app.typeKey(.tab, modifierFlags: [])
@@ -456,7 +484,11 @@ final class BookAtlasUITests: XCTestCase {
         }
         XCTAssertTrue(element("page-title-sources", in: app).waitForExistence(timeout: 3))
         element("add-source-button", in: app).click()
-        replaceText(in: element("source-name-field", in: app), with: "Paper Signal")
+        replaceText(
+            in: element("source-name-field", in: app),
+            with: "Paper Signal",
+            using: app
+        )
         app.typeKey(.tab, modifierFlags: [])
         app.typeText("Fictional source")
         app.typeKey(.tab, modifierFlags: [])
@@ -480,7 +512,11 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(draftRow.waitForExistence(timeout: 3))
         draftRow.click()
         element("rename-tag-button", in: app).click()
-        replaceText(in: element("tag-name-field", in: app), with: "Harbor Revised")
+        replaceText(
+            in: element("tag-name-field", in: app),
+            with: "Harbor Revised",
+            using: app
+        )
         app.typeKey(.tab, modifierFlags: [])
         element("tag-save-button", in: app).click()
         XCTAssertTrue(catalogRow(named: "Harbor Revised", in: app).waitForExistence(timeout: 3))
@@ -513,7 +549,11 @@ final class BookAtlasUITests: XCTestCase {
         let app = launchInMemoryApp(seedFictionalBooks: true)
         app.typeKey("n", modifierFlags: .command)
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
-        replaceText(in: element("editor-title", in: app), with: "A101 Incoming")
+        replaceText(
+            in: element("editor-title", in: app),
+            with: "A101 Incoming",
+            using: app
+        )
         app.typeKey(.tab, modifierFlags: [])
         app.typeText("Harbor Author")
         app.typeKey(.tab, modifierFlags: [])
@@ -572,7 +612,8 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
         replaceText(
             in: element("editor-title", in: app),
-            with: "A101 Recoverable Draft"
+            with: "A101 Recoverable Draft",
+            using: app
         )
         app.typeKey(.tab, modifierFlags: [])
         app.typeKey("a", modifierFlags: .command)
@@ -584,7 +625,8 @@ final class BookAtlasUITests: XCTestCase {
         scrollToElement("editor-note", in: app)
         replaceText(
             in: element("editor-note", in: app),
-            with: "Fixed fictional draft note"
+            with: "Fixed fictional draft note",
+            using: app
         )
 
         app.typeKey("s", modifierFlags: .command)
@@ -824,7 +866,11 @@ final class BookAtlasUITests: XCTestCase {
 
         element("edit-book-button", in: app).click()
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
-        replaceText(in: element("editor-title", in: app), with: "《雾港刷新邻居》")
+        replaceText(
+            in: element("editor-title", in: app),
+            with: "《雾港刷新邻居》",
+            using: app
+        )
         app.typeKey("s", modifierFlags: .command)
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForNonExistence(timeout: 3))
 
@@ -939,7 +985,8 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(element("reading-link-editor", in: app).waitForExistence(timeout: 3))
         replaceText(
             in: element("reading-link-value", in: app),
-            with: "javascript:alert(1)"
+            with: "javascript:alert(1)",
+            using: app
         )
         element("save-reading-link", in: app).click()
         XCTAssertTrue(element("reading-link-validation", in: app).waitForExistence(timeout: 3))
@@ -950,7 +997,8 @@ final class BookAtlasUITests: XCTestCase {
 
         replaceText(
             in: element("reading-link-value", in: app),
-            with: "http://example.invalid/unsafe"
+            with: "http://example.invalid/unsafe",
+            using: app
         )
         element("save-reading-link", in: app).click()
         XCTAssertTrue(
@@ -967,7 +1015,11 @@ final class BookAtlasUITests: XCTestCase {
         let app = launchInMemoryApp(seedFictionalBooks: true)
         scrollToReadingEntries(in: app)
         element("add-reading-link", in: app).click()
-        replaceText(in: element("reading-link-label", in: app), with: "fictional reader")
+        replaceText(
+            in: element("reading-link-label", in: app),
+            with: "fictional reader",
+            using: app
+        )
         app.typeKey(.tab, modifierFlags: [])
         app.typeKey("a", modifierFlags: .command)
         app.typeText("https://reader.example.invalid/private-segment")
@@ -989,7 +1041,11 @@ final class BookAtlasUITests: XCTestCase {
         let edit = app.buttons["编辑"].firstMatch
         XCTAssertTrue(edit.waitForExistence(timeout: 3))
         edit.click()
-        replaceText(in: element("reading-link-label", in: app), with: "fictional reader revised")
+        replaceText(
+            in: element("reading-link-label", in: app),
+            with: "fictional reader revised",
+            using: app
+        )
         element("save-reading-link", in: app).click()
         XCTAssertTrue(element("reading-link-editor", in: app).waitForNonExistence(timeout: 3))
         let revisedLinkRow = app.descendants(matching: .any).matching(
@@ -1565,7 +1621,11 @@ final class BookAtlasUITests: XCTestCase {
     ) {
         app.typeKey("n", modifierFlags: .command)
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
-        replaceText(in: element("editor-title", in: app), with: title)
+        replaceText(
+            in: element("editor-title", in: app),
+            with: title,
+            using: app
+        )
         app.typeKey(.tab, modifierFlags: [])
         app.typeText(author)
         app.typeKey("s", modifierFlags: .command)
@@ -1573,9 +1633,26 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
-    private func replaceText(in element: XCUIElement, with value: String) {
+    private func replaceText(
+        in element: XCUIElement,
+        with value: String,
+        using app: XCUIApplication
+    ) {
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 3))
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 3))
         XCTAssertTrue(element.waitForExistence(timeout: 3))
         element.click()
+        if !waitForKeyboardFocus(element, timeout: 1) {
+            app.activate()
+            XCTAssertTrue(app.wait(for: .runningForeground, timeout: 3))
+            XCTAssertTrue(element.waitForExistence(timeout: 3))
+            element.click()
+        }
+        XCTAssertTrue(
+            waitForKeyboardFocus(element, timeout: 3),
+            "Text input must have keyboard focus before replacing its value"
+        )
         element.typeKey("a", modifierFlags: .command)
         element.typeText(value)
     }
@@ -1589,7 +1666,11 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     private func createTag(named name: String, in app: XCUIApplication) {
         element("add-tag-button", in: app).click()
-        replaceText(in: element("tag-name-field", in: app), with: name)
+        replaceText(
+            in: element("tag-name-field", in: app),
+            with: name,
+            using: app
+        )
         app.typeKey(.tab, modifierFlags: [])
         element("tag-save-button", in: app).click()
         XCTAssertTrue(catalogRow(named: name, in: app).waitForExistence(timeout: 3))

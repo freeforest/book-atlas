@@ -51,6 +51,13 @@ release signing/notarization occurred.
 - Every UI test launches an in-memory library with fixed fictional seeds and
   fake/no-op external integrations. It never opens a real file picker,
   browser, Apple Books item, pasteboard, user database, or user file.
+- The search/status-filter regression explicitly selects the fixed A101 UUID,
+  verifies that detail identity before and after filtering, and only then
+  excludes it with a zero-result query. The shared XCUI text-input helper
+  activates the application, waits for its window and the target element,
+  clicks, and requires `hasKeyboardFocus` before replacing text. It allows one
+  bounded reactivate/reclick fallback; it has no sleeps, loops, or XCTest retry.
+  A no-retry, relaunch-enabled result bundle contains ten passed repetitions.
 - Existing-library launch measurements are the sole exception to the
   in-memory rule and remain isolated: an unmeasured test process creates a
   fixed-fictional Schema 5 database in a UUID-named child of the process
@@ -176,6 +183,31 @@ This is an environment blocker for the requested manual acceptance evidence,
 not evidence of either a product pass or product failure. A reviewer with
 direct control of an unlocked test Mac must execute the checklist above using
 only fixed fictional data before stable-release acceptance.
+
+### Sixth-closure XCUI evidence and limitations
+
+The final sealed UI result bundle was parsed with both `xcresulttool` summary
+and tests-tree commands: 37 tests passed, zero failed, and zero skipped. The
+two targeted zero-result tests passed 2/2, and the complete non-UI suite passed
+190/190. The ten search repetitions passed individually with no retry-on-
+failure setting.
+
+Failure history is retained rather than replaced by the final green run. The
+first complete run in this closure executed all 37 tests and produced 36
+passes plus one failure in the nested duplicate-draft test. That full failure
+and one subsequent focused rerun failed only at helper assertions that treated
+SwiftUI `TextEditor`'s `hittable`, then `enabled`, AX attributes as authoritative;
+both logs showed the control could subsequently be clicked, focused, and
+typed into. After the helper switched to post-click keyboard focus as the
+authority, that focused test passed and the final full suite passed 37/37.
+These were test-helper assertion failures, not a search-result assertion,
+product-state failure, or observed external-window interruption.
+
+The parsed results also contain non-failing runtime diagnostics: the search
+repetitions report SwiftUI's "Publishing changes from within view updates"
+warning, and several full-suite cases report QoS/runtime warnings. They did
+not fail or skip a test, but remain review risks rather than being represented
+as resolved by this narrowly scoped closure.
 
 ### Other manual checks not represented by automation
 

@@ -67,6 +67,14 @@ Motion acceptance remains blocked by the current task execution environment
 and is not represented as passed. No stable release, tag, distribution
 signature, notarization, or upload has occurred.
 
+The sixth closure's final-code XCUI evidence uses an explicit fixed-UUID
+selection precondition and foreground/keyboard-focus arbitration for every
+shared text replacement. A no-retry relaunch run passed the search path 10/10,
+both zero-result paths passed 2/2, and the unique sealed full result bundle
+parsed as 37/37 with no failures or skips. Earlier 36/37 and helper-assertion
+failures are retained in the quality audit; this evidence does not replace the
+still-blocked human gates or constitute acceptance.
+
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 
 ## Required execution order

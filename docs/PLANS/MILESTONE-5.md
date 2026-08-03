@@ -37,6 +37,18 @@ or 1,000-row repository hard limit. A second manual-audit attempt on
 Computer Use pipe closed before any Book Atlas desktop or AX state could be read; all
 human gates remain blocked rather than inferred from automation.
 
+The sixth closure removes two XCUI assumptions without changing production
+search or selection behavior: the combined search/filter test explicitly
+selects and verifies the fixed A101 UUID before excluding it, and the shared
+input helper requires post-click keyboard focus after app activation (with one
+bounded reactivate/reclick fallback). Its final no-retry evidence is 10/10
+relaunch-enabled search repetitions, 2/2 targeted zero-result cases, 190/190
+non-UI tests, and a uniquely sealed full UI result parsed as 37/37 with zero
+failures or skips. One earlier full attempt was 36/37 and two helper revisions
+failed on non-authoritative SwiftUI `TextEditor` AX attributes; those attempts
+remain documented in the quality audit. Manual gates and independent review
+remain outstanding.
+
 ## Gates
 
 - Build and full test suite pass on the documented supported toolchain.
