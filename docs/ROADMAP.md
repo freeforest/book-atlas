@@ -45,7 +45,7 @@ Exit condition: data is portable and recoverable, relationship exploration does 
 
 Prompt 10 quality and open-source preparation is implemented and awaits
 independent review and the documented human gates. The latest local closure
-evidence is successful Debug and hardened local Release builds, 190/190
+evidence is successful Debug and hardened local Release builds, 193/193
 unit/integration/migration/security/performance tests, and 37/37 actually
 executed UI tests. The ordinary library
 now exposes exact result counts and bounded 200-row pagination rather than
@@ -74,6 +74,16 @@ both zero-result paths passed 2/2, and the unique sealed full result bundle
 parsed as 37/37 with no failures or skips. Earlier 36/37 and helper-assertion
 failures are retained in the quality audit; this evidence does not replace the
 still-blocked human gates or constitute acceptance.
+
+The seventh closure gives `List(selection:)` local SwiftUI ownership and
+applies only changed, latest-generation UUID side effects to the Store after
+the List update. Search and keyboard-selection paths each passed 10/10
+no-retry relaunch repetitions; parsed activities for those runs and the full
+37/37 suite contain no SwiftUI view-update publication warning. Xcode internal
+QoS diagnostics remain separately recorded. The supported Computer Use
+runtime initialized and enumerated running applications, but its native pipe
+closed before the first fixed-fictional Book Atlas app-state/AX-tree response;
+there is still no manual visual or accessibility result.
 
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 

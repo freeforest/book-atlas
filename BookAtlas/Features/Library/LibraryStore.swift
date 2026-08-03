@@ -461,8 +461,12 @@ final class LibraryStore: ObservableObject {
     }
 
     func selectBook(_ id: UUID?) {
-        selectedBookID = id
-        selectionIssue = nil
+        if selectedBookID != id {
+            selectedBookID = id
+        }
+        if selectionIssue != nil {
+            selectionIssue = nil
+        }
         if focusedBook?.id != id {
             focusedBook = nil
         }

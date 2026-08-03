@@ -11,7 +11,7 @@ Verify release quality and prepare an accurate, privacy-conscious open-source re
 Prompt 10 implementation is complete and awaits independent review. It is not
 a release, tag, signed distribution, notarization, upload, or acceptance.
 Local closure evidence is successful Debug and hardened local Release builds,
-190/190 unit/integration/migration/security/performance tests, and 37/37 UI
+193/193 unit/integration/migration/security/performance tests, and 37/37 UI
 tests with XCUIAutomation initialized. The fixed-fictional performance record
 now separates test-data preparation from three-run existing-library launch,
 database open, 200-row first-page load, next-page load, disclosed multi-page
@@ -33,9 +33,10 @@ over generic empty/no-results placeholders when a bounded query returns zero
 rows. The excluded state includes an accessible clear-query action, and both
 paths have Store plus real XCUI regressions without changing the 200-row page
 or 1,000-row repository hard limit. A second manual-audit attempt on
-2026-08-03 started only a fixed-fictional in-memory Debug app, but the native
-Computer Use pipe closed before any Book Atlas desktop or AX state could be read; all
-human gates remain blocked rather than inferred from automation.
+2026-08-03 initialized the supported Computer Use runtime, enumerated running
+applications, and started only a fixed-fictional in-memory Debug app, but the
+native pipe closed before returning the first Book Atlas desktop or AX tree;
+all human gates remain blocked rather than inferred from automation.
 
 The sixth closure removes two XCUI assumptions without changing production
 search or selection behavior: the combined search/filter test explicitly
@@ -48,6 +49,18 @@ failures or skips. One earlier full attempt was 36/37 and two helper revisions
 failed on non-authoritative SwiftUI `TextEditor` AX attributes; those attempts
 remain documented in the quality audit. Manual gates and independent review
 remain outstanding.
+
+The seventh closure replaces the `List(selection:)` binding's synchronous
+multi-property Store mutation with a local SwiftUI selection bridge. Store-to-
+list synchronization is one-way and idempotent; list-to-Store changes carry a
+monotonic generation and apply only the latest identity after the List update.
+The Store itself emits no change for an already-selected UUID and preserves a
+valid off-page focused book. No-retry relaunch runs passed both the search and
+keyboard-selection cases 10/10. Parsed activities for all 20 repetitions and
+the complete 37/37 UI bundle contain zero SwiftUI view-update publication
+warnings. Six complete-suite tests still contain an independent Xcode internal
+QoS diagnostic; it is recorded separately and is not represented as a product
+finding. The final non-UI suite passed 193/193.
 
 ## Gates
 

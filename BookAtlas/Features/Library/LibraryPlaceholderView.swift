@@ -1,10 +1,40 @@
 import SwiftUI
 
+struct LibraryListSelectionState: Equatable {
+    enum Source: Equatable {
+        case store
+        case list
+    }
+
+    private(set) var selectedBookID: UUID?
+    private(set) var source: Source = .store
+    private(set) var generation = 0
+
+    mutating func synchronizeFromStore(_ id: UUID?) {
+        guard selectedBookID != id else {
+            return
+        }
+        selectedBookID = id
+        source = .store
+        generation &+= 1
+    }
+
+    mutating func selectFromList(_ id: UUID?) {
+        guard selectedBookID != id else {
+            return
+        }
+        selectedBookID = id
+        source = .list
+        generation &+= 1
+    }
+}
+
 struct LibraryView: View {
     @ObservedObject var store: LibraryStore
     let onShowGraph: (UUID) -> Void
     @State private var showsManagement = false
     @State private var membershipBook: Book?
+    @State private var listSelection = LibraryListSelectionState()
 
     var body: some View {
         Group {
@@ -172,8 +202,8 @@ struct LibraryView: View {
                         }
                         List(
                             selection: Binding(
-                                get: { store.selectedBookID },
-                                set: { store.selectBook($0) }
+                                get: { listSelection.selectedBookID },
+                                set: { listSelection.selectFromList($0) }
                             )
                         ) {
                             ForEach(store.books) { book in
@@ -184,6 +214,21 @@ struct LibraryView: View {
                         }
                         .listStyle(.inset)
                         .accessibilityIdentifier("library-book-list")
+                        .onChange(of: listSelection.generation) {
+                            guard listSelection.source == .list,
+                                  listSelection.selectedBookID
+                                    != store.selectedBookID
+                            else {
+                                return
+                            }
+                            store.selectBook(listSelection.selectedBookID)
+                        }
+                        .onChange(
+                            of: store.selectedBookID,
+                            initial: true
+                        ) { _, selectedBookID in
+                            listSelection.synchronizeFromStore(selectedBookID)
+                        }
 
                         Divider()
                         LibraryPaginationFooter(store: store)

@@ -34,7 +34,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-debug \
+  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-debug \
   build
 
 xcodebuild \
@@ -42,7 +42,7 @@ xcodebuild \
   -scheme BookAtlas \
   -configuration Release \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-release \
+  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-release \
   build
 ```
 
@@ -60,8 +60,8 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-tests \
-  -resultBundlePath /tmp/bookatlas-p10-nogo5-final-tests.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-tests-sealed2 \
+  -resultBundlePath /tmp/bookatlas-p10-nogo7-final-tests-sealed2.xcresult \
   -only-testing:BookAtlasTests
 
 xcodebuild test \
@@ -69,15 +69,15 @@ xcodebuild test \
   -scheme BookAtlas \
   -configuration Debug \
   -destination 'platform=macOS,arch=arm64' \
-  -derivedDataPath /tmp/bookatlas-p10-nogo5-final-ui-clean \
-  -resultBundlePath /tmp/bookatlas-p10-nogo5-final-ui-clean.xcresult \
+  -derivedDataPath /tmp/bookatlas-p10-nogo7-final-ui \
+  -resultBundlePath /tmp/bookatlas-p10-nogo7-final-ui.xcresult \
   -parallel-testing-enabled NO \
   -maximum-parallel-testing-workers 1 \
   -only-testing:BookAtlasUITests
 ```
 
-The unit/integration/migration/security/performance command executed 190
-tests: 190 passed, zero failed, zero skipped. The UI command initialized
+The unit/integration/migration/security/performance command executed 193
+tests: 193 passed, zero failed, zero skipped. The UI command initialized
 XCUIAutomation in the interactive macOS session and executed 37 tests: 37
 passed, zero failed, zero skipped. Prompt 10 adds the historical Schema 1–5
 domain-data matrix, explicit Command-F search-focus state and UI coverage,
@@ -115,10 +115,10 @@ each await, so a late focus, query, or page result cannot replace a newer
 selection and page atomically published by the store.
 
 Accessibility Inspector was actually launched during the earlier attempt. On
-2026-08-03 a second attempt started the Debug app against an in-memory fixed
-fictional seed. The supported Computer Use runtime enumerated running
-applications, but its native pipe closed before the first Book Atlas app-state
-or accessibility-tree response. The task execution surface therefore still could
+2026-08-03 a second attempt initialized the supported Computer Use runtime,
+enumerated running applications, and started the Debug app against an in-memory
+fixed fictional seed. Its native pipe closed before the first Book Atlas app-
+state or accessibility-tree response. The task execution surface therefore still could
 not safely select Inspector targets, read results, drive VoiceOver, change
 system accessibility/appearance settings, or inspect the desktop. No human
 accessibility or visual item is reported as passed. The per-area BLOCKED record is in
@@ -282,18 +282,32 @@ requires `hasKeyboardFocus`, and permits exactly one bounded
 reactivate/reclick before failing. It does not sleep, loop, or request XCTest
 retry-on-failure.
 
-The final-code search result contains ten relaunch-enabled, no-retry passed
-repetitions. The two precise zero-result UI tests passed 2/2. The unique sealed
-complete result bundle parsed through both `xcresulttool` summary and tests
-tree as 37 passed, zero failed, zero skipped; the complete non-UI result parsed
-as 190/190. Earlier evidence is not discarded: the first full run was 36/37,
+The seventh closure binds `List(selection:)` to a local
+`LibraryListSelectionState` instead of synchronously mutating several Store
+publications in the List transaction. A monotonic generation identifies the
+latest list-side identity, programmatic Store selection synchronizes back
+without feedback, and repeated UUID selection is idempotent. The Store no
+longer publishes unchanged selection state or clears a matching off-page
+focused book.
+
+The final-code search and keyboard-selection results each contain ten
+relaunch-enabled, no-retry passed repetitions. The unique complete result
+bundle parsed through both `xcresulttool` summary and tests tree as 37 passed,
+zero failed, zero skipped; the complete non-UI result parsed as 193/193.
+Activities for all 20 focused repetitions and all 37 complete-suite cases
+contain zero SwiftUI view-update publication warnings. The keyboard 10-run
+bundle retains ten Xcode internal QoS diagnostics and the complete bundle has
+six; they are classified separately because the activities do not identify
+production selection code as their source. Earlier evidence is not discarded:
+the first full run was 36/37,
 and that failure plus one focused duplicate-draft rerun failed at temporary
 helper assertions which treated SwiftUI `TextEditor`'s unreliable
 `hittable`/`enabled` AX
 attributes as input authority even though later click/focus/type steps worked.
-Post-click keyboard focus is the final authority. The result trees also retain
-non-failing SwiftUI view-update and QoS runtime warnings; this closure does not
-claim those diagnostics are resolved.
+Post-click keyboard focus is the final authority. Two seventh-closure focused
+attempts also produced zero-test bundles when XCUIAutomation timed out while
+enabling automation; a subsequent focused run executed and passed 2/2. These
+are retained as infrastructure failures.
 
 ## Query baseline
 

@@ -1,8 +1,87 @@
+import Combine
 import XCTest
 @testable import BookAtlas
 
 @MainActor
 final class LibraryStoreTests: XCTestCase {
+    func testListSelectionStateSynchronizesProgrammaticSelectionAndCoalescesRapidInput() {
+        let first = UUID(uuidString: "56000000-0000-0000-0000-000000000001")!
+        let second = UUID(uuidString: "56000000-0000-0000-0000-000000000002")!
+        let programmatic = UUID(uuidString: "56000000-0000-0000-0000-000000000003")!
+        let laterProgrammatic = UUID(uuidString: "56000000-0000-0000-0000-000000000004")!
+        var state = LibraryListSelectionState()
+
+        state.synchronizeFromStore(programmatic)
+        XCTAssertEqual(state.selectedBookID, programmatic)
+        XCTAssertEqual(state.source, .store)
+
+        state.selectFromList(first)
+        let supersededGeneration = state.generation
+        state.selectFromList(first)
+        state.selectFromList(second)
+        XCTAssertEqual(state.selectedBookID, second)
+        XCTAssertEqual(state.source, .list)
+        XCTAssertGreaterThan(state.generation, supersededGeneration)
+        XCTAssertEqual(state.generation, 3)
+
+        state.synchronizeFromStore(laterProgrammatic)
+        XCTAssertEqual(state.selectedBookID, laterProgrammatic)
+        XCTAssertEqual(state.source, .store)
+        XCTAssertEqual(state.generation, 4)
+    }
+
+    func testSelectingCurrentOffPageIdentityIsIdempotentAndPreservesFocus() async throws {
+        let (service, seededBooks) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        let target = seededBooks[42]
+        store.focusBook(target.id)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.pinnedFocusedBook?.id, target.id)
+
+        var publicationCount = 0
+        let observation = store.objectWillChange.sink {
+            publicationCount += 1
+        }
+        defer { observation.cancel() }
+
+        store.selectBook(target.id)
+
+        XCTAssertEqual(publicationCount, 0)
+        XCTAssertEqual(store.selectedBookID, target.id)
+        XCTAssertEqual(store.selectedBook?.id, target.id)
+        XCTAssertEqual(store.pinnedFocusedBook?.id, target.id)
+        XCTAssertNil(store.selectionIssue)
+    }
+
+    func testSelectingDifferentIdentityClearsMismatchAndRecoverableIssue() async throws {
+        let (service, seededBooks) = try await makePagedCatalog()
+        let store = LibraryStore(catalog: service)
+        await store.waitForPendingWork()
+        let target = seededBooks[42]
+        let ordinaryBook = try XCTUnwrap(store.books.first)
+
+        store.focusBook(target.id)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.pinnedFocusedBook?.id, target.id)
+
+        store.selectBook(ordinaryBook.id)
+        XCTAssertEqual(store.selectedBookID, ordinaryBook.id)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+
+        store.focusBook(target.id)
+        await store.waitForPendingWork()
+        store.updateSearchText("不存在的固定虚构分页书籍")
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.selectionIssue, .outsideCurrentResults)
+
+        store.selectBook(ordinaryBook.id)
+        XCTAssertEqual(store.selectedBookID, ordinaryBook.id)
+        XCTAssertNil(store.pinnedFocusedBook)
+        XCTAssertNil(store.selectionIssue)
+    }
+
     func testReadingEntryUIFixtureProducesExactDuplicateCandidate() async throws {
         let store = LibraryStore.makeApplicationStore(
             arguments: [

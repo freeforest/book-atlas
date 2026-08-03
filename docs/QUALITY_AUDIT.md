@@ -31,6 +31,11 @@ release signing/notarization occurred.
   distinct outside-current-results state and a keyboard/accessibility clear
   action. Neither can be hidden by the generic empty-library or no-results
   placeholders, and neither selects an unrelated row.
+- `List(selection:)` is bound to local SwiftUI state rather than directly to
+  three `@Published` Store properties. A generation-tagged bridge applies the
+  latest changed UUID to the Store after the List selection update and mirrors
+  programmatic Store selection back without feedback. Re-selecting the same
+  UUID is a no-op and preserves a valid off-page focused detail.
 - The historical migration matrix starts from every formal Schema 1–5
   definition, migrates to Schema 5 twice, and checks the data families
   available at that source version: books/notes, tags, lists/descriptions,
@@ -136,12 +141,13 @@ computer-control bridge rejected initialization because it was not running in
 its trusted runtime. The Inspector process launched for this attempt was then
 closed so it could not contaminate automated UI results.
 
-A second attempt was made on 2026-08-03 after starting the local Debug product
-with the explicit in-memory store and fixed fictional UI seed. The production
-database path was never opened. The supported Computer Use runtime loaded, but
-its native pipe failed for both the first Book Atlas app-state/accessibility-
-tree request and the fallback running-application-list request. Because no
-Book Atlas desktop or AX state could be read, the attempt did not change
+A second attempt was made on 2026-08-03. The supported Computer Use runtime
+successfully initialized and enumerated running applications, then the local
+Debug product was started with the explicit in-memory store and fixed
+fictional UI seed. The production database path was never opened. Its native
+pipe closed before returning the first Book Atlas app-state/accessibility-tree
+response. Because no Book Atlas desktop or AX state could be read, the attempt
+did not change
 appearance, accent, window size, Reduce Motion, VoiceOver, or Inspector
 settings and did not claim any manual result. The fictional app process was
 then terminated.
@@ -184,13 +190,15 @@ not evidence of either a product pass or product failure. A reviewer with
 direct control of an unlocked test Mac must execute the checklist above using
 only fixed fictional data before stable-release acceptance.
 
-### Sixth-closure XCUI evidence and limitations
+### Seventh-closure XCUI evidence and limitations
 
-The final sealed UI result bundle was parsed with both `xcresulttool` summary
-and tests-tree commands: 37 tests passed, zero failed, and zero skipped. The
-two targeted zero-result tests passed 2/2, and the complete non-UI suite passed
-190/190. The ten search repetitions passed individually with no retry-on-
-failure setting.
+The final UI result bundle at
+`/tmp/bookatlas-p10-nogo7-final-ui.xcresult` was parsed with both
+`xcresulttool` summary and tests-tree commands: 37 tests passed, zero failed,
+and zero skipped. The complete final-code non-UI suite passed 193/193. The
+search/filter and keyboard-selection cases each passed ten relaunch-enabled
+repetitions with no retry-on-failure setting; the three key selection paths
+also passed 3/3.
 
 Failure history is retained rather than replaced by the final green run. The
 first complete run in this closure executed all 37 tests and produced 36
@@ -203,11 +211,23 @@ authority, that focused test passed and the final full suite passed 37/37.
 These were test-helper assertion failures, not a search-result assertion,
 product-state failure, or observed external-window interruption.
 
-The parsed results also contain non-failing runtime diagnostics: the search
-repetitions report SwiftUI's "Publishing changes from within view updates"
-warning, and several full-suite cases report QoS/runtime warnings. They did
-not fail or skip a test, but remain review risks rather than being represented
-as resolved by this narrowly scoped closure.
+Two initial focused attempts produced sealed zero-test bundles because
+XCUIAutomation timed out while enabling automation mode. They are retained as
+infrastructure failures, not counted as product passes or test failures. A
+third focused run executed both selection cases and passed 2/2.
+
+The first final-code non-UI attempt likewise executed no test case because the
+sandbox denied `testmanagerd.control` helper communication. Its failed bundle
+is retained. A new path outside that restriction executed all 193 tests and
+passed without failure or skip.
+
+Parsed activities for all ten search repetitions, all ten keyboard-selection
+repetitions, and all 37 final-suite cases contain zero occurrences of
+“Publishing changes from within view updates is not allowed”. The keyboard
+10-run bundle contains ten Xcode `[Internal] Thread running …` QoS diagnostics,
+and the complete suite contains six such diagnostics in six cases. Those are
+tracked separately from the resolved SwiftUI warning; the activities provide
+no evidence that they originate in the production selection code.
 
 ### Other manual checks not represented by automation
 
