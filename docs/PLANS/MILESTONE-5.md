@@ -71,6 +71,18 @@ non-UI suite passed 197/197, and the complete 37/37 UI activity tree still
 contains zero SwiftUI view-update publication warnings. The six Xcode internal
 QoS diagnostics remain separately classified.
 
+A subsequent partial Light-mode human check found one blocking editor issue:
+invalid Save left its only message below the current Form viewport and supplied
+no understandable repeated-focus feedback. The current code closure adds a
+fixed visible summary, inline field errors, deterministic invalid-field focus,
+and an injectable privacy-safe accessibility announcement for every invalid
+submission. Its complete non-UI result is 200/200 and its direct fictional
+author/no-title mouse path passed 3/3 without retries. These automated results
+and the sealed complete UI suite passed 40/40 without failure or skip. These
+automated results do not close the manual gate: the corrected Light flow and all Dark, accent,
+window-size, Reduce Motion, complete keyboard, VoiceOver, and Inspector paths
+still require real human execution and independent review.
+
 ## Gates
 
 - Build and full test suite pass on the documented supported toolchain.

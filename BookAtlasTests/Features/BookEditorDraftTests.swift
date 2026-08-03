@@ -43,6 +43,102 @@ final class BookEditorDraftTests: XCTestCase {
         }
     }
 
+    func testValidationErrorsKnowWhenTheirFieldHasBeenCorrected() {
+        XCTAssertFalse(
+            BookEditorValidationError.titleRequired.isResolved(
+                by: BookEditorDraft(title: " ", author: "固定作者")
+            )
+        )
+        XCTAssertTrue(
+            BookEditorValidationError.titleRequired.isResolved(
+                by: BookEditorDraft(title: "《固定书名》", author: "固定作者")
+            )
+        )
+        XCTAssertFalse(
+            BookEditorValidationError.authorRequired.isResolved(
+                by: BookEditorDraft(title: "《固定书名》", author: " ")
+            )
+        )
+        XCTAssertTrue(
+            BookEditorValidationError.authorRequired.isResolved(
+                by: BookEditorDraft(title: "《固定书名》", author: "固定作者")
+            )
+        )
+        XCTAssertFalse(
+            BookEditorValidationError.invalidPublicationDate.isResolved(
+                by: BookEditorDraft(publicationDateText: "2024-02-30")
+            )
+        )
+        XCTAssertTrue(
+            BookEditorValidationError.invalidPublicationDate.isResolved(
+                by: BookEditorDraft(publicationDateText: "2024-02")
+            )
+        )
+        XCTAssertFalse(
+            BookEditorValidationError.invalidPriority.isResolved(
+                by: BookEditorDraft(priorityValue: 6)
+            )
+        )
+        XCTAssertTrue(
+            BookEditorValidationError.invalidPriority.isResolved(
+                by: BookEditorDraft(priorityValue: 5)
+            )
+        )
+    }
+
+    @MainActor
+    func testValidationFeedbackAnnouncesEverySubmissionWithoutPrivateDraftData() {
+        let poster = AccessibilityAnnouncementPosterSpy()
+        let feedback = BookEditorValidationFeedback(announcementPoster: poster)
+        let privateDraftText = "不应进入公告的私人草稿"
+
+        feedback.present(.validation(.titleRequired))
+        feedback.present(.validation(.titleRequired))
+
+        XCTAssertEqual(
+            poster.messages,
+            [
+                "保存没有成功。请检查填写内容。请填写书名。",
+                "保存没有成功。请检查填写内容。请填写书名。"
+            ]
+        )
+        XCTAssertFalse(poster.messages.joined().contains(privateDraftText))
+        XCTAssertEqual(feedback.validationError, .titleRequired)
+    }
+
+    @MainActor
+    func testValidationFeedbackClearsOnlyAfterCurrentErrorIsResolved() {
+        let poster = AccessibilityAnnouncementPosterSpy()
+        let feedback = BookEditorValidationFeedback(announcementPoster: poster)
+
+        feedback.present(.validation(.authorRequired))
+        feedback.clearIfResolved(
+            by: BookEditorDraft(title: "《固定书名》", author: " ")
+        )
+        XCTAssertEqual(feedback.validationError, .authorRequired)
+
+        feedback.clearIfResolved(
+            by: BookEditorDraft(title: "《固定书名》", author: "固定作者")
+        )
+        XCTAssertNil(feedback.error)
+
+        feedback.present(.validation(.invalidPublicationDate))
+        feedback.clearIfResolved(
+            by: BookEditorDraft(publicationDateText: "2024-02-30")
+        )
+        XCTAssertEqual(feedback.validationError, .invalidPublicationDate)
+        feedback.clearIfResolved(
+            by: BookEditorDraft(publicationDateText: "2024-02")
+        )
+        XCTAssertNil(feedback.error)
+
+        feedback.present(.validation(.invalidPriority))
+        feedback.clearIfResolved(by: BookEditorDraft(priorityValue: 6))
+        XCTAssertEqual(feedback.validationError, .invalidPriority)
+        feedback.clearIfResolved(by: BookEditorDraft(priorityValue: 0))
+        XCTAssertNil(feedback.error)
+    }
+
     func testEditorDraftKeepsExistingBookValuesUntilExplicitSave() throws {
         let book = try Book(draft: FictionalLibraryFixtures.draft(), createdAt: FictionalLibraryFixtures.timestamp)
         let editor = BookEditorDraft(book: book)
@@ -50,5 +146,16 @@ final class BookEditorDraftTests: XCTestCase {
         XCTAssertEqual(editor.title, book.title)
         XCTAssertEqual(editor.isbn, book.isbn)
         XCTAssertEqual(editor.priorityValue, book.priority?.rawValue)
+    }
+}
+
+@MainActor
+private final class AccessibilityAnnouncementPosterSpy:
+    AccessibilityAnnouncementPosting
+{
+    private(set) var messages: [String] = []
+
+    func postAnnouncement(_ message: String) {
+        messages.append(message)
     }
 }

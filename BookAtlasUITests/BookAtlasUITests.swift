@@ -82,8 +82,120 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
 
         app.typeKey("s", modifierFlags: .command)
-        XCTAssertTrue(element("editor-validation-error", in: app).waitForExistence(timeout: 3))
+        assertVisibleEditorValidation(
+            "请填写书名。",
+            fieldIdentifier: "editor-title",
+            fieldErrorIdentifier: "editor-title-error",
+            in: app
+        )
+        XCTAssertTrue(element("book-editor-sheet", in: app).exists)
         XCTAssertTrue(element("library-empty-state", in: app).exists)
+        XCTAssertFalse(element("duplicate-review-sheet", in: app).exists)
+        XCTAssertFalse(element("editor-discard-changes", in: app).exists)
+    }
+
+    @MainActor
+    func testAuthorOnlyMouseSaveShowsVisibleTitleErrorAndPreservesDraft() {
+        let app = launchInMemoryApp()
+
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
+        let title = element("editor-title", in: app)
+        XCTAssertTrue(waitForKeyboardFocus(title, timeout: 3))
+        app.typeKey(.tab, modifierFlags: [])
+        let author = element("editor-author", in: app)
+        XCTAssertTrue(waitForKeyboardFocus(author, timeout: 3))
+        app.typeText("Manual Acceptance Author")
+
+        clickEditorSave(in: app)
+
+        assertVisibleEditorValidation(
+            "请填写书名。",
+            fieldIdentifier: "editor-title",
+            fieldErrorIdentifier: "editor-title-error",
+            in: app
+        )
+        XCTAssertEqual(author.value as? String, "Manual Acceptance Author")
+        XCTAssertTrue(element("book-editor-sheet", in: app).exists)
+        XCTAssertTrue(element("library-empty-state", in: app).exists)
+        XCTAssertFalse(element("duplicate-review-sheet", in: app).exists)
+        XCTAssertFalse(element("editor-discard-changes", in: app).exists)
+
+        replaceText(
+            in: element("editor-title", in: app),
+            with: "Manual Acceptance Book",
+            using: app
+        )
+        XCTAssertTrue(
+            element("editor-validation-error", in: app)
+                .waitForNonExistence(timeout: 3)
+        )
+        XCTAssertFalse(element("editor-title-error", in: app).exists)
+        XCTAssertEqual(author.value as? String, "Manual Acceptance Author")
+    }
+
+    @MainActor
+    func testTitleOnlyMouseSaveShowsVisibleAuthorErrorAndPreservesDraft() {
+        let app = launchInMemoryApp()
+
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
+        let title = element("editor-title", in: app)
+        replaceText(in: title, with: "Manual Acceptance Book", using: app)
+
+        clickEditorSave(in: app)
+
+        assertVisibleEditorValidation(
+            "请填写作者。",
+            fieldIdentifier: "editor-author",
+            fieldErrorIdentifier: "editor-author-error",
+            in: app
+        )
+        XCTAssertEqual(title.value as? String, "Manual Acceptance Book")
+        XCTAssertTrue(element("book-editor-sheet", in: app).exists)
+        XCTAssertTrue(element("library-empty-state", in: app).exists)
+        XCTAssertFalse(element("duplicate-review-sheet", in: app).exists)
+    }
+
+    @MainActor
+    func testInvalidPublicationDateShowsVisibleSummaryAndFieldError() {
+        let app = launchInMemoryApp()
+
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        app.typeKey("n", modifierFlags: .command)
+        XCTAssertTrue(element("book-editor-sheet", in: app).waitForExistence(timeout: 3))
+        replaceText(
+            in: element("editor-title", in: app),
+            with: "Manual Acceptance Book",
+            using: app
+        )
+        app.typeKey(.tab, modifierFlags: [])
+        let author = element("editor-author", in: app)
+        XCTAssertTrue(waitForKeyboardFocus(author, timeout: 3))
+        app.typeText("Manual Acceptance Author")
+        replaceText(
+            in: element("editor-publication-date", in: app),
+            with: "2024-02-30",
+            using: app
+        )
+
+        clickEditorSave(in: app)
+
+        assertVisibleEditorValidation(
+            "出版日期应为 YYYY、YYYY-MM 或 YYYY-MM-DD。",
+            fieldIdentifier: nil,
+            fieldErrorIdentifier: "editor-publication-date-error",
+            in: app
+        )
+        XCTAssertEqual(
+            element("editor-publication-date", in: app).value as? String,
+            "2024-02-30"
+        )
+        XCTAssertTrue(element("book-editor-sheet", in: app).exists)
+        XCTAssertTrue(element("library-empty-state", in: app).exists)
+        XCTAssertFalse(element("duplicate-review-sheet", in: app).exists)
     }
 
     @MainActor
@@ -749,7 +861,10 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     func testDatabaseUnavailableUsesGenericErrorState() {
         let app = XCUIApplication()
-        app.launchArguments = ["-BookAtlasForceUnavailableStore"]
+        app.launchArguments = [
+            "-ApplePersistenceIgnoreState", "YES",
+            "-BookAtlasForceUnavailableStore",
+        ]
         app.launch()
 
         XCTAssertTrue(element("library-load-error", in: app).waitForExistence(timeout: 3))
@@ -1429,22 +1544,34 @@ final class BookAtlasUITests: XCTestCase {
         sessionID: UUID,
         bookCount: Int
     ) {
-        let app = performanceApplication(
+        let preparationApp = performanceApplication(
             mode: .prepare,
             sessionID: sessionID,
             bookCount: bookCount
         )
-        app.launch()
+        preparationApp.launch()
+        XCTAssertTrue(
+            preparationApp.wait(for: .runningForeground, timeout: 30),
+            "Performance data preparation process must initialize"
+        )
+        preparationApp.terminate()
+
+        let verificationApp = performanceApplication(
+            mode: .useExisting,
+            sessionID: sessionID,
+            bookCount: bookCount
+        )
+        verificationApp.launch()
         XCTAssertTrue(
             waitForLibraryCount(
                 displayed: LibraryQueryPageSize.value,
                 total: bookCount,
-                in: app,
-                timeout: 120
+                in: verificationApp,
+                timeout: 30
             ),
-            "Performance data preparation must finish before the timed process"
+            "An untimed use-existing process must verify the prepared library before measurement"
         )
-        app.terminate()
+        verificationApp.terminate()
     }
 
     @MainActor
@@ -1473,17 +1600,20 @@ final class BookAtlasUITests: XCTestCase {
         switch mode {
         case .prepare:
             app.launchArguments = [
+                "-ApplePersistenceIgnoreState", "YES",
                 "-BookAtlasPerformancePrepareLibrary",
                 sessionID.uuidString,
                 String(bookCount ?? 0)
             ]
         case .useExisting:
             app.launchArguments = [
+                "-ApplePersistenceIgnoreState", "YES",
                 "-BookAtlasPerformanceUseExistingLibrary",
                 sessionID.uuidString
             ]
         case .cleanup:
             app.launchArguments = [
+                "-ApplePersistenceIgnoreState", "YES",
                 "-BookAtlasPerformanceCleanupLibrary",
                 sessionID.uuidString
             ]
@@ -1553,7 +1683,10 @@ final class BookAtlasUITests: XCTestCase {
         focusMissingBook: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-BookAtlasUseInMemoryStore"]
+        app.launchArguments = [
+            "-ApplePersistenceIgnoreState", "YES",
+            "-BookAtlasUseInMemoryStore",
+        ]
         if seedFictionalBooks {
             app.launchArguments.append("-BookAtlasSeedFictionalUITestBooks")
         }
@@ -1601,13 +1734,17 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     private func scrollToElement(_ identifier: String, in app: XCUIApplication) {
         let target = element(identifier, in: app)
+        let editorScrollView = element("book-editor-sheet", in: app).scrollViews.firstMatch
+        let scrollView = editorScrollView.exists
+            ? editorScrollView
+            : app.scrollViews.firstMatch
         for _ in 0..<8 {
             if target.exists, target.isHittable { return }
-            app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: -250)
+            scrollView.scroll(byDeltaX: 0, deltaY: -250)
         }
         for _ in 0..<16 {
             if target.exists, target.isHittable { return }
-            app.scrollViews.firstMatch.scroll(byDeltaX: 0, deltaY: 250)
+            scrollView.scroll(byDeltaX: 0, deltaY: 250)
         }
         XCTAssertTrue(target.exists)
         XCTAssertTrue(target.isHittable)
@@ -1698,6 +1835,65 @@ final class BookAtlasUITests: XCTestCase {
         let predicate = NSPredicate(format: "exists == true AND hasKeyboardFocus == true")
         let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
         return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func clickEditorSave(in app: XCUIApplication) {
+        app.activate()
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 3))
+        XCTAssertTrue(app.windows.firstMatch.waitForExistence(timeout: 3))
+        let button = app.buttons["保存书籍"]
+        XCTAssertTrue(button.waitForExistence(timeout: 3))
+        button.click()
+    }
+
+    @MainActor
+    private func assertVisibleEditorValidation(
+        _ expectedMessage: String,
+        fieldIdentifier: String?,
+        fieldErrorIdentifier: String,
+        in app: XCUIApplication
+    ) {
+        let editor = element("book-editor-sheet", in: app)
+        let summary = element("editor-validation-error", in: app)
+        let fieldError = element(fieldErrorIdentifier, in: app)
+
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(summary.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                summary,
+                containing: expectedMessage,
+                timeout: 3
+            )
+        )
+        XCTAssertTrue(fieldError.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                fieldError,
+                containing: expectedMessage,
+                timeout: 3
+            )
+        )
+        XCTAssertFalse(summary.frame.isEmpty)
+        XCTAssertTrue(
+            summary.frame.intersects(editor.frame),
+            "Validation summary must be visible inside the current editor viewport"
+        )
+        XCTAssertTrue(
+            summary.frame.intersects(app.windows.firstMatch.frame),
+            "Validation summary must be visible without scrolling"
+        )
+
+        if let fieldIdentifier {
+            XCTAssertTrue(
+                waitForKeyboardFocus(
+                    element(fieldIdentifier, in: app),
+                    timeout: 3
+                ),
+                "The invalid required field must receive keyboard focus"
+            )
+        }
     }
 
     @MainActor

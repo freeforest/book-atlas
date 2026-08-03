@@ -100,6 +100,41 @@ identified keyboard/accessibility Button that clears search and filters.
 Store and real XCUI regressions cover both zero-row states, verify that no
 unrelated detail appears, and verify recovery to the normal 200-row page.
 
+### Editor validation-feedback closure
+
+A later Light-mode manual check reproduced a real editor defect: Command-S on
+an empty draft, or mouse Save with a fictional author and no title, kept the
+sheet open but left the only validation text below the visible part of the
+long form. That observation remains a manual FAIL history item; it is not
+rewritten as an automated pass.
+
+The editor now renders one fixed summary above the scrolling Form and an
+inline explanation beside the affected title, author, publication-date, or
+priority control. Required-field failures move keyboard focus to the invalid
+field. Every invalid save requests a high-priority AppKit accessibility
+announcement through a small injectable adapter, including repeated saves of
+the same unchanged invalid draft. Announcements contain stable error language,
+never draft values. Correcting the affected field clears that error, while
+unrelated edits do not. The Save button and Command-S call the same save path.
+
+The final-code non-UI bundle at
+`/tmp/bookatlas-p10-validation-final-tests-v2.xcresult` executed 200/200 tests
+with no failure or skip. New tests cover every validation error's resolution
+rule, repeated announcement delivery, privacy-safe wording, and stale-error
+clearing. Real XCUI regressions check that summary and field-error frames
+intersect the current editor and window, required focus is real, draft text
+remains, and no book or duplicate-review state is created. The direct
+author-only/no-title mouse path passed a no-retry three-run command 3/3. The
+sealed full UI bundle at
+`/tmp/bookatlas-p10-validation-final-ui-v3.xcresult` executed 40/40 tests with
+no failure or skip. Its complete activity scan contains zero SwiftUI
+view-update publication warnings; six Xcode-internal QoS diagnostics remain
+separately classified. An earlier 39/40 full run failed before duplicate review
+because the test helper scrolled the application's first ScrollView instead of
+the current editor Form. Scoping that helper to the editor preserved the note
+assertion, passed the focused path 1/1, and the final full run passed the same
+path. No timeout, XCTest retry, or reduced assertion was used.
+
 The accessible result value publishes both the count and page readiness
 (`可以继续加载`, `正在加载下一页`, retry, or terminal state) as one
 observable state. This prevents a following Shift-Command-L from seeing the

@@ -18,6 +18,24 @@ enum BookEditorValidationError: Error, Equatable {
             "优先级应在 1 到 5 之间。"
         }
     }
+
+    func isResolved(by draft: BookEditorDraft) -> Bool {
+        switch self {
+        case .titleRequired:
+            !draft.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .authorRequired:
+            !draft.author.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .invalidPublicationDate:
+            isValidPublicationDate(draft.publicationDateText)
+        case .invalidPriority:
+            draft.priorityValue == 0 || BookPriority(rawValue: draft.priorityValue) != nil
+        }
+    }
+
+    private func isValidPublicationDate(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty || (try? PublicationDate(storageValue: trimmed)) != nil
+    }
 }
 
 struct BookEditorDraft: Equatable {

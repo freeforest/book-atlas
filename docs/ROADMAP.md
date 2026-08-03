@@ -93,6 +93,19 @@ latest 37/37 UI activity tree continues to contain zero SwiftUI view-update
 publication warnings. This does not change the blocked human gates or Prompt
 10 acceptance state.
 
+A later partial Light-mode human check found that editor validation existed
+only below the visible part of the long Form and gave no understandable
+feedback when Save failed. The current minimal closure provides a fixed visible
+summary, field-level explanations, required-field focus, and a repeatable,
+privacy-safe accessibility announcement behind an injectable adapter. The
+complete non-UI suite now passes 200/200 and the direct fixed-fictional
+author/no-title mouse path passed 3/3 without retry. The original manual FAIL
+and the sealed full UI suite passed 40/40 without failure or skip. The original
+manual FAIL is preserved: the corrected Light path still requires human recheck, and Dark,
+accent, both window sizes, Reduce Motion, complete keyboard, VoiceOver, and
+Accessibility Inspector remain unverified. Prompt 10 is still awaiting its
+manual gates and independent review.
+
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 
 ## Required execution order

@@ -152,13 +152,13 @@ appearance, accent, window size, Reduce Motion, VoiceOver, or Inspector
 settings and did not claim any manual result. The fictional app process was
 then terminated.
 
-Accordingly, no item below is marked PASS. Automated identifiers, hosted-view
+Accordingly, no required gate below is marked PASS. Automated identifiers, hosted-view
 smoke tests, and XCUI keyboard paths are supporting evidence only and are not
 substituted for a human result.
 
 | Required manual check | Intended path/evidence | Actual result |
 | --- | --- | --- |
-| Light and Dark appearance | Compare sidebar, list, details, forms, previews, graph, reading entries, errors, focus, contrast, truncation, and color independence in both appearances | **BLOCKED — not manually executed** |
+| Light and Dark appearance | Compare sidebar, list, details, forms, previews, graph, reading entries, errors, focus, contrast, truncation, and color independence in both appearances | **FAIL / BLOCKED** — a partial Light-mode manual pass found that invalid editor saves had no visible or perceptible feedback at the current scroll position; the code fix has automated evidence but still needs a real Light-mode recheck. Dark mode and the rest of the required coverage remain unexecuted. |
 | Non-default system accent | Change to a non-default accent and inspect selection, buttons, focus, graph state, and contrast | **BLOCKED — not manually executed** |
 | 520×360 and normal window | Operate search, filters, sort, status, forms, previews, graph alternative list, and reading entries at both sizes | **BLOCKED — not manually executed** |
 | Reduce Motion | Enable the system setting and complete every primary flow without loss of state or action | **BLOCKED — not manually executed** |
@@ -189,6 +189,38 @@ This is an environment blocker for the requested manual acceptance evidence,
 not evidence of either a product pass or product failure. A reviewer with
 direct control of an unlocked test Mac must execute the checklist above using
 only fixed fictional data before stable-release acceptance.
+
+### Manual editor-validation finding and code closure
+
+On the fixed-fictional in-memory Debug app, a human reviewer opened a new-book
+sheet in Light mode, pressed Command-S on an empty draft, then entered the
+fictional author “人工验收作者” while leaving the title blank and clicked Save.
+The sheet remained open, but the current viewport showed no error text, state
+change, or perceptible focus response. The cause was a single validation label
+after the note editor at the bottom of the long scrolling Form; assigning an
+already-focused title field did not provide additional feedback.
+
+The implementation closure moves the summary outside the scrolling Form,
+adds inline field explanations, moves focus to a missing title or author, and
+posts a privacy-safe accessibility announcement for every invalid submission,
+even when the error enum is unchanged. Automated UI evidence verifies visible
+frame intersection, exact error semantics, draft preservation, no database
+write, and shared mouse/Command-S behavior. This is code and automation
+evidence only. The original manual FAIL remains, and the corrected flow must
+be manually rechecked before the Light/Dark gate can change status. Dark,
+accent, both window sizes, Reduce Motion, full pointer-free keyboard use,
+VoiceOver, and Accessibility Inspector remain unresolved as listed above.
+
+The final closure bundles executed 200/200 non-UI tests and 40/40 complete UI
+tests with no failure or skip. The direct fixed-fictional author/no-title mouse
+path also passed 3/3 without XCTest retry. The complete UI activity tree has
+zero SwiftUI view-update publication warnings; six Xcode-internal QoS
+diagnostics are recorded separately. A preceding 39/40 UI attempt failed in a
+generic test scroll helper before duplicate review began: it targeted the first
+application ScrollView rather than the editor Form. The helper was scoped to
+the editor without reducing the note-preservation assertion, the focused path
+passed 1/1, and the final full suite passed it. These results are automation
+evidence, not a manual VoiceOver or visual recheck.
 
 ### Seventh-closure XCUI evidence and limitations
 
