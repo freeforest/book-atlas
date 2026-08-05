@@ -1,0 +1,16 @@
+ >....                                                                                                                         
+  -BookAtlasSeedGraphUITestData \
+  -BookAtlasSeedReadingEntryUITestData \
+  -BookAtlasSeedPortabilityPreview \
+  -BookAtlasSeedRestorePreview
+
+
+open -n /tmp/bookatlas-p10-manual/Build/Products/Debug/BookAtlas.app \
+  --args \
+  -BookAtlasUseInMemoryStore \
+  -BookAtlasSeedFictionalUITestBooks \
+  -BookAtlasSeedMergePreviewAssociations \
+  -BookAtlasSeedGraphUITestData \
+  -BookAtlasSeedReadingEntryUITestData \
+  -BookAtlasSeedPortabilityPreview \
+  -BookAtlasSeedRestorePreview
