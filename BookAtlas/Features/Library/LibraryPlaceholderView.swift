@@ -256,16 +256,38 @@ struct LibraryView: View {
                         )
                         .accessibilityIdentifier("library-selection-loading")
                     } else {
-                        ContentUnavailableView(
-                            "选择一本书",
-                            systemImage: "book.closed",
-                            description: Text("使用方向键或列表选择书籍以查看详情。")
-                        )
+                        LibrarySelectionEmptyView()
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+    }
+}
+
+private struct LibrarySelectionEmptyView: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "book.closed")
+                .font(.system(size: 44, weight: .regular))
+                .foregroundStyle(.primary)
+                .accessibilityHidden(true)
+
+            (
+                Text("选择一本书")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                + Text("\n\n")
+                + Text("使用方向键或列表选择书籍以查看详情。")
+                    .font(.body)
+            )
+                .foregroundStyle(.primary)
+                .accessibilityLabel("选择一本书")
+                .accessibilityValue("使用方向键或列表选择书籍以查看详情。")
+                .accessibilityIdentifier("library-selection-empty")
+        }
+        .multilineTextAlignment(.center)
+        .padding()
     }
 }
 
@@ -301,7 +323,7 @@ private struct LibraryPaginationFooter: View {
             HStack(spacing: 8) {
                 Text(store.resultCountDescription)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .accessibilityLabel("书库结果数量")
                     .accessibilityValue(store.accessibleResultDescription)
@@ -330,7 +352,7 @@ private struct LibraryPaginationFooter: View {
                 } else {
                     Text("已全部显示")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                         .accessibilityIdentifier("library-all-results-loaded")
                 }
             }
@@ -338,7 +360,8 @@ private struct LibraryPaginationFooter: View {
             if store.loadMoreError != nil {
                 Text("载入下一页失败；已显示结果未更改。")
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
                     .accessibilityIdentifier("library-load-more-error")
             }
         }
@@ -369,7 +392,7 @@ private struct LibraryFilterBar: View {
             if store.hasActiveFilters {
                 Text(filterSummary)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .accessibilityIdentifier("active-filter-summary")
                 Button("清除", action: store.clearFilters)
@@ -378,7 +401,8 @@ private struct LibraryFilterBar: View {
             } else {
                 Text("全部书籍")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
+                    .accessibilityIdentifier("library-all-books-summary")
             }
 
             Spacer()
@@ -519,22 +543,23 @@ private struct LibraryBookRow: View {
                     .lineLimit(1)
                 Text(book.author)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 3) {
                 Text(book.readingStatus.displayTitle)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .fontWeight(.medium)
+                    .foregroundStyle(.primary)
                 if let priority = book.priority {
                     Text("优先级 \(priority.rawValue)")
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.primary)
                 } else {
                     Text(book.updatedAt, format: .dateTime.year().month().day())
                         .font(.caption2)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(.primary)
                 }
             }
         }

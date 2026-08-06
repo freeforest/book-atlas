@@ -272,6 +272,40 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testSeededLibraryExposesStatusAndCombinedRowMetadata() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        let row = element(
+            "library-book-00000000-0000-0000-0000-000000000101",
+            in: app
+        )
+
+        XCTAssertTrue(
+            element("library-book-list", in: app).waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            element("library-all-books-summary", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            element("library-result-count", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            element("library-all-results-loaded", in: app)
+                .waitForExistence(timeout: 3)
+        )
+
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        let spokenMetadata = accessibilityText(of: row)
+        for expectedValue in ["A101", "Harbor Author", "想读", "2025"] {
+            XCTAssertTrue(
+                spokenMetadata.contains(expectedValue),
+                "Combined row accessibility must contain \(expectedValue): \(spokenMetadata)"
+            )
+        }
+    }
+
+    @MainActor
     func testLibraryPaginationDisclosesCountAndLoadsEveryPageFromKeyboard() {
         let app = launchInMemoryApp(seedPagination: true)
         let status = element("library-result-count", in: app)
