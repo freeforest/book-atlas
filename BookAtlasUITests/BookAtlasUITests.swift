@@ -972,8 +972,7 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     func testLocalGraphOpensFromDetailExposesConcreteEvidenceAndReturnsToBookDetail() {
         let app = launchInMemoryApp(seedGraph: true)
-        selectGraphCenter(in: app)
-        element("show-local-graph-button", in: app).click()
+        prepareSeededGraphCenterForOpening(in: app).click()
 
         XCTAssertTrue(element("local-graph-page", in: app).waitForExistence(timeout: 3))
         let relation = element(
@@ -991,6 +990,11 @@ final class BookAtlasUITests: XCTestCase {
             in: app
         )
         XCTAssertTrue(directNode.waitForExistence(timeout: 3))
+        attachGraphInteractionDiagnosticsIfNeeded(
+            for: directNode,
+            identifier: "graph-node-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
         directNode.click()
         XCTAssertTrue(app.staticTexts["《雾港直接邻居》"].waitForExistence(timeout: 3))
         element("graph-open-detail", in: app).click()
@@ -1001,14 +1005,18 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     func testLocalGraphReloadsAfterLeavingEditingAndReturning() {
         let app = launchInMemoryApp(seedGraph: true)
-        selectGraphCenter(in: app)
-        element("show-local-graph-button", in: app).click()
+        prepareSeededGraphCenterForOpening(in: app).click()
 
         let neighbor = element(
             "graph-node-00000000-0000-0000-0000-000000000602",
             in: app
         )
         XCTAssertTrue(neighbor.waitForExistence(timeout: 3))
+        attachGraphInteractionDiagnosticsIfNeeded(
+            for: neighbor,
+            identifier: "graph-node-00000000-0000-0000-0000-000000000602",
+            in: app
+        )
         neighbor.click()
         element("graph-open-detail", in: app).click()
         XCTAssertTrue(element("book-detail-view", in: app).waitForExistence(timeout: 3))
@@ -1037,8 +1045,7 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     func testLocalGraphKeyboardSelectionTwoLayersFilteringCenterAndReset() {
         let app = launchInMemoryApp(seedGraph: true)
-        selectGraphCenter(in: app)
-        element("show-local-graph-button", in: app).click()
+        prepareSeededGraphCenterForOpening(in: app).click()
         XCTAssertTrue(
             element("graph-node-00000000-0000-0000-0000-000000000601", in: app)
                 .waitForExistence(timeout: 3)
@@ -1059,6 +1066,11 @@ final class BookAtlasUITests: XCTestCase {
 
         let centerNode = element(
             "graph-node-00000000-0000-0000-0000-000000000601",
+            in: app
+        )
+        attachGraphInteractionDiagnosticsIfNeeded(
+            for: centerNode,
+            identifier: "graph-node-00000000-0000-0000-0000-000000000601",
             in: app
         )
         centerNode.click()
@@ -1109,8 +1121,7 @@ final class BookAtlasUITests: XCTestCase {
     @MainActor
     func testLocalGraphLimitStateIsExplicit() {
         let limitedApp = launchInMemoryApp(seedGraphLimit: true)
-        selectGraphCenter(in: limitedApp)
-        element("show-local-graph-button", in: limitedApp).click()
+        prepareSeededGraphCenterForOpening(in: limitedApp).click()
         let limitStatus = limitedApp.descendants(matching: .any).matching(
             NSPredicate(format: "label CONTAINS %@", "图谱状态：")
         ).firstMatch
@@ -1829,9 +1840,108 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
-    private func selectGraphCenter(in app: XCUIApplication) {
-        XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
-        XCTAssertTrue(element("show-local-graph-button", in: app).waitForExistence(timeout: 3))
+    private func prepareSeededGraphCenterForOpening(
+        in app: XCUIApplication
+    ) -> XCUIElement {
+        XCTAssertTrue(app.wait(for: .runningForeground, timeout: 3))
+
+        let bookList = element("library-book-list", in: app)
+        XCTAssertTrue(bookList.waitForExistence(timeout: 3))
+
+        let centerIdentifier =
+            "library-book-00000000-0000-0000-0000-000000000601"
+        let centerContent = bookList.descendants(matching: .any)
+            .matching(identifier: centerIdentifier)
+            .firstMatch
+        XCTAssertTrue(centerContent.waitForExistence(timeout: 3))
+
+        let detailTitle = element("book-detail-title", in: app)
+        if !waitForAccessibilityText(
+            detailTitle,
+            containing: "《雾港图谱中心》",
+            timeout: 3
+        ) {
+            XCTAssertTrue(waitForHittable(centerContent, timeout: 3))
+            centerContent.click()
+        }
+
+        let detail = element("book-detail-view", in: app)
+        XCTAssertTrue(detail.waitForExistence(timeout: 3))
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                detailTitle,
+                containing: "《雾港图谱中心》",
+                timeout: 3
+            )
+        )
+
+        let showGraphButton = app.buttons["show-local-graph-button"]
+        XCTAssertTrue(showGraphButton.waitForExistence(timeout: 3))
+        XCTAssertTrue(showGraphButton.isEnabled)
+        if !waitForHittable(showGraphButton, timeout: 3) {
+            let currentDetail = element("book-detail-view", in: app)
+            XCTAssertTrue(currentDetail.waitForExistence(timeout: 3))
+            XCTAssertTrue(waitForHittable(currentDetail, timeout: 3))
+
+            let buttonIsOutsideDetailViewport =
+                !currentDetail.frame.intersects(showGraphButton.frame)
+            XCTAssertTrue(
+                buttonIsOutsideDetailViewport,
+                "The graph button is not hittable despite remaining inside the book-detail viewport."
+            )
+            currentDetail.scroll(byDeltaX: 0, deltaY: 180)
+        }
+        XCTAssertTrue(waitForHittable(showGraphButton, timeout: 3))
+        return showGraphButton
+    }
+
+    @MainActor
+    private func waitForHittable(
+        _ element: XCUIElement,
+        timeout: TimeInterval
+    ) -> Bool {
+        let predicate = NSPredicate(format: "exists == true AND hittable == true")
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        return XCTWaiter.wait(for: [expectation], timeout: timeout) == .completed
+    }
+
+    @MainActor
+    private func attachGraphInteractionDiagnosticsIfNeeded(
+        for target: XCUIElement,
+        identifier: String,
+        in app: XCUIApplication
+    ) {
+        guard !target.isHittable else { return }
+
+        let page = element("local-graph-page", in: app)
+        let filterControl = element("graph-filter-control", in: app)
+        let nodeList = element("graph-node-list", in: app)
+        let window = app.windows.firstMatch
+        var lines = [
+            graphDiagnosticLine(name: "page=local-graph-page", element: page),
+            graphDiagnosticLine(name: "window", element: window),
+            graphDiagnosticLine(name: "target=\(identifier)", element: target),
+            graphDiagnosticLine(name: "filter=graph-filter-control", element: filterControl),
+            graphDiagnosticLine(name: "list=graph-node-list", element: nodeList)
+        ]
+        for (index, scrollView) in page.descendants(matching: .scrollView)
+            .allElementsBoundByIndex.enumerated()
+        {
+            lines.append(
+                "pageScrollView[\(index)] identifier=\(scrollView.identifier) label=\(scrollView.label) exists=\(scrollView.exists) enabled=\(scrollView.isEnabled) hittable=\(scrollView.isHittable) frame=\(scrollView.frame)"
+            )
+        }
+
+        let attachment = XCTAttachment(string: lines.joined(separator: "\n"))
+        attachment.name = "Graph interaction diagnostics for \(identifier)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    private func graphDiagnosticLine(name: String, element: XCUIElement) -> String {
+        guard element.exists else { return "\(name) exists=false" }
+        return "\(name) exists=true enabled=\(element.isEnabled) hittable=\(element.isHittable) frame=\(element.frame) type=\(element.elementType.rawValue) identifier=\(element.identifier) roleDescription=\(element.debugDescription)"
     }
 
     @MainActor

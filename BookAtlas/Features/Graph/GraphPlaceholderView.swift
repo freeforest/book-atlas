@@ -183,7 +183,7 @@ struct LocalGraphView: View {
     @ViewBuilder
     private func graphContent(_ scene: GraphScene) -> some View {
         GeometryReader { geometry in
-            let horizontal = geometry.size.width >= 760
+            let horizontal = geometry.size.width >= 700
             Group {
                 if horizontal {
                     HStack(spacing: 12) {
@@ -461,6 +461,7 @@ private struct GraphAccessibilityPanel: View {
                     .focused($focusedNodeID, equals: node.id)
                 }
             }
+            .frame(minHeight: 120)
             .accessibilityIdentifier("graph-node-list")
             .onMoveCommand(perform: moveKeyboardSelection)
 
