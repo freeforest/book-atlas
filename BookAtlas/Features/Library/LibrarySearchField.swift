@@ -1,9 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// SwiftUI's programmatic search focus API starts at macOS 15. This focused
-/// wrapper keeps the deployment target at macOS 14 while limiting AppKit to
-/// first-responder integration.
+/// This focused wrapper keeps search focus behavior explicit while limiting
+/// AppKit to first-responder integration.
 struct LibrarySearchField: NSViewRepresentable {
     @Binding var text: String
     let focusRequestID: Int

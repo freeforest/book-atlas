@@ -273,14 +273,7 @@ private struct LibrarySelectionEmptyView: View {
                 .foregroundStyle(.primary)
                 .accessibilityHidden(true)
 
-            (
-                Text("选择一本书")
-                    .font(.title2)
-                    .fontWeight(.semibold)
-                + Text("\n\n")
-                + Text("使用方向键或列表选择书籍以查看详情。")
-                    .font(.body)
-            )
+            Text("\(Text("选择一本书").font(.title2).fontWeight(.semibold))\n\n\(Text("使用方向键或列表选择书籍以查看详情。").font(.body))")
                 .foregroundStyle(.primary)
                 .accessibilityLabel("选择一本书")
                 .accessibilityValue("使用方向键或列表选择书籍以查看详情。")

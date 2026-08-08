@@ -138,19 +138,21 @@ acceptance for a distributed binary. Those items are not pending gates under
 the current strategy. Local ad-hoc builds, App Sandbox, Hardened Runtime, and
 entitlement inspection remain accepted local evidence only.
 
-The support policy for the future public-source version is latest macOS 26
-only, without macOS 14/15 compatibility promises or a multi-version matrix.
-The Xcode project still declares deployment target 14.0, so that policy has not
-yet been implemented technically. A separate source-publication preparation
-task must align the project and documentation, then rerun clean-checkout Debug,
-Release, complete non-UI, complete UI with actual XCUIAutomation initialization,
-fictional-data checks, and necessary human checks.
+V1.0.0 supports macOS 26 only, without macOS 14/15 compatibility promises or a
+multi-version matrix. The production project, application, unit tests, and UI
+tests now declare deployment target 26.0; ADR-0009 supersedes the historical
+macOS 14 decision. The target change requires fresh Debug, Release, complete
+non-UI, complete UI with actual XCUIAutomation initialization, fixed-fictional
+data checks, and affected human verification before this preparation can close.
 
-Real publication blockers are the user-confirmed GitHub owner/address, license
-holder and year, final public version, optional tag decision, private security
-channel, macOS 26 project alignment and revalidation, tracked-artifact/privacy
-scan, and explicit authorization for push/public/tag/Release/upload actions.
-None of those external actions has occurred. If a precompiled GitHub Release
+The confirmed repository is `freeforest/book-atlas` and remains Private. The
+confirmed copyright is `2026 FreeForest`; version 1.0.0, tag `v1.0.0`, Release
+title `Book Atlas v1.0.0`, and bundle identifier
+`io.github.freeforest.BookAtlas` are fixed. Remaining blockers are the fresh
+macOS 26 revalidation, real native-panel result, tracked-artifact/privacy scan,
+the user's Public-transition enablement of GitHub Private Vulnerability
+Reporting, and explicit user execution of public/tag/Release actions. None of
+those external actions has occurred. If a precompiled GitHub Release
 application is considered later, Developer ID, notarization, Gatekeeper,
 signing, integrity, installation, and update policy must be reopened in a new
 authorized task.
@@ -267,9 +269,8 @@ the system SQLite library (`-lsqlite3`). The isolated technical-spike Swift
 package also declares no external package. Apple SDK components are governed
 by their platform terms and are not vendored into this repository.
 
-`LICENSE` is an MIT template with `[YEAR] [COPYRIGHT HOLDER]` deliberately
-unresolved. A maintainer must supply accurate values after appropriate review;
-this statement is not legal advice.
+`LICENSE` is MIT with the user-authorized copyright line
+`Copyright (c) 2026 FreeForest`. This statement is not legal advice.
 
 ## Manual accessibility and visual audit history
 
@@ -439,17 +440,16 @@ revalidation afterward.
 
 ## GitHub source-publication risks and gates
 
-- The bundle identifier is still `com.example.BookAtlas`, marketing version is
-  still 0.1.0, and neither has been confirmed as final public metadata.
-- `LICENSE` still contains `[YEAR] [COPYRIGHT HOLDER]`; the user must supply
-  both values. The GitHub repository owner/address is also unconfirmed.
-- A monitored private security-reporting channel is not configured. Before
-  publication the user must enable GitHub Private Vulnerability Reporting or
-  provide another maintained private channel; a public issue is not a private
-  vulnerability channel.
+- Project metadata is set to bundle identifier
+  `io.github.freeforest.BookAtlas`, marketing version 1.0.0, and build 1; actual
+  Debug/Release products must still be checked after the fresh builds.
+- `LICENSE` now contains the user-confirmed `2026 FreeForest` line.
+- GitHub Private Vulnerability Reporting is selected but cannot be enabled
+  while the repository is Private. The user must enable and verify it during
+  the Public transition; a public Issue is not a private vulnerability channel.
 - Verification is on one Apple M2 MacBook Air with 24 GB memory and macOS
-  26.5.2. The future policy is macOS 26-only, but the project still declares
-  14.0 and requires a separate configuration change and clean revalidation.
+  26.5.2. V1.0.0 is macOS 26-only; the project change is made, but clean
+  revalidation remains required before the preparation evidence can close.
 - Debug XCUIAutomation produced existing-library launch, page-load, and
   scrolling/hitch metrics. A Release Instruments run using the same
   pre-generated-library protocol could not be authorized through the current

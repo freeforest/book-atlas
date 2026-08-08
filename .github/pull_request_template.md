@@ -30,5 +30,6 @@ List exact commands and real results:
 
 ## Unverified items and risks
 
-State anything that still requires manual testing, another macOS version,
-release signing/notarization, or independent review.
+State anything that still requires manual testing, external-system validation,
+or independent review. Signing/notarization applies only if a future separate
+task introduces precompiled binary distribution.

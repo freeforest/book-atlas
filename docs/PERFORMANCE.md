@@ -237,7 +237,8 @@ expectation responsive in 3/3 repetitions.
 
 No metric here represents Release existing-library launch or sustained
 scrolling, a reliable display frame rate, energy use, a memory-pressure kill,
-minimum-supported macOS 14, or cross-device behavior. Graph first render
+the then-declared macOS 14 minimum, or cross-device behavior. ADR-0009 later
+superseded that historical target with the macOS 26-only V1.0.0 policy. Graph first render
 remains an `NSHostingView` measurement, not a physical-display frame-rate
 test. Those items remain manual/release gates and must not be inferred from
 the tables above.

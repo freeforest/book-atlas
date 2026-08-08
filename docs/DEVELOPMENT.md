@@ -2,7 +2,13 @@
 
 ## Current application
 
-`BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus `BookAtlasTests` and `BookAtlasUITests`. It currently targets macOS 14.0, uses only SwiftUI and AppKit supplied by macOS, and is sandboxed. The confirmed policy for the future GitHub source-publication version is latest macOS 26 only, but the project setting has not yet been aligned in this documentation-only task. The Debug bundle identifier remains the intentional placeholder `com.example.BookAtlas`, and marketing version `0.1.0` has not been confirmed as the public version.
+`BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus
+`BookAtlasTests` and `BookAtlasUITests`. V1.0.0 targets macOS 26.0 in project,
+application, unit-test, and UI-test Debug/Release settings, uses only SwiftUI
+and AppKit supplied by macOS, and is sandboxed. The application bundle
+identifier is `io.github.freeforest.BookAtlas`, marketing version is 1.0.0,
+and build number is 1. ADR-0009 supersedes the earlier macOS 14 decision; no
+macOS 14/15 support or compatibility matrix is promised.
 
 The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. An explicit focus request returns that same bounded page plus at most one book selected by UUID under the same filters; it does not scan preceding pages or expand the page size. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
@@ -19,24 +25,30 @@ distribution are therefore not applicable to the current plan. Local ad-hoc
 Debug/Release signing, App Sandbox, Hardened Runtime, and effective-entitlement
 inspection remain useful build evidence but are not Apple distribution proof.
 
-Source builders need Apple's Xcode, Swift, SwiftUI, AppKit, and system SQLite;
-the production target has no third-party binary dependency. The current
-`MACOSX_DEPLOYMENT_TARGET` is still 14.0, while the confirmed future support
-policy is latest macOS 26 only with no macOS 14/15 compatibility commitment or
-multi-version matrix. A later, separately authorized GitHub source-publication
-preparation task must change the project target, align README/build guidance,
-and then verify a clean checkout with Debug, Release, the complete non-UI suite,
-the complete UI suite after XCUIAutomation actually initializes, fictional
-test data, and necessary human checks. Until then, macOS 26-only is policy, not
-an implemented project setting.
+Source builders need a compatible Xcode 26 toolchain, Swift, SwiftUI, AppKit,
+and system SQLite; the production target has no third-party binary dependency.
+The production `MACOSX_DEPLOYMENT_TARGET` is 26.0 throughout the project and
+all three targets. Earlier macOS 14 references in historical milestones,
+ADR-0003, and isolated technical-spike evidence are not current support claims.
 
-No repository-publication action has been authorized or performed. The GitHub
-owner/address, license holder/year, final public version, optional tag, private
-security-reporting channel, and whether the placeholder bundle identifier must
-change remain user decisions. A future decision to ship a precompiled `.app`
+The confirmed repository is `freeforest/book-atlas`, currently Private. The
+confirmed copyright line is `2026 FreeForest`; the intended version/tag/Release
+are 1.0.0, `v1.0.0`, and `Book Atlas v1.0.0`. Every Git/GitHub write remains a
+manual user action. GitHub Private Vulnerability Reporting is selected but can
+only be enabled after the repository becomes Public; until the user enables
+and verifies it, that security channel remains a pending publication gate. A
+future decision to ship a precompiled `.app`
 through GitHub Releases would require a new release task covering Developer ID,
 notarization, Gatekeeper, signing, download integrity, installation, and update
 strategy.
+
+For the V1.0.0 native-panel safety check, the explicit
+`-BookAtlasUseSystemFilePanel` launch argument may be combined with
+`-BookAtlasUseInMemoryStore` and fixed fictional seeds. It replaces only the
+test file selector/bookmark pair with the production `NSOpenPanel` and bookmark
+services; browser, Apple Books, and clipboard adapters remain fictional/no-op.
+Ordinary UI tests do not use this argument. The reviewer must cancel the panel
+without selecting a file.
 
 ## Build
 
@@ -514,9 +526,8 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Keep App Sandbox enabled and add no network client entitlement unless an accepted ADR and privacy review require it.
 - Preserve `Experiments/TechnicalSpikes/` as evidence only; production code must not import it.
 - Runtime validation covers one Apple-silicon host on macOS 26.5.2. The project
-  still declares macOS 14.0, but the confirmed future public-source policy is
-  macOS 26-only; no macOS 14/15 compatibility claim or matrix is planned. The
-  project setting and documentation still require separate technical alignment.
+  now declares macOS 26.0 throughout; no macOS 14/15 compatibility claim or
+  matrix is planned. Historical macOS 14 evidence is not a V1.0.0 support claim.
 - Automated accessibility identifiers, appearance/small-window hosted checks,
   and keyboard paths are covered. A prior human gate covered the non-default
   purple accent, Reduce Motion, complete pointer-free keyboard use, and
@@ -530,8 +541,8 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Apple Developer membership, App Store distribution, Developer ID,
   distribution signing, notarization, stapling, and Gatekeeper binary
   acceptance are not applicable to the current source-only strategy. The
-  placeholder bundle identifier and public version remain unresolved metadata
-  for the later publication-preparation task.
+  V1.0.0 bundle identifier and version metadata are resolved as documented
+  above.
 - Duplicate heuristics intentionally do not understand every contributor order, edition, translation, or series convention; every candidate remains user-reviewed.
 - A truncated Possible lookup does not yet provide pagination; the UI states that only the first 250 deterministic raw token hits were evaluated. Exact and Strong candidates are not truncated.
 - CSV import is capped at 100 MiB, 100,000 rows, 1 MiB per field, and 128 columns; only 20 sample rows and 80 issue details are retained for presentation, with both limits disclosed. Same-batch or existing Exact/Strong rows are skipped and reported but do not become persistent ordinary-review candidates because no book is created. CSV cannot carry external links or manual relations; full-fidelity transfer requires a backup.

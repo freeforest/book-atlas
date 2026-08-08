@@ -2,7 +2,13 @@
 
 ## Current state
 
-Prompts 6–9 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction were accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9's Apple Books and external reading-entry work was accepted at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b` after an independent Debug build, 171/171 tests, and 26/26 UI tests passed. Prompt 10 quality and open-source preparation is implemented and awaits independent review; it changes no product scope or schema.
+Prompts 6–10 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction were accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9's Apple Books and external reading-entry work was accepted at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b` after an independent Debug build, 171/171 tests, and 26/26 UI tests passed. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`; it changes no product scope or schema.
+
+V1.0.0 source-publication preparation sets the production deployment target
+to macOS 26.0, marketing version 1.0.0, build number 1, and application bundle
+identifier `io.github.freeforest.BookAtlas`. ADR-0009 supersedes ADR-0003. The
+source-only policy adds no dependency, entitlement, network capability, or
+binary-distribution architecture.
 
 ## Intended shape
 
@@ -33,8 +39,8 @@ The production registry currently advances from version 1 (core tables), through
 UI state remains feature-sized: `LibraryStore` is scoped to catalog/editor/duplicate flow, `CatalogOrganizerStore` owns organization state, `PortabilityStore` owns file-operation presentation, and `GraphStore` owns graph request generations, filters, selection, and view-local coordinates. `StreamingCSVParser`, `LibraryImportCoordinator`, `LibraryExportCoordinator`, `BookAtlasSchemaValidator`, and `LibraryBackupCoordinator` separate parsing, disk staging, preview, transactional writes, serialization, application-schema validation, and SQLite file lifecycle. Import rows live in a controlled JSON-lines staging file; presentation retains aggregate statistics, at most 20 sample rows, and bounded issue details. A source/mapping fingerprint and operation generation prevent stale mapping tasks from publishing old state. SQLite and graph projection/layout work are serialized by the catalog actor instead of running in SwiftUI or on the main actor. That actor also publishes a process-local graph-content revision after graph-relevant mutations; graph generations discard stale center, filter, and older-revision results.
 
 Command-F navigation is an explicit presentation signal owned by
-`LibraryStore`. A focused `NSViewRepresentable` contains the only new AppKit
-detail: making the existing `NSSearchField` first responder on macOS 14.
+`LibraryStore`. A focused `NSViewRepresentable` contains the AppKit detail of
+making the existing `NSSearchField` first responder.
 Search text, debouncing, query cancellation, and persistence remain in their
 existing store/catalog layers; the wrapper performs no query or database work.
 
@@ -47,8 +53,9 @@ App Sandbox is the default. The production entitlement set is App Sandbox, user-
 The local Release configuration enables Hardened Runtime and disables base
 entitlement injection, so the inspected ad-hoc product contains exactly that
 three-item production set and no `get-task-allow`. Debug keeps
-`get-task-allow` for testability. Distribution signing and notarization remain
-separate, unperformed release gates.
+`get-task-allow` for testability. Distribution signing and notarization are not
+applicable to the source-only V1.0.0 strategy; local signing and Hardened
+Runtime remain engineering evidence only.
 
 ## Graph rendering decision
 

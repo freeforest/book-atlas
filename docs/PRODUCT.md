@@ -24,16 +24,22 @@ Book Atlas · 图书志 helps one person turn a growing personal bibliography in
 
 ## First-release scope
 
-The planned first release includes a native macOS library interface, book CRUD, tags and lists, search/filter/sort, source tracking, duplicate review and merge, import/export, backup/restore, a bounded relationship graph, and only experimentally verified external-link behavior.
+V1.0.0 includes a native macOS library interface, book CRUD, tags and lists,
+search/filter/sort/pagination, source tracking, duplicate review and merge,
+import/export, backup/restore, a bounded relationship graph, and only
+explicitly bounded external-link behavior. It is a source-only GitHub release
+for macOS 26; users build it with a compatible Xcode 26 toolchain. It does not
+promise macOS 14/15 compatibility or provide a precompiled application.
 
 The current implementation provides the native library interface, book CRUD, organization, search/filter/sort, deterministic duplicate review, CSV import with mapping and bounded disk-staged preview, Markdown/CSV export, versioned full-database backup/restore, a bounded local relationship graph, and explicit external reading entries on the accepted direct-SQLite store. Import explains duplicates against both the current library and earlier rows in the same batch, then rechecks at execution; it never overwrites, automatically merges, or creates a hidden pending-review record. Restore validates the physical file and Book Atlas domain schema, creates a recovery copy, and enters a process-interruption-safe replacement protocol only after confirmation. The graph is an optional projection of same-author, shared-tag, same-list, same-source, and explicit manual relationships; it does not infer editions or persist layout state.
 
 External reading actions are always user initiated. The app can hand a validated HTTPS URL to macOS, distinguish `books.apple.com`, offer a confirmed public Apple Books search, launch the installed Apple Books application, copy an ISBN or title, and retain a read-only bookmark for a file the user selected. It does not read ebook content, check URL reachability, use a network client, scan directories, or claim exact access to a private Apple Books library item.
 
-Prompt 10 is a quality and open-source-readiness closure over this existing
-scope. It does not add another product capability, and completion of its
-implementation is not a claim that a stable build was signed, notarized,
-tagged, uploaded, or independently accepted.
+Prompt 10 is the accepted quality and open-source-readiness closure over this
+existing scope. V1.0.0 source-publication preparation changes configuration
+and public materials, not product capability. It is not a claim that the
+repository is public, a tag or GitHub Release exists, or a binary was signed,
+notarized, or uploaded.
 
 ## Non-goals
 

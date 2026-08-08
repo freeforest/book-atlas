@@ -44,6 +44,6 @@ configuration, or performance level that was not actually verified.
 
 ## License note
 
-The repository contains an MIT license template whose year and copyright
-holder are explicit placeholders. A maintainer must replace them before a
-public release. This repository documentation is not legal advice.
+The repository uses the MIT License with the user-confirmed copyright line
+`Copyright (c) 2026 FreeForest`. This repository documentation is not legal
+advice.

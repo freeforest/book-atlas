@@ -1,5 +1,10 @@
 # Milestone 0 — foundation and app skeleton
 
+This is a historical milestone record. ADR-0009 later superseded ADR-0003 for
+the macOS 26-only V1.0.0 source release. References below to macOS 14,
+placeholder identifiers, signing, and notarization describe the state at the
+recorded Prompt 0–2 baselines, not current V1.0.0 configuration or gates.
+
 ## Goal
 
 Create a safe repository baseline, replace uncertain technology assumptions with isolated evidence, and establish a minimal runnable macOS application without implementing library features.
@@ -73,7 +78,9 @@ open -gj 'https://books.apple.com/us/search?term=BookAtlas%20Technical%20Spike'
 
 ### Remaining verification and risks
 
-- The app was tested only on the recorded macOS 26.5.2 host; macOS 14 compatibility and release signing/notarization remain unverified.
+- At that baseline, the app was tested only on macOS 26.5.2; macOS 14
+  compatibility and release signing/notarization were unverified. The later
+  source-only macOS 26 policy makes those former gates historical.
 - The external-link check proves system dispatch, not a specific Books store result, custom URL scheme, or direct local-library item support.
 - Bookmark lifecycle code was tested with a fictional temporary file; a later production workflow needs manual repair-flow validation with a deliberately selected non-private test fixture.
 - The graph cap is an initial safety bound. Prompt 8 must measure real production rendering, gesture responsiveness, and accessibility at supported scales.
@@ -87,7 +94,12 @@ Prompt 1 acceptance conditions are met. Prompt 2 may now create the production `
 
 ### Scope and implementation
 
-Prompt 2 added the production `BookAtlas.xcodeproj` with three targets: `BookAtlas`, `BookAtlasTests`, and `BookAtlasUITests`. The application display name is `Book Atlas`, the Swift module is `BookAtlas`, the Debug bundle identifier is the non-personal placeholder `com.example.BookAtlas`, and the deployment target remains macOS 14.0.
+At the Prompt 2 baseline, `BookAtlas.xcodeproj` had three targets:
+`BookAtlas`, `BookAtlasTests`, and `BookAtlasUITests`. The application display
+name was `Book Atlas`, the Swift module was `BookAtlas`, the Debug bundle
+identifier was the non-personal placeholder `com.example.BookAtlas`, and the
+deployment target was macOS 14.0. V1.0.0 later replaces that metadata as
+recorded in ADR-0009 and the current development guide.
 
 The root app composes a lightweight value-type navigation state. A native `NavigationSplitView` exposes five independently replaceable pages: 书库, 书单, 标签, 书图, and 设置. It includes native toolbar and command-menu navigation, a nonfunctional search placeholder, semantic layout constants, and shared empty/error placeholder components. The feature pages contain no database, book data, file access, external URLs, graph algorithm, or network behavior.
 
@@ -118,9 +130,12 @@ xcrun xcresulttool get test-results summary --path /tmp/bookatlas-production-der
 
 ### Remaining verification and risks
 
-- Tests ran on macOS 26.5.2 only; minimum macOS 14 behavior remains to be checked on a real supported older system.
+- At that baseline tests ran on macOS 26.5.2 only and macOS 14 behavior was
+  unverified; this is historical and no longer a V1.0.0 compatibility gate.
 - UI automation verifies accessible identifiers, not a full VoiceOver session, accent-color change, or user-visible Reduce Motion setting. The shell has no animations to depend on.
-- Release signing, notarization, distribution identity, and a final bundle identifier remain intentionally unconfigured.
+- At that baseline release signing, notarization, distribution identity, and a
+  final bundle identifier were unconfigured. V1.0.0 is source-only and now has
+  a confirmed bundle identifier; Apple binary distribution remains out of scope.
 
 ### Prompt 3 readiness
 

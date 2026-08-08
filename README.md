@@ -37,11 +37,16 @@ create a tag or GitHub Release, or upload an application.
 - No promise of opening a specific item in a user's Apple Books library until official documentation or an isolated experiment proves it.
 - Examples and tests use fictional data only.
 
-The planned Xcode project and Swift module are both `BookAtlas`, the display name is `Book Atlas`, and the bundle identifier placeholder is `com.<developer>.BookAtlas`.
+The Xcode project and Swift module are both `BookAtlas`, the display name is
+`Book Atlas`, and the V1.0.0 application bundle identifier is
+`io.github.freeforest.BookAtlas`.
 
 ## GitHub source-publication policy
 
-Book Atlas is planned for public GitHub source code only. It will not be
+Book Atlas V1.0.0 is being prepared for source-only publication at
+[`freeforest/book-atlas`](https://github.com/freeforest/book-atlas). The
+repository exists and remains Private during preparation; the user will
+manually change it to Public for V1.0.0. It will not be
 submitted to the Mac App Store, and the project does not plan to use an Apple
 Developer account, App Store Connect, Developer ID, distribution certificates,
 provisioning profiles, Apple notarization, stapling, or Gatekeeper acceptance
@@ -52,23 +57,27 @@ system SQLite. Local ad-hoc Debug/Release builds, App Sandbox, Hardened Runtime,
 and entitlement inspection remain engineering evidence, not Apple platform
 distribution evidence.
 
-The confirmed product support policy for a future public source version is the
-latest macOS 26 only, with no macOS 14/15 compatibility promise or multi-version
-matrix. The Xcode project still declares `MACOSX_DEPLOYMENT_TARGET = 14.0`, so
-the macOS 26-only policy is not yet implemented in project configuration. A
-separate GitHub source-publication preparation task must align the deployment
-target and build documentation, then rerun Debug/Release, the complete non-UI
-and UI suites with XCUIAutomation initialized, and necessary human checks from
-a clean checkout.
+V1.0.0 supports macOS 26 only, with no macOS 14/15 compatibility promise or
+multi-version matrix. The production project, application, unit tests, and UI
+tests declare `MACOSX_DEPLOYMENT_TARGET = 26.0`. Source builders need a
+compatible Xcode 26 toolchain. ADR-0009 supersedes the earlier macOS 14 target;
+historical Prompt and technical-spike records retain their original context.
 
-Before any public action, the user must confirm the GitHub repository owner and
-address, license year and copyright holder, final public version, whether a tag
-is wanted, and either GitHub Private Vulnerability Reporting or another
-maintained private security channel. The repository has not been made public;
-no push, tag, GitHub Release, source upload, `.app` upload, or announcement has
-occurred. If precompiled GitHub Release applications are considered in the
-future, that requires a separate authorized release task covering Developer
-ID, notarization, Gatekeeper, integrity, installation, and updates.
+The confirmed public version is 1.0.0, with intended tag `v1.0.0` and intended
+GitHub Release title `Book Atlas v1.0.0`. The user will perform every Git and
+GitHub write manually. The Release will use GitHub's source archives and the
+prepared release notes only; it will not upload an `.app`, `.dmg`, `.pkg`, or
+binary application archive. The repository has not been made public; no tag,
+GitHub Release, source publication, application upload, or announcement has
+occurred.
+
+The selected private security channel is GitHub Private Vulnerability
+Reporting. GitHub documents it for public repositories, so it cannot be
+enabled while this repository remains Private. The user must enable and verify
+it as part of the manual Public transition; until then it remains a pending
+publication gate. If precompiled GitHub Release applications are considered
+in the future, that requires a separate authorized release task covering
+Developer ID, notarization, Gatekeeper, integrity, installation, and updates.
 
 ## Documentation
 
@@ -84,6 +93,8 @@ ID, notarization, Gatekeeper, integrity, installation, and updates.
 - [Portability format specification](docs/FORMATS/PORTABILITY.md)
 - [Milestone plans](docs/PLANS/README.md)
 - [GitHub source publication checklist](docs/RELEASE_CHECKLIST.md)
+- [Changelog](CHANGELOG.md)
+- [V1.0.0 source release notes draft](docs/RELEASE_NOTES-1.0.0.md)
 
 ## Repository data policy
 
@@ -91,7 +102,11 @@ ID, notarization, Gatekeeper, integrity, installation, and updates.
 
 ## Development environment
 
-The verified environment is Xcode 26.6 (build 17F113) with Swift 6.3.3 on macOS 26. The current project deployment target is still macOS 14.0; the confirmed future source-publication policy is macOS 26-only, and those facts have not yet been technically aligned. Prompt 1 kept third-party dependencies out of the repository; the selected production direction is a focused internal SQLite store, specified in [ADR-0002](docs/DECISIONS/0002-direct-sqlite-persistence.md).
+The verified environment is Xcode 26.6 (build 17F113) with Swift 6.3.3 on
+macOS 26. V1.0.0 targets macOS 26.0 only and does not claim macOS 14/15
+compatibility. Prompt 1 kept third-party dependencies out of the repository;
+the selected production direction is a focused internal SQLite store,
+specified in [ADR-0002](docs/DECISIONS/0002-direct-sqlite-persistence.md).
 
 ### Build and test
 
@@ -119,7 +134,8 @@ The application keeps its SQLite library inside its sandboxed Application Suppor
 
 See [CONTRIBUTING.md](CONTRIBUTING.md), [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md), and the repository [security policy](SECURITY.md). Issue and pull-request templates live under `.github/`.
 
-`LICENSE` is an MIT template, but its year and copyright holder remain explicit placeholders pending maintainer/legal review. Both must be user-confirmed before GitHub source publication; this statement is not legal advice.
+`LICENSE` contains the user-confirmed MIT copyright line
+`Copyright (c) 2026 FreeForest`. This documentation is not legal advice.
 
 ## Screenshots
 

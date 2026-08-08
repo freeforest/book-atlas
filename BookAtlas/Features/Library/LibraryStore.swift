@@ -232,6 +232,7 @@ final class LibraryStore: ObservableObject {
             let usesTestStore = arguments.contains("-BookAtlasUseInMemoryStore")
                 || environment["XCTestConfigurationFilePath"] != nil
             let usesTestAdapters = usesTestStore || performanceCommand != nil
+            let usesSystemFilePanel = arguments.contains("-BookAtlasUseSystemFilePanel")
 
             if let performanceCommand {
                 let sessionID: UUID
@@ -296,8 +297,18 @@ final class LibraryStore: ObservableObject {
                     databaseURL: databaseURL
                 )
             }
-            let readingEntries = usesTestAdapters
-                ? ReadingEntryStore(
+            let readingEntries: ReadingEntryStore?
+            if usesTestAdapters, usesSystemFilePanel {
+                readingEntries = ReadingEntryStore(
+                    catalog: catalog,
+                    opener: FictionalUITestResourceOpener(),
+                    appleBooks: FictionalUITestAppleBooksIntegration(),
+                    clipboard: FictionalUITestClipboardWriter(),
+                    fileSelector: SystemLocalFileSelector(),
+                    bookmarks: SystemSecurityScopedBookmarkService()
+                )
+            } else if usesTestAdapters {
+                readingEntries = ReadingEntryStore(
                     catalog: catalog,
                     opener: FictionalUITestResourceOpener(),
                     appleBooks: FictionalUITestAppleBooksIntegration(),
@@ -305,7 +316,9 @@ final class LibraryStore: ObservableObject {
                     fileSelector: FictionalUITestFileSelector(),
                     bookmarks: FictionalUITestBookmarkService()
                 )
-                : nil
+            } else {
+                readingEntries = nil
+            }
             let store = LibraryStore(catalog: catalog, readingEntries: readingEntries)
             if arguments.contains("-BookAtlasSeedPortabilityPreview") {
                 store.portability.seedFictionalPreviewForUITesting()

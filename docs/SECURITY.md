@@ -24,7 +24,11 @@ Protect the integrity and confidentiality of the local library, minimize OS capa
 
 ## Secrets and signing
 
-The repository must not contain API keys, private keys, certificates, provisioning profiles, credentials, notarization secrets, private environment files, or account identifiers. Signing and notarization setup is local or CI-secret configuration and must be documented without secret values.
+The repository must not contain API keys, private keys, certificates,
+provisioning profiles, credentials, notarization secrets, private environment
+files, or account identifiers. V1.0.0 is source-only and has no distribution
+signing/notarization setup. If binary distribution is considered later, it
+requires a separate task and secret-safe configuration outside the repository.
 
 ## Dependency policy
 
@@ -62,12 +66,15 @@ disables Xcode base-entitlement injection. Effective-product inspection found
 only App Sandbox, user-selected read/write, and app-scoped bookmarks. Debug
 retains `get-task-allow` for local testing; Release does not. Neither product
 contains network, Apple Events, automation, Downloads, or broad filesystem
-entitlements. This ad-hoc inspection does not replace distribution signing,
-notarization, or Gatekeeper review.
+entitlements. This ad-hoc inspection is local engineering evidence; V1.0.0
+does not distribute a binary and therefore has no Developer ID, notarization,
+or Gatekeeper binary-distribution gate.
 
 ## Reporting vulnerabilities
 
 The repository-level `SECURITY.md` directs contributors here and warns against
-public disclosure of private content. A monitored non-personal private
-reporting channel is not yet configured and remains a release blocker. Do not
-publish a personal address or invent an unmonitored placeholder channel.
+public disclosure of private content. The selected channel is GitHub Private
+Vulnerability Reporting. GitHub exposes it for public repositories, so the
+user must enable and verify it during the manual transition from Private to
+Public. Until then it remains a publication gate. Do not publish a personal
+address or invent an unmonitored alternate channel.

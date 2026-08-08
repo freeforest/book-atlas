@@ -20,7 +20,7 @@ body:
     attributes:
       label: macOS and Mac
       description: Include macOS version and Apple silicon model; omit device names.
-      placeholder: macOS 14.x, Apple silicon
+      placeholder: macOS 26.x, Apple silicon
     validations:
       required: true
   - type: textarea

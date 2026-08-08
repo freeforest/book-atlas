@@ -43,13 +43,20 @@ Gatekeeper binary acceptance, and precompiled `.app` downloads. These are not
 pending gates for the current source-only strategy. Local ad-hoc builds, App
 Sandbox, Hardened Runtime, and entitlement checks remain local evidence.
 
-The future public-source support policy is latest macOS 26 only, with no
-macOS 14/15 compatibility promise or matrix. The Xcode project still declares
-deployment target 14.0, so the policy is not technically aligned. A separate
-GitHub source-publication preparation task must update the project/docs and
-rerun clean-checkout Debug, Release, full non-UI, full UI with actual
-XCUIAutomation initialization, fictional-data checks, and necessary human
-checks. That task is not Prompt 11 and does not authorize publication actions.
+The source-publication preparation task is now aligning V1.0.0 to macOS 26.0,
+version 1.0.0/build 1, and bundle identifier
+`io.github.freeforest.BookAtlas`. It remains separate from Milestone 5 and is
+not Prompt 11. Fresh Debug, Release, full non-UI, full UI with actual
+XCUIAutomation initialization, fixed-fictional checks, actual-product
+inspection, and the real `NSOpenPanel` check remain required before its
+evidence can close.
+
+The confirmed repository `freeforest/book-atlas` remains Private. The intended
+first tag and GitHub Release are `v1.0.0` and `Book Atlas v1.0.0`, source-only,
+with no uploaded application binary. GitHub Private Vulnerability Reporting
+will be enabled and confirmed manually when the repository becomes Public; it
+cannot be enabled on the current Private repository. No Git/GitHub write is
+authorized to Codex.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -153,17 +160,16 @@ It does not replace the separate GitHub source-publication checklist.
 
 ## GitHub source-publication gates
 
-- user confirms the final GitHub repository owner/address, public version, and
-  whether a formal Git tag is wanted;
-- user confirms `LICENSE` year and copyright holder; Codex must not infer a
-  legal name or copyright subject;
-- user enables GitHub Private Vulnerability Reporting or confirms another
-  actually maintained private security channel; public Issues are not a
-  private vulnerability channel;
-- align the still-14.0 deployment target and build documentation to the
-  confirmed macOS 26-only policy, then perform clean-checkout Debug/Release,
-  complete non-UI, complete UI with XCUIAutomation initialized, fictional-data,
-  and necessary human verification;
+- repository identity `freeforest/book-atlas`, version 1.0.0, tag `v1.0.0`,
+  Release title `Book Atlas v1.0.0`, and source-only scope are confirmed;
+- `LICENSE` is resolved to the user-authorized `2026 FreeForest` line;
+- GitHub Private Vulnerability Reporting is selected but must be enabled and
+  verified manually after the Private repository becomes Public; public Issues
+  are not a private vulnerability channel;
+- the project/docs are aligned to macOS 26-only; fresh Debug/Release, complete
+  non-UI, complete UI with XCUIAutomation initialized, fixed-fictional data,
+  actual-product inspection, real native-panel verification, and a later clean
+  post-commit checkout remain evidence gates;
 - confirm README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Issue/PR
   templates, fictional samples/generator, roadmap, known limitations, and the
   final bundle/version metadata decision;

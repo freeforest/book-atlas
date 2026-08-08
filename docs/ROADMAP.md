@@ -83,15 +83,19 @@ stapling, Gatekeeper acceptance for a downloadable binary, and precompiled
 gates for the current plan. Local ad-hoc Debug/Release, App Sandbox, Hardened
 Runtime, and entitlement inspection remain build evidence only.
 
-The future public-source support policy is latest macOS 26 only, without
-macOS 14/15 compatibility promises or a multi-version matrix. The project still
-declares deployment target 14.0, so a separate GitHub source-publication
-preparation task must align the project/docs and rerun clean-checkout builds,
-full non-UI/UI tests with XCUIAutomation initialized, fictional-data checks,
-and necessary human checks. Before publication the user must also confirm the
-GitHub owner/address, license holder/year, public version, optional tag, and a
-private security channel. No repository-publication, push, tag, GitHub Release,
-source upload, `.app` upload, or announcement has occurred.
+V1.0.0 source-publication preparation is now in progress. The production
+project and all three targets declare macOS 26.0; the app metadata is version
+1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`. The
+confirmed repository `freeforest/book-atlas` remains Private, the MIT copyright
+is `2026 FreeForest`, and the intended first tag/Release are `v1.0.0` and
+`Book Atlas v1.0.0`. No macOS 14/15 compatibility promise or matrix is made.
+
+Fresh builds/tests, actual-product inspection, the real `NSOpenPanel` check,
+privacy scan, and independent publication review remain separate evidence
+gates. GitHub Private Vulnerability Reporting can only be enabled after the
+repository becomes Public and therefore remains a user-operated transition
+gate. No repository-publication, push, tag, GitHub Release, source upload,
+`.app` upload, or announcement has occurred.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197

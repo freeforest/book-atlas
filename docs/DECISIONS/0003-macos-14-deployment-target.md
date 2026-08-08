@@ -1,6 +1,6 @@
 # ADR-0003: macOS 14 deployment target
 
-- Status: Accepted
+- Status: Superseded by ADR-0009
 - Date: 2026-07-26
 - Owners: Project maintainers
 
