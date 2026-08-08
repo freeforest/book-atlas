@@ -106,7 +106,17 @@ final class BookAtlasUITests: XCTestCase {
         app.typeKey(.tab, modifierFlags: [])
         let author = element("editor-author", in: app)
         XCTAssertTrue(waitForKeyboardFocus(author, timeout: 3))
-        app.typeText("Manual Acceptance Author")
+        let expectedAuthor = "Manual Acceptance Author"
+        app.typeText(expectedAuthor)
+        let authorValueExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", expectedAuthor),
+            object: author
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [authorValueExpectation], timeout: 3),
+            .completed,
+            "Author input must be complete before save; actual value: \(String(describing: author.value))"
+        )
 
         clickEditorSave(in: app)
 
@@ -116,7 +126,7 @@ final class BookAtlasUITests: XCTestCase {
             fieldErrorIdentifier: "editor-title-error",
             in: app
         )
-        XCTAssertEqual(author.value as? String, "Manual Acceptance Author")
+        XCTAssertEqual(author.value as? String, expectedAuthor)
         XCTAssertTrue(element("book-editor-sheet", in: app).exists)
         XCTAssertTrue(element("library-empty-state", in: app).exists)
         XCTAssertFalse(element("duplicate-review-sheet", in: app).exists)
@@ -132,7 +142,7 @@ final class BookAtlasUITests: XCTestCase {
                 .waitForNonExistence(timeout: 3)
         )
         XCTAssertFalse(element("editor-title-error", in: app).exists)
-        XCTAssertEqual(author.value as? String, "Manual Acceptance Author")
+        XCTAssertEqual(author.value as? String, expectedAuthor)
     }
 
     @MainActor
@@ -579,7 +589,17 @@ final class BookAtlasUITests: XCTestCase {
             "Command-F must move keyboard focus to the library search field"
         )
         XCTAssertEqual(searchField.value as? String, "")
-        app.typeText("A101")
+        let expectedSearchText = "A101"
+        app.typeText(expectedSearchText)
+        let searchValueExpectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", expectedSearchText),
+            object: searchField
+        )
+        XCTAssertEqual(
+            XCTWaiter.wait(for: [searchValueExpectation], timeout: 3),
+            .completed,
+            "Command-F search input must be complete before querying; actual value: \(String(describing: searchField.value))"
+        )
         XCTAssertTrue(
             element(
                 "library-book-00000000-0000-0000-0000-000000000101",
