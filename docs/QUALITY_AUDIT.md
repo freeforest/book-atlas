@@ -1,16 +1,20 @@
 # Prompt 10 quality audit
 
-This document records implementation evidence for independent review. It does
-not state that Prompt 10 passed, that a stable version was released, or that
-release signing/notarization occurred.
+This document records the accepted Prompt 10 implementation evidence and its
+boundaries. Prompt 10 passed independent acceptance at documentation baseline
+`ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline
+`4cc20b8c88cb674a4f9a52d3e8de70c295169281`. This acceptance does not state
+that GitHub is public, a tag or GitHub Release exists, an application was
+uploaded, or Apple binary distribution occurred.
 
-## Current V2 evidence closure
+## Accepted evidence closure
 
 The current code baseline is
 `4cc20b8c88cb674a4f9a52d3e8de70c295169281` (parent
-`dfe49d724fdadc203a715d7e744d0a9e91bd5ad7`). Prompt 10 implementation and
-this evidence closure are complete and await independent review. This document
-does not make the Prompt 10 GO/NO-GO decision.
+`dfe49d724fdadc203a715d7e744d0a9e91bd5ad7`). Independent review accepted this
+evidence at `ec0b04f…`. Prompts 0–10 are complete, no Prompt 11 starts
+automatically, and subsequent GitHub source-publication preparation is not a
+new product-development stage.
 
 The three historical graph UI failures occurred while clicking semantic graph
 nodes. The zero-height object was an anonymous `AXScrollArea` within
@@ -117,6 +121,40 @@ semantics without actually displaying a macOS `NSOpenPanel`. No file was
 selected or read and the library remained unchanged. The result is
 `PASS WITH LIMITATION — 未实际显示原生系统文件面板`, not a native-panel pass.
 
+The fixed-fictional adapter returned cancellation directly. No real file was
+selected or read, the library remained unchanged, no browser or Apple Books
+launch was observed, no real long-lived bookmark was exercised, and real
+external-system behavior remains unverified. These are functional-integration
+limitations, not Mac App Store or Apple binary-distribution gates.
+
+## GitHub source-publication boundary
+
+The confirmed publication strategy is GitHub source code only, built by users
+with Apple's Xcode, Swift, SwiftUI, AppKit, and system SQLite. It excludes Mac
+App Store submission, precompiled `.app` downloads, Apple Developer membership,
+App Store Connect/Review, Developer ID Application/Installer, distribution
+certificates and profiles, Apple notarization, stapling, and Gatekeeper
+acceptance for a distributed binary. Those items are not pending gates under
+the current strategy. Local ad-hoc builds, App Sandbox, Hardened Runtime, and
+entitlement inspection remain accepted local evidence only.
+
+The support policy for the future public-source version is latest macOS 26
+only, without macOS 14/15 compatibility promises or a multi-version matrix.
+The Xcode project still declares deployment target 14.0, so that policy has not
+yet been implemented technically. A separate source-publication preparation
+task must align the project and documentation, then rerun clean-checkout Debug,
+Release, complete non-UI, complete UI with actual XCUIAutomation initialization,
+fictional-data checks, and necessary human checks.
+
+Real publication blockers are the user-confirmed GitHub owner/address, license
+holder and year, final public version, optional tag decision, private security
+channel, macOS 26 project alignment and revalidation, tracked-artifact/privacy
+scan, and explicit authorization for push/public/tag/Release/upload actions.
+None of those external actions has occurred. If a precompiled GitHub Release
+application is considered later, Developer ID, notarization, Gatekeeper,
+signing, integrity, installation, and update policy must be reopened in a new
+authorized task.
+
 ## Automated quality coverage
 
 - The complete unit/integration suite covers CRUD, query composition,
@@ -211,14 +249,15 @@ private payloads.
   rejection, and transactional restore/merge guarantees remain unchanged.
 - The repository ignore policy covers databases and sidecars,
   `.bookatlasbackup`, bookmarks, signing material, `DerivedData`, and
-  `.xcresult`. The release checklist requires a tracked-file scan before any
-  distribution.
+  `.xcresult`. The source-publication checklist requires a tracked-file scan
+  before the repository is made public.
 - The local Release configuration enables Hardened Runtime and disables
   Xcode's base-entitlement injection. Inspection of the built product found
   only App Sandbox, user-selected read/write, and app-scoped bookmarks; it did
   not contain `get-task-allow`, network, Apple Events, automation, Downloads,
-  or broad filesystem access. The product is still ad-hoc signed and is not a
-  distribution archive.
+  or broad filesystem access. The product is ad-hoc signed local evidence, not
+  a distribution archive; no distribution archive is planned under the current
+  source-only strategy.
 
 ## Dependency and license inventory
 
@@ -296,7 +335,7 @@ The original environment blocker applied to the two historical attempts, not
 to the later completed human evidence. Current Inspector evidence is still
 limited to states A and B, prior accent/Reduce Motion/keyboard/VoiceOver results
 were not all repeated on `4cc20b8c…`, and independent review must preserve
-those evidence boundaries before any stable-release decision.
+those evidence boundaries after acceptance and in any future public claims.
 
 ### Manual editor-validation finding and code closure
 
@@ -388,28 +427,37 @@ zero tests despite `xcodebuild` reporting success. It is retained as a
 non-evidence command error; the corrected focused result executed 4/4 key
 selection paths, and the unique complete bundle executed all 37 tests.
 
-### Other checks not closed by the current evidence
+### Other checks not closed by the accepted evidence
 
-Current physical-pointer visual checks are recorded above. The declared macOS
-14 runtime, a distribution-signed archive, notarization, Gatekeeper assessment,
-real external-system behavior, a genuinely displayed native file panel, and
-whole-application Inspector coverage remain explicit release risks or gates.
+Current physical-pointer visual checks are recorded above. Real external-system
+behavior, a genuinely displayed native file panel, and whole-application
+Inspector coverage remain evidence limitations. A distribution-signed archive,
+notarization, Gatekeeper binary assessment, and macOS 14 runtime matrix are not
+applicable to the confirmed source-only/macOS 26 policy. The actual unresolved
+platform item is alignment of the still-14.0 project target to macOS 26 and
+revalidation afterward.
 
-## Known release risks
+## GitHub source-publication risks and gates
 
 - The bundle identifier is still `com.example.BookAtlas`, marketing version is
-  still 0.1.0, and Release is ad-hoc signed for local verification.
-- The license holder/year and private security-reporting channel are not yet
-  configured.
+  still 0.1.0, and neither has been confirmed as final public metadata.
+- `LICENSE` still contains `[YEAR] [COPYRIGHT HOLDER]`; the user must supply
+  both values. The GitHub repository owner/address is also unconfirmed.
+- A monitored private security-reporting channel is not configured. Before
+  publication the user must enable GitHub Private Vulnerability Reporting or
+  provide another maintained private channel; a public issue is not a private
+  vulnerability channel.
 - Verification is on one Apple M2 MacBook Air with 24 GB memory and macOS
-  26.5.2; the declared macOS 14 minimum has not been exercised here.
+  26.5.2. The future policy is macOS 26-only, but the project still declares
+  14.0 and requires a separate configuration change and clean revalidation.
 - Debug XCUIAutomation produced existing-library launch, page-load, and
   scrolling/hitch metrics. A Release Instruments run using the same
   pre-generated-library protocol could not be authorized through the current
   execution surface after its unmeasured preparation step; therefore no
   Release launch or scrolling number is reported in this closure. Earlier
   launch numbers that included in-process test-data generation are explicitly
-  superseded and are not treated as an existing-library launch baseline.
+  superseded and are not treated as an existing-library launch baseline. This
+  is not a source-publication blocker.
 - Backups are unencrypted, recovery copies have no automatic retention policy,
   Possible duplicate review is capped without pagination, and external
   application behavior remains outside Book Atlas's control.

@@ -8,9 +8,11 @@ Verify release quality and prepare an accurate, privacy-conscious open-source re
 
 - Prompt 10: regression and performance checks, accessibility review, privacy/security audit, packaging documentation, license/dependency inventory, contributor guidance, and known limitations.
 
-Prompt 10 implementation and the current evidence closure are complete at
-`4cc20b8c88cb674a4f9a52d3e8de70c295169281` and await independent review. The
-valid final evidence is 3/3 targeted historical graph regressions, 41/41 full
+Prompt 10 passed independent acceptance at documentation baseline
+`ec0b04f1c004ef5c897d3269e335c92034d6021e`; its verified code baseline is
+`4cc20b8c88cb674a4f9a52d3e8de70c295169281`. Prompts 0–10 are complete and no
+Prompt 11 begins automatically. The valid final evidence is 3/3 targeted
+historical graph regressions, 41/41 full
 UI tests after XCUIAutomation initialization, 200/200 full non-UI tests, and
 successful Debug and local Hardened Runtime Release builds, with zero failed
 or skipped tests. A zero-test Xcode/CoreSimulator/test-service attempt and a
@@ -29,11 +31,25 @@ complete pointer-free keyboard, and VoiceOver evidence is retained as a prior
 human gate, not a complete `4cc20b8c…` rerun. The native file path remains
 `PASS WITH LIMITATION` because an actual `NSOpenPanel` was not displayed.
 
-This is not a Prompt 10 acceptance, GO decision, release, tag, signed
-distribution, notarization, or upload. macOS 14, real external-system behavior,
-Release Instruments, distribution signing, notarization, Gatekeeper, final
-license/bundle identity, screenshots, tag, upload, and stable release remain
-unverified or incomplete.
+This acceptance closes Milestone 5 development. It did not publish GitHub,
+push, create a tag or GitHub Release, upload source or an `.app`, or perform
+Apple binary distribution. Real external-system behavior and the state-specific
+Inspector/native-panel limitations remain as documented evidence boundaries.
+
+The confirmed follow-on strategy is GitHub source code only. It excludes Mac
+App Store, Apple Developer membership, App Store Connect/Review, Developer ID,
+distribution certificates and provisioning profiles, notarization, stapling,
+Gatekeeper binary acceptance, and precompiled `.app` downloads. These are not
+pending gates for the current source-only strategy. Local ad-hoc builds, App
+Sandbox, Hardened Runtime, and entitlement checks remain local evidence.
+
+The future public-source support policy is latest macOS 26 only, with no
+macOS 14/15 compatibility promise or matrix. The Xcode project still declares
+deployment target 14.0, so the policy is not technically aligned. A separate
+GitHub source-publication preparation task must update the project/docs and
+rerun clean-checkout Debug, Release, full non-UI, full UI with actual
+XCUIAutomation initialization, fictional-data checks, and necessary human
+checks. That task is not Prompt 11 and does not authorize publication actions.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -108,15 +124,18 @@ and the sealed complete UI suite passed 40/40 without failure or skip. Those
 automated results did not themselves close the manual gate: at that stage the
 corrected Light flow, Dark, accent, window-size, Reduce Motion, complete
 keyboard, VoiceOver, and Inspector paths still required human execution. The
-later human gate and current-build supplements are summarized above;
-independent review remains outstanding.
+later human gate and current-build supplements are summarized above; the final
+evidence was subsequently accepted at `ec0b04f…`.
 
-## Gates
+## Accepted Prompt 10 gates
 
 - Build and full test suite pass on the documented supported toolchain.
 - Privacy scan, entitlement review, migration/backup recovery checks, and fictional-data audit pass.
 - Performance results state hardware, dataset, method, and limitations.
 - Public documentation does not expose personal contact details, data, paths, signing material, or unsupported capability claims.
+
+Independent acceptance confirms these Prompt 10 gates at the baselines above.
+It does not replace the separate GitHub source-publication checklist.
 
 ## Deliverables
 
@@ -130,18 +149,31 @@ independent review remains outstanding.
   artifact audits;
 - license placeholder, contribution/conduct/security entry points, issue and
   pull-request templates, fictional fixture/generator, known limitations, and
-  a stable-release checklist.
+  a GitHub source-publication checklist.
 
-## Release blockers that remain external to implementation
+## GitHub source-publication gates
 
-- replace the placeholder bundle identifier, version decision, license year
-  and holder;
-- configure a monitored non-personal private security-reporting channel;
-- independently review the completed human gate and current-build supplements;
-  retain the state-specific Inspector boundary and the native-panel
-  `PASS WITH LIMITATION`, and exercise the declared macOS 14 runtime;
-- run three authorized Release Instruments launches against each
-  pre-generated 1k/5k/10k Schema 5 library and record the same exact-count
-  verification used by Debug;
-- configure release signing, archive verification, notarization, Gatekeeper
-  validation, screenshots, release notes, tag, and upload.
+- user confirms the final GitHub repository owner/address, public version, and
+  whether a formal Git tag is wanted;
+- user confirms `LICENSE` year and copyright holder; Codex must not infer a
+  legal name or copyright subject;
+- user enables GitHub Private Vulnerability Reporting or confirms another
+  actually maintained private security channel; public Issues are not a
+  private vulnerability channel;
+- align the still-14.0 deployment target and build documentation to the
+  confirmed macOS 26-only policy, then perform clean-checkout Debug/Release,
+  complete non-UI, complete UI with XCUIAutomation initialized, fictional-data,
+  and necessary human verification;
+- confirm README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Issue/PR
+  templates, fictional samples/generator, roadmap, known limitations, and the
+  final bundle/version metadata decision;
+- scan tracked files for databases, WAL/SHM, backups, bookmarks, DerivedData,
+  `.xcresult`, certificates, keys, signing material, and private paths;
+- obtain explicit user authorization before push, making the repository
+  public, tag, GitHub Release, upload, or announcement.
+
+Apple Developer, App Store, Developer ID, distribution signing, notarization,
+stapling, and Gatekeeper binary distribution are not applicable to the current
+source-only plan. If a downloadable precompiled `.app` is considered later,
+those questions must be reopened in a separate authorized release task along
+with integrity, installation, and update strategy.

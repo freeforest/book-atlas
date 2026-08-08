@@ -1,6 +1,10 @@
 # Roadmap
 
-The roadmap is sequential. Complete a prompt's acceptance criteria, real validation, documentation update, and risk review before beginning the next prompt. Do not combine stages. A normal Git commit after each accepted stage is recommended but never automatic.
+The development roadmap was sequential and is now complete through Prompt 10.
+No Prompt 11 starts automatically. Subsequent GitHub source-publication
+preparation is an operational/publication task, not a new product-development
+stage. Git commits and all external publication actions remain explicit user
+decisions, never automatic.
 
 ## Milestones
 
@@ -41,10 +45,11 @@ Exit condition: data is portable and recoverable, relationship exploration does 
 
 ### Milestone 5 — release quality and open-source readiness
 
-- **Prompt 10:** performance and accessibility checks, privacy/security audit, release documentation, and open-source preparation.
+- **Prompt 10:** completed and independently accepted performance and accessibility checks, privacy/security audit, release documentation, and open-source preparation.
 
-Prompt 10 implementation and the current evidence closure are complete at
-`4cc20b8c88cb674a4f9a52d3e8de70c295169281` and await independent review.
+Prompt 10 passed independent acceptance at documentation baseline
+`ec0b04f1c004ef5c897d3269e335c92034d6021e`; its verified code baseline is
+`4cc20b8c88cb674a4f9a52d3e8de70c295169281`. Prompts 0–10 are complete.
 The three formerly failing graph UI cases passed 3/3, the complete UI suite
 initialized XCUIAutomation and passed 41/41, the complete non-UI suite passed
 200/200, and Debug/Release builds both succeeded, with zero failed or skipped
@@ -65,10 +70,28 @@ complete pointer-free keyboard, and VoiceOver evidence was retained and not
 misrepresented as fully rerun on `4cc20b8c…`. The native file action remains
 `PASS WITH LIMITATION` because no actual `NSOpenPanel` appeared.
 
-Prompt 10 is not accepted and this roadmap makes no GO/NO-GO decision. The
-macOS 14 runtime, real external-system behavior, Release Instruments,
-distribution signing, notarization, Gatekeeper, final license/bundle identity,
-tag, upload, and stable release remain unverified or incomplete.
+The accepted evidence preserves the state boundaries above and does not claim
+whole-application permanent-zero Inspector results or a passed real
+`NSOpenPanel`. Earlier accent, Reduce Motion, pointer-free keyboard, and
+VoiceOver evidence was not fully rerun on `4cc20b8c…`.
+
+Book Atlas will be published, if separately authorized, as GitHub source code
+only. The plan excludes Mac App Store, Apple Developer membership, App Store
+Connect/Review, Developer ID, distribution certificates/profiles, notarization,
+stapling, Gatekeeper acceptance for a downloadable binary, and precompiled
+`.app` distribution. These Apple binary-distribution items are not outstanding
+gates for the current plan. Local ad-hoc Debug/Release, App Sandbox, Hardened
+Runtime, and entitlement inspection remain build evidence only.
+
+The future public-source support policy is latest macOS 26 only, without
+macOS 14/15 compatibility promises or a multi-version matrix. The project still
+declares deployment target 14.0, so a separate GitHub source-publication
+preparation task must align the project/docs and rerun clean-checkout builds,
+full non-UI/UI tests with XCUIAutomation initialized, fictional-data checks,
+and necessary human checks. Before publication the user must also confirm the
+GitHub owner/address, license holder/year, public version, optional tag, and a
+private security channel. No repository-publication, push, tag, GitHub Release,
+source upload, `.app` upload, or announcement has occurred.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197
@@ -116,7 +139,8 @@ retained, and only an actual non-nil identity mismatch is cleared. Four direct
 publication regressions passed within the 197/197 complete non-UI suite; that
 closure's 37/37 UI activity tree contained zero SwiftUI view-update
 publication warnings. That automated closure did not by itself change the
-then-blocked human gates or Prompt 10 acceptance state.
+then-blocked human gates or Prompt 10 acceptance state; the later independent
+review accepted the final evidence at `ec0b04f…`.
 
 A later partial Light-mode human check found that editor validation existed
 only below the visible part of the long Form and gave no understandable
@@ -129,14 +153,19 @@ remained recorded, and the sealed full UI suite passed 40/40 without failure
 or skip. At that stage the corrected Light path, Dark,
 accent, both window sizes, Reduce Motion, complete keyboard, VoiceOver, and
 Accessibility Inspector still required human evidence; the later completed
-gate and current-build supplements are summarized above. Prompt 10 still
-awaits independent review.
+gate and current-build supplements are summarized above. Prompt 10 subsequently
+passed independent acceptance.
 
-Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
+Exit condition: achieved by the accepted Prompt 10 evidence. GitHub source
+publication remains a separate, user-authorized preparation and publication
+workflow.
 
 ## Required execution order
 
-`Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
+Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
+
+Next task, when authorized: **GitHub source-publication preparation**. It is not
+Prompt 11 and does not itself authorize Git or GitHub writes.
 
 ## Cross-cutting gates
 

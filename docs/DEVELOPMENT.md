@@ -2,11 +2,41 @@
 
 ## Current application
 
-`BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus `BookAtlasTests` and `BookAtlasUITests`. It targets macOS 14.0, uses only SwiftUI and AppKit supplied by macOS, and is sandboxed. The Debug bundle identifier is the intentional placeholder `com.example.BookAtlas`; release signing, distribution identity, and notarization are not configured.
+`BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus `BookAtlasTests` and `BookAtlasUITests`. It currently targets macOS 14.0, uses only SwiftUI and AppKit supplied by macOS, and is sandboxed. The confirmed policy for the future GitHub source-publication version is latest macOS 26 only, but the project setting has not yet been aligned in this documentation-only task. The Debug bundle identifier remains the intentional placeholder `com.example.BookAtlas`, and marketing version `0.1.0` has not been confirmed as the public version.
 
 The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. An explicit focus request returns that same bounded page plus at most one book selected by UUID under the same filters; it does not scan preceding pages or expand the page size. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
-The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 9's independent evidence is a successful Debug build, 171/171 unit/integration/migration/security/performance tests, and 26/26 UI tests. Prompt 10 implementation and evidence closure are complete at `4cc20b8c88cb674a4f9a52d3e8de70c295169281` and await independent review; this is not an acceptance or release decision. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
+The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. Prompts 0–10 are complete; there is no automatic Prompt 11. Subsequent work is a separate GitHub source-publication preparation task. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
+
+## GitHub source publication and platform alignment
+
+The distribution plan is source code on GitHub only. Book Atlas will not be
+submitted to the Mac App Store and will not provide a downloadable precompiled
+`.app`. Apple Developer membership, App Store Connect/Review, Developer ID
+Application/Installer, distribution certificates, provisioning profiles,
+notarization tickets, stapling, and Gatekeeper acceptance for binary
+distribution are therefore not applicable to the current plan. Local ad-hoc
+Debug/Release signing, App Sandbox, Hardened Runtime, and effective-entitlement
+inspection remain useful build evidence but are not Apple distribution proof.
+
+Source builders need Apple's Xcode, Swift, SwiftUI, AppKit, and system SQLite;
+the production target has no third-party binary dependency. The current
+`MACOSX_DEPLOYMENT_TARGET` is still 14.0, while the confirmed future support
+policy is latest macOS 26 only with no macOS 14/15 compatibility commitment or
+multi-version matrix. A later, separately authorized GitHub source-publication
+preparation task must change the project target, align README/build guidance,
+and then verify a clean checkout with Debug, Release, the complete non-UI suite,
+the complete UI suite after XCUIAutomation actually initializes, fictional
+test data, and necessary human checks. Until then, macOS 26-only is policy, not
+an implemented project setting.
+
+No repository-publication action has been authorized or performed. The GitHub
+owner/address, license holder/year, final public version, optional tag, private
+security-reporting channel, and whether the placeholder bundle identifier must
+change remain user decisions. A future decision to ship a precompiled `.app`
+through GitHub Releases would require a new release task covering Developer ID,
+notarization, Gatekeeper, signing, download integrity, installation, and update
+strategy.
 
 ## Build
 
@@ -24,7 +54,7 @@ The Prompt 7 acceptance baseline independently passed the Debug build, 114-test 
 
 Prompt 9 passed independent review at the baseline recorded above. Prompt 10 validation uses new `/tmp` build and result-bundle paths; a result is reported only when the corresponding command actually completed.
 
-### Current Prompt 10 evidence closure at `4cc20b8c…`
+### Accepted Prompt 10 evidence at `4cc20b8c…`
 
 The current baseline is commit
 `4cc20b8c88cb674a4f9a52d3e8de70c295169281`, whose parent is
@@ -101,8 +131,11 @@ the audit history.
 The native-file action remains `PASS WITH LIMITATION`: clicking “选择本地文件…”
 on fixed-fictional A101 returned cancellation semantics without displaying an
 actual macOS `NSOpenPanel`; no file was selected or read and the library did
-not change. Distribution signing, notarization, Gatekeeper, the macOS 14
-minimum runtime, and real external-system behavior remain unverified.
+not change. A browser and Apple Books were not actually launched, real
+long-lived bookmarks were not exercised, and real external-system behavior
+remains unverified. These are integration limitations, not Apple-store
+distribution gates. Distribution signing, notarization, and Gatekeeper binary
+distribution are not applicable to the current source-only plan.
 
 ### Earlier Prompt 10 closure validation
 
@@ -239,7 +272,8 @@ system accessibility/appearance settings, or inspect the desktop. That attempt
 reported no human accessibility or visual item as passed. Its per-area BLOCKED
 record remains in [`QUALITY_AUDIT.md`](QUALITY_AUDIT.md); later completed human
 evidence and the current `4cc20b8c…` Inspector state A/B results are recorded
-separately and do not constitute Prompt 10 acceptance.
+separately. Those attempts did not constitute acceptance at the time; Prompt 10
+subsequently passed independent acceptance at `ec0b04f…`.
 
 The storage/migration baseline is the unit test
 `LibraryQueryBenchmarkTests.testPromptTenOpenInitialLoadTagCountAndHistoricalMigrationBaselines`.
@@ -269,13 +303,15 @@ and uncontrolled paths fail closed. Invalid performance input never falls
 back to Application Support. Cleanup removes only the validated database,
 WAL/SHM/journal sidecars, and then-empty UUID directory.
 
-Release Instruments must use the same three-phase semantics: run preparation
-outside the App Launch trace, trace only the
+If Release Instruments is used for future local performance work, it must use
+the same three-phase semantics: run preparation outside the App Launch trace,
+trace only the
 `-BookAtlasPerformanceUseExistingLibrary` process, verify the disclosed first
 page/total, then run cleanup. In this closure the preparation step ran, but
 authorization for the measured desktop Instruments launch was unavailable
 from the task execution surface. No Release launch value is therefore
-reported; the older in-process-seeding numbers are not a substitute.
+reported; the older in-process-seeding numbers are not a substitute. This
+historical missing measurement is not a GitHub source-publication blocker.
 
 ## Unit tests
 
@@ -477,7 +513,10 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Keep persistence, migration, and catalog rules out of SwiftUI views.
 - Keep App Sandbox enabled and add no network client entitlement unless an accepted ADR and privacy review require it.
 - Preserve `Experiments/TechnicalSpikes/` as evidence only; production code must not import it.
-- Runtime validation currently covers one Apple-silicon host on macOS 26.5.2; the macOS 14.0 minimum runtime has not been exercised in this closure.
+- Runtime validation covers one Apple-silicon host on macOS 26.5.2. The project
+  still declares macOS 14.0, but the confirmed future public-source policy is
+  macOS 26-only; no macOS 14/15 compatibility claim or matrix is planned. The
+  project setting and documentation still require separate technical alignment.
 - Automated accessibility identifiers, appearance/small-window hosted checks,
   and keyboard paths are covered. A prior human gate covered the non-default
   purple accent, Reduce Motion, complete pointer-free keyboard use, and
@@ -485,10 +524,14 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
   adds Light/Dark, graph, exact 520×360, and Inspector state A/B evidence.
   Inspector coverage remains state-specific, and the native file panel remains
   `PASS WITH LIMITATION` because no actual `NSOpenPanel` appeared.
-- Debug existing-library launch/page/scroll measurements are recorded, but the
-  equivalent Release Instruments launch could not be authorized and remains
-  an unverified release gate; no old in-process-seeding number is used.
-- Release signing, notarization, and a final non-placeholder bundle identifier remain unconfigured.
+- Debug existing-library launch/page/scroll measurements are recorded; the
+  equivalent Release Instruments launch was not obtained. It is not a blocker
+  for source-only publication.
+- Apple Developer membership, App Store distribution, Developer ID,
+  distribution signing, notarization, stapling, and Gatekeeper binary
+  acceptance are not applicable to the current source-only strategy. The
+  placeholder bundle identifier and public version remain unresolved metadata
+  for the later publication-preparation task.
 - Duplicate heuristics intentionally do not understand every contributor order, edition, translation, or series convention; every candidate remains user-reviewed.
 - A truncated Possible lookup does not yet provide pagination; the UI states that only the first 250 deterministic raw token hits were evaluated. Exact and Strong candidates are not truncated.
 - CSV import is capped at 100 MiB, 100,000 rows, 1 MiB per field, and 128 columns; only 20 sample rows and 80 issue details are retained for presentation, with both limits disclosed. Same-batch or existing Exact/Strong rows are skipped and reported but do not become persistent ordinary-review candidates because no book is created. CSV cannot carry external links or manual relations; full-fidelity transfer requires a backup.
