@@ -8,10 +8,36 @@ Verify release quality and prepare an accurate, privacy-conscious open-source re
 
 - Prompt 10: regression and performance checks, accessibility review, privacy/security audit, packaging documentation, license/dependency inventory, contributor guidance, and known limitations.
 
-Prompt 10 implementation is complete and awaits independent review. It is not
-a release, tag, signed distribution, notarization, upload, or acceptance.
-Local closure evidence is successful Debug and hardened local Release builds,
-197/197 unit/integration/migration/security/performance tests, and 37/37 UI
+Prompt 10 implementation and the current evidence closure are complete at
+`4cc20b8c88cb674a4f9a52d3e8de70c295169281` and await independent review. The
+valid final evidence is 3/3 targeted historical graph regressions, 41/41 full
+UI tests after XCUIAutomation initialization, 200/200 full non-UI tests, and
+successful Debug and local Hardened Runtime Release builds, with zero failed
+or skipped tests. A zero-test Xcode/CoreSimulator/test-service attempt and a
+199-pass run with one benchmark `signal term` remain non-passing
+runner/infrastructure history.
+
+The graph repair is limited to changing the horizontal threshold from 760 to
+700, adding a 120-point node-list minimum height, and establishing a reliable
+fixed-fictional center/detail/button test precondition with scoped diagnostics.
+No graph semantics, Schema, migration, or persistence changed. Current-build
+Light/Dark, default-window graph, and exact 520×360 manual checks passed.
+Inspector formal audits returned zero warnings separately for the unselected
+Library state and selected fixed-fictional A101 detail state, without making a
+whole-application permanent-zero claim. Prior purple-accent, Reduce Motion,
+complete pointer-free keyboard, and VoiceOver evidence is retained as a prior
+human gate, not a complete `4cc20b8c…` rerun. The native file path remains
+`PASS WITH LIMITATION` because an actual `NSOpenPanel` was not displayed.
+
+This is not a Prompt 10 acceptance, GO decision, release, tag, signed
+distribution, notarization, or upload. macOS 14, real external-system behavior,
+Release Instruments, distribution signing, notarization, Gatekeeper, final
+license/bundle identity, screenshots, tag, upload, and stable release remain
+unverified or incomplete.
+
+Earlier closure history is retained below. One earlier local closure had
+successful Debug and hardened local Release builds, 197/197
+unit/integration/migration/security/performance tests, and 37/37 UI
 tests with XCUIAutomation initialized. The fixed-fictional performance record
 now separates test-data preparation from three-run existing-library launch,
 database open, 200-row first-page load, next-page load, disclosed multi-page
@@ -23,10 +49,9 @@ beyond the first page with a bounded first-page-plus-one lookup; missing or
 excluded targets clear selection instead of selecting an unrelated first
 row. Release Instruments existing-library launch remains unverified because
 the measured desktop trace could not be authorized from this execution
-surface. The
-required human VoiceOver/Accessibility Inspector and appearance/accent/
-small-window/Reduce Motion audit could not be controlled from the current task
-execution surface and remains an explicit unverified release gate.
+surface. At that stage, the required human VoiceOver/Accessibility Inspector
+and appearance/accent/small-window/Reduce Motion audit could not be controlled
+from the task execution surface and remained unverified.
 
 The fifth closure also makes the precise missing/excluded selection issue win
 over generic empty/no-results placeholders when a bounded query returns zero
@@ -36,7 +61,8 @@ or 1,000-row repository hard limit. A second manual-audit attempt on
 2026-08-03 initialized the supported Computer Use runtime, enumerated running
 applications, and started only a fixed-fictional in-memory Debug app, but the
 native pipe closed before returning the first Book Atlas desktop or AX tree;
-all human gates remain blocked rather than inferred from automation.
+that attempt kept all human gates blocked rather than inferring them from
+automation.
 
 The sixth closure removes two XCUI assumptions without changing production
 search or selection behavior: the combined search/filter test explicitly
@@ -47,8 +73,8 @@ relaunch-enabled search repetitions, 2/2 targeted zero-result cases, 190/190
 non-UI tests, and a uniquely sealed full UI result parsed as 37/37 with zero
 failures or skips. One earlier full attempt was 36/37 and two helper revisions
 failed on non-authoritative SwiftUI `TextEditor` AX attributes; those attempts
-remain documented in the quality audit. Manual gates and independent review
-remain outstanding.
+remain documented in the quality audit. At that stage, manual gates and
+independent review remained outstanding.
 
 The seventh closure replaces the `List(selection:)` binding's synchronous
 multi-property Store mutation with a local SwiftUI selection bridge. Store-to-
@@ -66,22 +92,24 @@ The eighth closure removes the last Store-side no-op publication. A nil
 `focusedBook` is no longer assigned nil when an ordinary in-page UUID is
 reselected; a matching page-out focus is preserved, while an actual non-nil
 mismatch is still cleared for a different UUID or nil selection. Direct
-`objectWillChange` regressions cover all four boundaries. The latest complete
+`objectWillChange` regressions cover all four boundaries. That closure's complete
 non-UI suite passed 197/197, and the complete 37/37 UI activity tree still
 contains zero SwiftUI view-update publication warnings. The six Xcode internal
 QoS diagnostics remain separately classified.
 
 A subsequent partial Light-mode human check found one blocking editor issue:
 invalid Save left its only message below the current Form viewport and supplied
-no understandable repeated-focus feedback. The current code closure adds a
+no understandable repeated-focus feedback. That code closure added a
 fixed visible summary, inline field errors, deterministic invalid-field focus,
 and an injectable privacy-safe accessibility announcement for every invalid
 submission. Its complete non-UI result is 200/200 and its direct fictional
 author/no-title mouse path passed 3/3 without retries. These automated results
-and the sealed complete UI suite passed 40/40 without failure or skip. These
-automated results do not close the manual gate: the corrected Light flow and all Dark, accent,
-window-size, Reduce Motion, complete keyboard, VoiceOver, and Inspector paths
-still require real human execution and independent review.
+and the sealed complete UI suite passed 40/40 without failure or skip. Those
+automated results did not themselves close the manual gate: at that stage the
+corrected Light flow, Dark, accent, window-size, Reduce Motion, complete
+keyboard, VoiceOver, and Inspector paths still required human execution. The
+later human gate and current-build supplements are summarized above;
+independent review remains outstanding.
 
 ## Gates
 
@@ -96,8 +124,8 @@ still require real human execution and independent review.
 - repeatable fixed-fictional 1k/5k/10k measurements with environment and noise
   disclosure;
 - automated light/dark, small-window, keyboard, accessibility-tree, bounded
-  graph, and main-actor responsiveness checks, plus a detailed BLOCKED record
-  for every manual accessibility/visual path not performed;
+  graph, and main-actor responsiveness checks, plus accurate completed,
+  state-limited, prior-build, and still-unverified manual evidence boundaries;
 - privacy, security, logging, entitlement, dependency/license, and repository
   artifact audits;
 - license placeholder, contribution/conduct/security entry points, issue and
@@ -109,9 +137,9 @@ still require real human execution and independent review.
 - replace the placeholder bundle identifier, version decision, license year
   and holder;
 - configure a monitored non-personal private security-reporting channel;
-- manually exercise Light/Dark, a non-default accent, 520×360 and normal
-  windows, VoiceOver, Accessibility Inspector, Reduce Motion, the complete
-  keyboard path, and macOS 14;
+- independently review the completed human gate and current-build supplements;
+  retain the state-specific Inspector boundary and the native-panel
+  `PASS WITH LIMITATION`, and exercise the declared macOS 14 runtime;
 - run three authorized Release Instruments launches against each
   pre-generated 1k/5k/10k Schema 5 library and record the same exact-count
   verification used by Debug;

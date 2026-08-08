@@ -43,9 +43,35 @@ Exit condition: data is portable and recoverable, relationship exploration does 
 
 - **Prompt 10:** performance and accessibility checks, privacy/security audit, release documentation, and open-source preparation.
 
-Prompt 10 quality and open-source preparation is implemented and awaits
-independent review and the documented human gates. The latest local closure
-evidence is successful Debug and hardened local Release builds, 197/197
+Prompt 10 implementation and the current evidence closure are complete at
+`4cc20b8c88cb674a4f9a52d3e8de70c295169281` and await independent review.
+The three formerly failing graph UI cases passed 3/3, the complete UI suite
+initialized XCUIAutomation and passed 41/41, the complete non-UI suite passed
+200/200, and Debug/Release builds both succeeded, with zero failed or skipped
+tests in the valid final bundles. A zero-test service-connection attempt and a
+199-pass plus benchmark `signal term` run remain infrastructure-failure
+history and are not counted as passes.
+
+The graph closure lowers only the horizontal-layout threshold from 760 to 700,
+adds a 120-point node-list minimum height, and strengthens the fixed-fictional
+center/detail/button test precondition and diagnostics. It does not change
+graph data, relationships, weights, revision, Schema, migrations, or
+persistence. Current-build Light/Dark and graph review passed; a real AXWindow
+measurement and operation pass closed the exact 520×360 check. Accessibility
+Inspector formal audits returned zero warnings separately for the unselected
+Library state and selected fixed-fictional A101 detail state, without claiming
+permanent whole-application zero warnings. Prior purple-accent, Reduce Motion,
+complete pointer-free keyboard, and VoiceOver evidence was retained and not
+misrepresented as fully rerun on `4cc20b8c…`. The native file action remains
+`PASS WITH LIMITATION` because no actual `NSOpenPanel` appeared.
+
+Prompt 10 is not accepted and this roadmap makes no GO/NO-GO decision. The
+macOS 14 runtime, real external-system behavior, Release Instruments,
+distribution signing, notarization, Gatekeeper, final license/bundle identity,
+tag, upload, and stable release remain unverified or incomplete.
+
+Earlier Prompt 10 closure history remains relevant. One earlier local closure
+had successful Debug and hardened local Release builds, 197/197
 unit/integration/migration/security/performance tests, and 37/37 actually
 executed UI tests. The ordinary library
 now exposes exact result counts and bounded 200-row pagination rather than
@@ -60,51 +86,51 @@ pre-generated Schema 5 libraries, database open, first/next-page load,
 disclosed multi-page list scrolling/hitches, tag usage counts, and Schema
 1–4→5 migration; data generation is outside the measured launch window.
 Release Instruments existing-library launch remains unverified because the
-measured desktop trace could not be authorized from this execution surface.
-Manual
-VoiceOver, Accessibility Inspector, appearance/accent/small-window, and Reduce
-Motion acceptance remains blocked by the current task execution environment
-and is not represented as passed. No stable release, tag, distribution
-signature, notarization, or upload has occurred.
+measured desktop trace could not be authorized from that execution surface.
+At that stage, manual VoiceOver, Accessibility Inspector,
+appearance/accent/small-window, and Reduce Motion evidence was blocked and was
+not represented as passed. No stable release, tag, distribution signature,
+notarization, or upload occurred.
 
 The sixth closure's final-code XCUI evidence uses an explicit fixed-UUID
 selection precondition and foreground/keyboard-focus arbitration for every
 shared text replacement. A no-retry relaunch run passed the search path 10/10,
 both zero-result paths passed 2/2, and the unique sealed full result bundle
 parsed as 37/37 with no failures or skips. Earlier 36/37 and helper-assertion
-failures are retained in the quality audit; this evidence does not replace the
-still-blocked human gates or constitute acceptance.
+failures are retained in the quality audit; that evidence did not replace the
+then-blocked human gates or constitute acceptance.
 
-The seventh closure gives `List(selection:)` local SwiftUI ownership and
+The seventh closure gave `List(selection:)` local SwiftUI ownership and
 applies only changed, latest-generation UUID side effects to the Store after
 the List update. Search and keyboard-selection paths each passed 10/10
 no-retry relaunch repetitions; parsed activities for those runs and the full
 37/37 suite contain no SwiftUI view-update publication warning. Xcode internal
-QoS diagnostics remain separately recorded. The supported Computer Use
+QoS diagnostics remain separately recorded. At that stage the supported Computer Use
 runtime initialized and enumerated running applications, but its native pipe
 closed before the first fixed-fictional Book Atlas app-state/AX-tree response;
-there is still no manual visual or accessibility result.
+that attempt produced no manual visual or accessibility result.
 
-The eighth closure makes Store selection fully idempotent at the remaining
+The eighth closure made Store selection fully idempotent at the remaining
 focus boundary: nil focus is not rewritten to nil, matching page-out focus is
 retained, and only an actual non-nil identity mismatch is cleared. Four direct
-publication regressions passed within the 197/197 complete non-UI suite; the
-latest 37/37 UI activity tree continues to contain zero SwiftUI view-update
-publication warnings. This does not change the blocked human gates or Prompt
-10 acceptance state.
+publication regressions passed within the 197/197 complete non-UI suite; that
+closure's 37/37 UI activity tree contained zero SwiftUI view-update
+publication warnings. That automated closure did not by itself change the
+then-blocked human gates or Prompt 10 acceptance state.
 
 A later partial Light-mode human check found that editor validation existed
 only below the visible part of the long Form and gave no understandable
-feedback when Save failed. The current minimal closure provides a fixed visible
+feedback when Save failed. That minimal closure provided a fixed visible
 summary, field-level explanations, required-field focus, and a repeatable,
 privacy-safe accessibility announcement behind an injectable adapter. The
-complete non-UI suite now passes 200/200 and the direct fixed-fictional
+complete non-UI suite passed 200/200 and the direct fixed-fictional
 author/no-title mouse path passed 3/3 without retry. The original manual FAIL
-and the sealed full UI suite passed 40/40 without failure or skip. The original
-manual FAIL is preserved: the corrected Light path still requires human recheck, and Dark,
+remained recorded, and the sealed full UI suite passed 40/40 without failure
+or skip. At that stage the corrected Light path, Dark,
 accent, both window sizes, Reduce Motion, complete keyboard, VoiceOver, and
-Accessibility Inspector remain unverified. Prompt 10 is still awaiting its
-manual gates and independent review.
+Accessibility Inspector still required human evidence; the later completed
+gate and current-build supplements are summarized above. Prompt 10 still
+awaits independent review.
 
 Exit condition: the documented quality gates pass with fictional data and all limitations, licenses, privacy boundaries, and remaining risks are public and accurate.
 

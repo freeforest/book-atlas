@@ -4,6 +4,119 @@ This document records implementation evidence for independent review. It does
 not state that Prompt 10 passed, that a stable version was released, or that
 release signing/notarization occurred.
 
+## Current V2 evidence closure
+
+The current code baseline is
+`4cc20b8c88cb674a4f9a52d3e8de70c295169281` (parent
+`dfe49d724fdadc203a715d7e744d0a9e91bd5ad7`). Prompt 10 implementation and
+this evidence closure are complete and await independent review. This document
+does not make the Prompt 10 GO/NO-GO decision.
+
+The three historical graph UI failures occurred while clicking semantic graph
+nodes. The zero-height object was an anonymous `AXScrollArea` within
+`local-graph-page` → `graph-accessibility-panel`, with observed frames
+`{{517,615.5},{732,0}}` and `{{517,623},{732,0}}`; it was not
+`graph-filter-control`, whose measured height was 20 points. At a 732-point
+content width, the old 760-point threshold incorrectly chose the vertical
+layout, and the Canvas plus details minimum heights compressed the node list to
+zero. The minimal production change lowers that threshold to 700 and gives the
+node list a 120-point minimum height. It changes no relationship, weight,
+filter, data, revision, Schema, migration, or persistence semantics.
+
+The test repair reliably selects fixed fictional UUID `…0601`, verifies
+`《雾港图谱中心》`, the detail view, and the exact
+`show-local-graph-button`, and scrolls only `book-detail-view` when the button
+is outside that viewport. It retains page/window/target/scroll-ancestor
+diagnostics and uses no arbitrary sleep, coordinate click, retry-on-failure,
+skip, assertion deletion, or global `scrollViews.firstMatch`.
+
+### Current automated and build result
+
+- Targeted graph regressions: 3/3 actually executed and passed, zero failed,
+  zero skipped. An initial Xcode/CoreSimulator/test-service connection failure
+  executed zero tests and is not counted; a fresh path produced the valid 3/3
+  result.
+- Complete UI: XCUIAutomation initialized; 41/41 actually executed and passed,
+  zero failed, zero skipped. The result summary and tests tree agreed.
+- Complete non-UI: 200/200 actually executed and passed, zero failed, zero
+  skipped. The result summary and tests tree agreed. A preceding complete run
+  produced 199 passes and one benchmark process `signal term`, with no XCTest
+  assertion failure. That runner/infrastructure termination is not counted as
+  a pass; the benchmark passed alone, then a fresh complete path passed
+  200/200.
+- Debug and Release both reported `BUILD SUCCEEDED`. The evidence paths
+  `/tmp/bookatlas-p10-4cc20-debug` and
+  `/tmp/bookatlas-p10-4cc20-release` are temporary run locations, not stable
+  release assets.
+
+The older 37/37 selection-idempotence suite and 40/40 editor-validation suite
+remain valid stage-specific history, not the latest full UI count. Their
+documented 36/37, 39/40, zero-test, helper-assertion, test-service, and Xcode
+internal QoS histories remain classified separately and are not promoted to
+passes.
+
+### Current fixed-fictional manual result
+
+The current Debug build used an in-memory store, fixed fictional library,
+merge, graph, reading-entry, portability, and restore seeds, and ignored saved
+window state. It did not access the production Application Support database,
+select or read a real file, read private Apple Books data, open a real HTTPS
+destination/browser, perform a real import or restore, or write real clipboard
+content. It added no dependency, network access, or permission.
+
+- Light: “全部书籍”, the empty “选择一本书” detail, A101 author/status/date,
+  exact-result and terminal paging status, reading entry, graph filters, node
+  list, selection, open-detail, and set-center actions were clear. No clipping,
+  overlap, obstruction, or color-only meaning was reported.
+- Dark: the corresponding Library and Graph states were clear without lost
+  hierarchy, overbright elements, ambiguous selection, clipping, overlap,
+  obstruction, or color-only meaning.
+- Graph: default-window and Light/Dark layouts had a full nonzero relationship
+  filter row, working horizontal scrolling, a usable semantic node list, and
+  working open-detail/set-center actions.
+- Exact small window: the real element was `书库, standard window`, role
+  `AXWindow`, subrole `AXStandardWindow`, size 520×360. Library search,
+  filter/sort, scrolling selection, empty/selected detail, counts, and terminal
+  status were reachable. Graph filters, horizontally reachable relationship
+  types, node list, selection, and actions were reachable. The editor Form,
+  fields, validation summary/field errors, Save/Cancel, and discard confirmation
+  were reachable. No permanent unreachable operation, clipping, overlap, or
+  obstruction was reported. This check is `PASS`.
+
+The earlier complete human gate for the purple accent, Reduce Motion, complete
+pointer-free keyboard operation, and VoiceOver remains prior-build evidence;
+it was not all rerun on `4cc20b8c…`. It remains distinct from the current
+Light/Dark, graph, 520×360, and Inspector supplements.
+
+### Current Accessibility Inspector results
+
+The historical audits are retained: the old-build selected-book state produced
+25 warnings, and a different old-build state later produced 16. Warning totals
+vary with UI state. Those histories include the former “全部书籍” and “选择一本书”
+contrast defects and separately classified system/framework warnings; they are
+not deleted or rewritten by the current result.
+
+- State A: current Debug, Light, no selected book, right side showing
+  “选择一本书”. The node is `AXStaticText`, label “选择一本书”, value the
+  explanatory text, identifier `library-selection-empty`, enabled. The formal
+  audit reported 0 total warnings: duplicates 0, Contrast 0, Description 0,
+  Action 0, Parent/Child 0, and other 0.
+- State B: current Debug, fixed-fictional A101 selected with its full detail and
+  reading entry. `book-detail-view` was a nonzero `AXScrollArea` measured at
+  379.5×649.0. The formal audit reported 0 total warnings: duplicates 0,
+  Contrast 0, Description 0, Action 0, Parent/Child 0, and other 0.
+
+These results show that the historical warnings did not reproduce in the two
+audited current states. They do not claim every page or future UI state is
+permanently warning-free. No new product defect was confirmed by either audit.
+
+### Native file panel limitation
+
+With fixed-fictional A101 selected, “选择本地文件…” returned cancellation
+semantics without actually displaying a macOS `NSOpenPanel`. No file was
+selected or read and the library remained unchanged. The result is
+`PASS WITH LIMITATION — 未实际显示原生系统文件面板`, not a native-panel pass.
+
 ## Automated quality coverage
 
 - The complete unit/integration suite covers CRUD, query composition,
@@ -119,9 +232,9 @@ by their platform terms and are not vendored into this repository.
 unresolved. A maintainer must supply accurate values after appropriate review;
 this statement is not legal advice.
 
-## Manual accessibility and visual audit
+## Manual accessibility and visual audit history
 
-### Attempted environment
+### Historical attempted environment
 
 - Date: 2026-07-30
 - Hardware: Apple M2 MacBook Air, 24 GB memory
@@ -152,21 +265,22 @@ appearance, accent, window size, Reduce Motion, VoiceOver, or Inspector
 settings and did not claim any manual result. The fictional app process was
 then terminated.
 
-Accordingly, no required gate below is marked PASS. Automated identifiers, hosted-view
-smoke tests, and XCUI keyboard paths are supporting evidence only and are not
-substituted for a human result.
+At the time of those two attempts, no required gate was marked PASS.
+Automated identifiers, hosted-view smoke tests, and XCUI keyboard paths were
+supporting evidence only. Subsequent human gates and the current-build
+supplements are recorded below; the failed attempts remain historical facts.
 
 | Required manual check | Intended path/evidence | Actual result |
 | --- | --- | --- |
-| Light and Dark appearance | Compare sidebar, list, details, forms, previews, graph, reading entries, errors, focus, contrast, truncation, and color independence in both appearances | **FAIL / BLOCKED** — a partial Light-mode manual pass found that invalid editor saves had no visible or perceptible feedback at the current scroll position; the code fix has automated evidence but still needs a real Light-mode recheck. Dark mode and the rest of the required coverage remain unexecuted. |
-| Non-default system accent | Change to a non-default accent and inspect selection, buttons, focus, graph state, and contrast | **BLOCKED — not manually executed** |
-| 520×360 and normal window | Operate search, filters, sort, status, forms, previews, graph alternative list, and reading entries at both sizes | **BLOCKED — not manually executed** |
-| Reduce Motion | Enable the system setting and complete every primary flow without loss of state or action | **BLOCKED — not manually executed** |
-| VoiceOver traversal | Record focus order plus spoken label, value, state, and actions for every coverage area below | **BLOCKED — VoiceOver was not driven** |
-| Accessibility Inspector | Select every coverage area, run the official audit, and record unlabeled/duplicate/focus/contrast/hit-target findings | **BLOCKED — Inspector launched, but no target/audit could be controlled or read** |
-| Full keyboard flow | Complete navigation, search/filter/sort, CRUD, organization, duplicate, portability, graph, and reading-entry flows without pointer use | **BLOCKED as a manual audit**; automated XCUI keyboard regressions passed separately |
+| Light and Dark appearance | Compare sidebar, list, details, forms, previews, graph, reading entries, errors, focus, contrast, truncation, and color independence in both appearances | **PASS for the completed human gate plus current supplement** — the original Light editor-validation FAIL remains below, its corrected path was subsequently rechecked, and current `4cc20b8c…` Library/Graph Light and Dark states passed without reported clipping, overlap, obstruction, or color-only meaning. |
+| Non-default system accent | Change to a non-default accent and inspect selection, buttons, focus, graph state, and contrast | **PASS on the prior human gate** — purple accent evidence is retained; it was not rerun across every `4cc20b8c…` state. |
+| 520×360 and normal window | Operate search, filters, sort, status, forms, previews, graph alternative list, and reading entries at both sizes | **PASS** — current AXWindow evidence confirmed exactly 520×360 and the Library, Graph, and editor operations listed above remained reachable. |
+| Reduce Motion | Enable the system setting and complete every primary flow without loss of state or action | **PASS on the prior human gate** — not rerun across every `4cc20b8c…` state. |
+| VoiceOver traversal | Record focus order plus spoken label, value, state, and actions for every coverage area below | **PASS on the prior human gate** — retained as prior-build evidence, not represented as a complete rerun on `4cc20b8c…`. |
+| Accessibility Inspector | Select coverage areas, run the official audit, and record unlabeled/duplicate/focus/contrast/hit-target findings | **PASS for current states A and B only** — each formal audit reported 0 warnings; this is not a whole-application permanent-zero claim. |
+| Full keyboard flow | Complete navigation, search/filter/sort, CRUD, organization, duplicate, portability, graph, and reading-entry flows without pointer use | **PASS on the prior human gate** — not represented as a complete rerun on `4cc20b8c…`; automated XCUI evidence remains separate. |
 
-The unresolved VoiceOver/Inspector coverage is:
+The coverage inventory used by the human VoiceOver/Inspector work is:
 
 - sidebar and menu bar;
 - book list, search, filters, and sorting;
@@ -178,17 +292,11 @@ The unresolved VoiceOver/Inspector coverage is:
 - graph semantic nodes and relationship list;
 - HTTPS, Apple Books fallback, and local-file reading entries.
 
-The following named checks therefore also remain unresolved: the stable spoken
-name of the Command-F `NSSearchField`; search/filter/status compression and
-operability at 520×360; non-color graph center/selection/relation/error
-semantics; and completion of all flows with Reduce Motion enabled. There is no
-manual record of spoken labels, values, states, actions, focus order, lost
-focus, truncation, overlap, low contrast, or color-only meaning.
-
-This is an environment blocker for the requested manual acceptance evidence,
-not evidence of either a product pass or product failure. A reviewer with
-direct control of an unlocked test Mac must execute the checklist above using
-only fixed fictional data before stable-release acceptance.
+The original environment blocker applied to the two historical attempts, not
+to the later completed human evidence. Current Inspector evidence is still
+limited to states A and B, prior accent/Reduce Motion/keyboard/VoiceOver results
+were not all repeated on `4cc20b8c…`, and independent review must preserve
+those evidence boundaries before any stable-release decision.
 
 ### Manual editor-validation finding and code closure
 
@@ -203,13 +311,13 @@ already-focused title field did not provide additional feedback.
 The implementation closure moves the summary outside the scrolling Form,
 adds inline field explanations, moves focus to a missing title or author, and
 posts a privacy-safe accessibility announcement for every invalid submission,
-even when the error enum is unchanged. Automated UI evidence verifies visible
+even when the error enum is unchanged. Automated UI evidence verified visible
 frame intersection, exact error semantics, draft preservation, no database
-write, and shared mouse/Command-S behavior. This is code and automation
-evidence only. The original manual FAIL remains, and the corrected flow must
-be manually rechecked before the Light/Dark gate can change status. Dark,
-accent, both window sizes, Reduce Motion, full pointer-free keyboard use,
-VoiceOver, and Accessibility Inspector remain unresolved as listed above.
+write, and shared mouse/Command-S behavior. The original manual FAIL remains
+part of the history; it was subsequently rechecked within the completed human
+gate. The current-build Light/Dark, exact-window, graph, and Inspector
+supplements and the prior-build accent/Reduce Motion/keyboard/VoiceOver
+boundary are recorded above.
 
 The final closure bundles executed 200/200 non-UI tests and 40/40 complete UI
 tests with no failure or skip. The direct fixed-fictional author/no-title mouse
@@ -219,8 +327,9 @@ diagnostics are recorded separately. A preceding 39/40 UI attempt failed in a
 generic test scroll helper before duplicate review began: it targeted the first
 application ScrollView rather than the editor Form. The helper was scoped to
 the editor without reducing the note-preservation assertion, the focused path
-passed 1/1, and the final full suite passed it. These results are automation
-evidence, not a manual VoiceOver or visual recheck.
+passed 1/1, and the final full suite passed it. Those results were automation
+evidence and did not themselves constitute the later manual VoiceOver or visual
+recheck.
 
 ### Seventh-closure XCUI evidence and limitations
 
@@ -279,11 +388,12 @@ zero tests despite `xcodebuild` reporting success. It is retained as a
 non-evidence command error; the corrected focused result executed 4/4 key
 selection paths, and the unique complete bundle executed all 37 tests.
 
-### Other manual checks not represented by automation
+### Other checks not closed by the current evidence
 
-No physical pointer review, macOS 14 runtime pass, release-signed archive
-inspection, notarization, Gatekeeper assessment, or screenshot review was
-performed in this task. These remain explicit release gates.
+Current physical-pointer visual checks are recorded above. The declared macOS
+14 runtime, a distribution-signed archive, notarization, Gatekeeper assessment,
+real external-system behavior, a genuinely displayed native file panel, and
+whole-application Inspector coverage remain explicit release risks or gates.
 
 ## Known release risks
 

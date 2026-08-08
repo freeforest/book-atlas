@@ -6,7 +6,7 @@
 
 The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. An explicit focus request returns that same bounded page plus at most one book selected by UUID under the same filters; it does not scan preceding pages or expand the page size. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
-The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 9's independent evidence is a successful Debug build, 171/171 unit/integration/migration/security/performance tests, and 26/26 UI tests. Prompt 10 quality and open-source preparation is implemented and awaits independent review. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
+The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 9's independent evidence is a successful Debug build, 171/171 unit/integration/migration/security/performance tests, and 26/26 UI tests. Prompt 10 implementation and evidence closure are complete at `4cc20b8c88cb674a4f9a52d3e8de70c295169281` and await independent review; this is not an acceptance or release decision. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
 
 ## Build
 
@@ -24,7 +24,87 @@ The Prompt 7 acceptance baseline independently passed the Debug build, 114-test 
 
 Prompt 9 passed independent review at the baseline recorded above. Prompt 10 validation uses new `/tmp` build and result-bundle paths; a result is reported only when the corresponding command actually completed.
 
-### Prompt 10 closure validation
+### Current Prompt 10 evidence closure at `4cc20b8c…`
+
+The current baseline is commit
+`4cc20b8c88cb674a4f9a52d3e8de70c295169281`, whose parent is
+`dfe49d724fdadc203a715d7e744d0a9e91bd5ad7`. The formerly failing graph UI
+cases clicked semantic graph nodes while an anonymous `AXScrollArea` inside
+`local-graph-page` → `graph-accessibility-panel` had been compressed to zero
+height (`{{517,615.5},{732,0}}` and `{{517,623},{732,0}}`). That object was not
+`graph-filter-control`; the filter control's measured height was 20 points.
+
+At a 732-point content width, the previous 760-point threshold selected the
+vertical graph layout. The Canvas and detail-panel minimum heights then
+compressed the semantic node list to zero height. The production correction
+changes only the horizontal-layout threshold from 760 to 700 and gives the
+node list a 120-point minimum height. It does not change relationships,
+weights, filters, data, graph revision, Schema, migration, or persistence
+semantics.
+
+The UI-test precondition now selects the fixed fictional center UUID ending in
+`0601`, verifies the title `《雾港图谱中心》`, verifies the detail page and exact
+`show-local-graph-button`, and scrolls only inside `book-detail-view` when the
+button is genuinely outside that viewport. Failures retain page, window,
+target, filter, node-list, and scroll-ancestor diagnostics. The repair uses no
+arbitrary sleep, coordinate click, retry-on-failure, skipped test, deleted
+assertion, or application-wide `scrollViews.firstMatch`.
+
+The final V2 evidence was:
+
+- three targeted historical graph failures: 3/3 actually executed and passed,
+  zero failed, zero skipped. An earlier command exited before test execution
+  because the Xcode/CoreSimulator/test-service connection failed and executed
+  zero tests; it is not counted. A fresh infrastructure path produced the 3/3
+  result;
+- complete UI: XCUIAutomation initialized and 41/41 executed tests passed,
+  zero failed, zero skipped; `xcresulttool` summary and tests tree agreed;
+- complete non-UI: 200/200 executed tests passed, zero failed, zero skipped,
+  with summary and tests tree agreement. One earlier full run produced 199
+  passes and one benchmark process `signal term`, with no XCTest assertion
+  failure; that runner/infrastructure termination is not counted as a pass.
+  The terminated benchmark passed alone, then a fresh complete path passed
+  200/200;
+- Debug and Release both reported `BUILD SUCCEEDED`. The evidence products were
+  the Debug app under `/tmp/bookatlas-p10-4cc20-debug` and Release DerivedData
+  under `/tmp/bookatlas-p10-4cc20-release`; these are ephemeral run paths, not
+  permanent distributable assets.
+
+Manual evidence used the Debug app with an in-memory store and all fixed
+fictional UI seeds, plus `-ApplePersistenceIgnoreState YES`. It did not open
+the production Application Support database, select or read a real file, read
+private Apple Books data, open a real HTTPS destination/browser, perform a
+real import or restore, or write real clipboard content. It added no
+dependency, network access, or permission.
+
+Current-build Light and Dark reviews found the library empty and selected
+states, A101 metadata, exact-result/terminal paging status, reading entry,
+graph filters, semantic node list, current selection, open-detail action, and
+set-center action clear and operable without clipping, overlap, obstruction,
+or color-only meaning. The graph worked at the default window and at an exact
+520×360 `AXWindow`/`AXStandardWindow`; at 520×360 the library, graph, and
+scrolling editor retained reachable operations and visible validation. The
+window-size check is `PASS`.
+
+Accessibility Inspector formal audits were rerun separately on the current
+Debug build. State A was Light, no selected book, and the
+`library-selection-empty` static text “选择一本书”; every category and the total
+were zero warnings. State B selected fixed-fictional A101 with reading entries;
+`book-detail-view` was a nonzero 379.5×649.0 `AXScrollArea`, and every audit
+category and the total were also zero. These two state-specific results show
+that the historical findings did not reproduce there; they do not establish a
+permanent whole-application zero-warning result. The earlier 25-warning and
+16-warning audits, including the old “全部书籍” and “选择一本书” contrast
+findings and the separately classified system/framework warnings, remain in
+the audit history.
+
+The native-file action remains `PASS WITH LIMITATION`: clicking “选择本地文件…”
+on fixed-fictional A101 returned cancellation semantics without displaying an
+actual macOS `NSOpenPanel`; no file was selected or read and the library did
+not change. Distribution signing, notarization, Gatekeeper, the macOS 14
+minimum runtime, and real external-system behavior remain unverified.
+
+### Earlier Prompt 10 closure validation
 
 The implementation closure completed both local build configurations:
 
@@ -149,16 +229,17 @@ Query/focus tasks carry a request generation and verify cancellation after
 each await, so a late focus, query, or page result cannot replace a newer
 selection and page atomically published by the store.
 
-Accessibility Inspector was actually launched during the earlier attempt. On
+Historically, Accessibility Inspector was launched during an earlier attempt. On
 2026-08-03 a second attempt initialized the supported Computer Use runtime,
 enumerated running applications, and started the Debug app against an in-memory
 fixed fictional seed. Its native pipe closed before the first Book Atlas app-
-state or accessibility-tree response. The task execution surface therefore still could
+state or accessibility-tree response. That task execution surface therefore could
 not safely select Inspector targets, read results, drive VoiceOver, change
-system accessibility/appearance settings, or inspect the desktop. No human
-accessibility or visual item is reported as passed. The per-area BLOCKED record is in
-[`QUALITY_AUDIT.md`](QUALITY_AUDIT.md). These are implementation results
-awaiting independent review, not a Prompt 10 acceptance decision.
+system accessibility/appearance settings, or inspect the desktop. That attempt
+reported no human accessibility or visual item as passed. Its per-area BLOCKED
+record remains in [`QUALITY_AUDIT.md`](QUALITY_AUDIT.md); later completed human
+evidence and the current `4cc20b8c…` Inspector state A/B results are recorded
+separately and do not constitute Prompt 10 acceptance.
 
 The storage/migration baseline is the unit test
 `LibraryQueryBenchmarkTests.testPromptTenOpenInitialLoadTagCountAndHistoricalMigrationBaselines`.
@@ -284,7 +365,7 @@ xcodebuild \
 
 The independent interactive run initialized XCUIAutomation and executed all 26 macOS UI tests: 26 passed, zero failed, and zero skipped. It retains all Prompt 5/6/7/8 paths and covers reading-entry empty state, HTTPS add/edit/delete and no-op open dispatch, host-only status/accessibility without path disclosure, HTTP/dangerous-scheme rejection, Apple Books limitation/confirmation/copy controls, local-file cancellation, invalid-bookmark repair/removal, separate read-only duplicate-candidate entries followed by an unchanged main detail, keyboard defaults, and the single-owner nested Escape path. UI tests opt into an in-memory store, fixed fictional test-only launch seeds, and no-op system adapters; they do not open a real file panel, external application, pasteboard, user file, or real database.
 
-The latest Prompt 10 closure retains those 27 pre-performance UI regressions,
+That earlier Prompt 10 performance closure retained 27 pre-performance UI regressions,
 adds the keyboard/accessibility pagination regression and the graph-to-library
 page-out identity regression, and adds two zero-row precise-selection-state
 regressions,
@@ -336,7 +417,7 @@ to `objectWillChange` and verify these boundaries directly.
 The final-code search and keyboard-selection results each contain ten
 relaunch-enabled, no-retry passed repetitions. The unique complete result
 bundle parsed through both `xcresulttool` summary and tests tree as 37 passed,
-zero failed, zero skipped; the latest complete non-UI result parsed as 197/197.
+zero failed, zero skipped; that closure's complete non-UI result parsed as 197/197.
 Activities for all 20 focused repetitions and all 37 complete-suite cases
 contain zero SwiftUI view-update publication warnings. The keyboard 10-run
 bundle retains ten Xcode internal QoS diagnostics and the complete bundle has
@@ -398,10 +479,12 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Preserve `Experiments/TechnicalSpikes/` as evidence only; production code must not import it.
 - Runtime validation currently covers one Apple-silicon host on macOS 26.5.2; the macOS 14.0 minimum runtime has not been exercised in this closure.
 - Automated accessibility identifiers, appearance/small-window hosted checks,
-  and keyboard paths are covered. The requested Prompt 10 human
-  VoiceOver/Accessibility Inspector traversal, non-default accent, Reduce
-  Motion, and direct 520×360 visual review were blocked by the current task
-  execution surface and remain unverified release gates.
+  and keyboard paths are covered. A prior human gate covered the non-default
+  purple accent, Reduce Motion, complete pointer-free keyboard use, and
+  VoiceOver; those items were not all rerun on `4cc20b8c…`. The current build
+  adds Light/Dark, graph, exact 520×360, and Inspector state A/B evidence.
+  Inspector coverage remains state-specific, and the native file panel remains
+  `PASS WITH LIMITATION` because no actual `NSOpenPanel` appeared.
 - Debug existing-library launch/page/scroll measurements are recorded, but the
   equivalent Release Instruments launch could not be authorized and remains
   an unverified release gate; no old in-process-seeding number is used.
