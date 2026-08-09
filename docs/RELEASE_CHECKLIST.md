@@ -52,16 +52,19 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 
 - [x] `SECURITY.md` selects GitHub Private Vulnerability Reporting and forbids
       sensitive disclosure through public Issues.
-- [x] No personal email or invented alternate private channel is published.
+- [x] No personal everyday email, Git commit email, or invented alternate
+      channel is used for security reporting.
 - [x] Private Vulnerability Reporting is enabled; the settings page shows
       **Disable private vulnerability reporting**, and an independent public
       non-administrator view confirms **Report a vulnerability** on the
       repository Security page. The administrator's **New draft security
       advisory** control is the expected role-specific view. No test report was
       created.
-- [ ] Establish a separate private conduct-reporting channel. Security PVR is
-      not a conduct-reporting substitute, and no personal address is guessed or
-      published.
+- [x] Establish a separate private conduct-reporting channel. The user confirmed
+      control of an existing dedicated project email, authorized its public use,
+      and confirmed that it accepts Code of Conduct, harassment, and community-
+      safety reports. `CODE_OF_CONDUCT.md` is the authoritative address source.
+      Security PVR is not a substitute, and no test message was sent.
 
 ## Build and verification
 
@@ -89,8 +92,8 @@ preparation is not Prompt 11 and is not proof that publication occurred.
       private/test-temporary path.
 - [x] Confirm `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, Issue/PR
       templates, SampleData, Scripts, roadmap, quality, privacy, and security
-      documents agree with the final evidence and explicitly retain the pending
-      conduct and formal-release gates.
+      documents agree with the final evidence and explicitly distinguish the
+      configured conduct channel from the pending formal-release gates.
 - [x] Confirm all committed samples and generated examples are fixed fictional
       data and use only safe destinations such as `example.invalid`.
 - [x] Before Public conversion, inspect the online surface: 35 commits, 0 tags,
@@ -136,13 +139,15 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 
 ## Public and release actions
 
-- [ ] User reviews and records the final manual Git changes.
-- [ ] User pushes the final source changes.
+- [ ] User reviews and records the conduct-channel documentation changes.
+- [ ] User pushes the conduct-channel documentation changes.
 - [x] `freeforest/book-atlas` changed from Private to Public on 2026-08-10.
 - [x] Anonymous/public non-administrator access to the repository home page was
       independently verified.
 - [x] Private Vulnerability Reporting was enabled and the public **Report a
       vulnerability** entry was independently verified.
+- [ ] Final independent V1.0.0 release review confirms the clean committed
+      publication baseline.
 - [ ] User creates tag `v1.0.0`.
 - [ ] User creates and publishes GitHub Release `Book Atlas v1.0.0` using only
       the source archives and prepared notes.

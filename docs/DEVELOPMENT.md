@@ -40,9 +40,12 @@ view's **New draft security advisory** is the expected role-specific surface.
 The confirmed copyright line is `2026 FreeForest`; the intended version,
 still-uncreated tag, and still-uncreated Release are 1.0.0, `v1.0.0`, and
 `Book Atlas v1.0.0`. Every remaining Git/GitHub write remains a manual user
-action. The separate private conduct-reporting channel remains unconfigured;
-PVR is not represented as a conduct channel, and no personal address is
-guessed or published. A future decision to ship a precompiled `.app`
+action. The separate private conduct-reporting channel is configured, with
+[`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) as the authoritative contact
+source. The user confirmed control of the dedicated project channel and
+authorized its publication; no test message was sent. PVR remains limited to
+security vulnerabilities and is not represented as a conduct channel. A
+future decision to ship a precompiled `.app`
 through GitHub Releases would require a new release task covering Developer ID,
 notarization, Gatekeeper, signing, download integrity, installation, and update
 strategy.

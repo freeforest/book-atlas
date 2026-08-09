@@ -67,8 +67,11 @@ public Security page exposes **Report a vulnerability**; the administrator's
 This follow-on work is not Prompt 11 and does not rewrite the Prompt 10 state
 above. The intended first tag and GitHub Release remain `v1.0.0` and
 `Book Atlas v1.0.0`, source-only, with no uploaded application binary. A
-separate private conduct-reporting channel remains unconfigured and is not
-replaced by PVR. Remaining Git/GitHub writes are user-operated.
+separate private conduct-reporting channel is now configured, with
+[`CODE_OF_CONDUCT.md`](../../CODE_OF_CONDUCT.md) as the authoritative contact
+source. It is not replaced by PVR, which remains limited to security
+vulnerabilities. The conduct-channel documentation still requires user review,
+commit, and push; remaining Git/GitHub writes are user-operated.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -190,7 +193,8 @@ It does not replace the separate GitHub source-publication checklist.
 - README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Issue/PR templates,
   fictional samples/generator, roadmap, known limitations, and final
   bundle/version metadata have been reviewed; the separate private
-  conduct-reporting channel remains an explicit publication gate;
+  conduct-reporting channel is configured, with its current documentation
+  review, commit, and push remaining an explicit publication gate;
 - tracked-file scans found no database, WAL/SHM, backup, bookmark, DerivedData,
   `.xcresult`, certificate, key, signing material, or private path;
 - explicit user authorization covered the completed Public/PVR operations;

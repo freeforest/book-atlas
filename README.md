@@ -80,9 +80,12 @@ Reporting. It was enabled on 2026-08-10, and an independent public
 non-administrator view confirmed the repository Security page's **Report a
 vulnerability** entry. The administrator view instead exposes **New draft
 security advisory**; that role-specific presentation is not a failed external
-reporting check. A separate private conduct-reporting channel is not yet
-configured; security PVR is not represented as a substitute for conduct
-reports, and no personal address is guessed or published. If precompiled GitHub Release applications are considered
+reporting check. A separate private conduct-reporting channel is now
+configured; [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) is the authoritative
+source for that contact. The user confirmed control of the dedicated project
+channel and authorized its publication. Security PVR remains limited to
+vulnerability reports and is not a conduct-reporting substitute. No test
+message was sent. If precompiled GitHub Release applications are considered
 in the future, that requires a separate authorized release task covering
 Developer ID, notarization, Gatekeeper, integrity, installation, and updates.
 

@@ -216,11 +216,12 @@ The confirmed repository is `freeforest/book-atlas` and became Public on
 2026-08-10. The confirmed copyright is `2026 FreeForest`; version 1.0.0, tag
 `v1.0.0`, Release title `Book Atlas v1.0.0`, and bundle identifier
 `io.github.freeforest.BookAtlas` are fixed. Public access and PVR are closed
-online gates as detailed below. Remaining publication actions are review and
-manual commit/push of this status update, configuration of a separate private
-conduct-reporting channel, final independent release review, and explicit user
-creation of the tag and GitHub Release. No tag, Release, source attachment,
-application-binary upload, or formal V1.0.0 announcement has occurred. If a
+online gates as detailed below. The separate private conduct-reporting channel
+is now configured as detailed below. Remaining publication actions are review
+and manual commit/push of this conduct-channel status update, final independent
+release review, and explicit user creation of the tag and GitHub Release. No
+tag, Release, source attachment, application-binary upload, or formal V1.0.0
+announcement has occurred. If a
 precompiled GitHub Release
 application is considered later, Developer ID, notarization, Gatekeeper,
 signing, integrity, installation, and update policy must be reopened in a new
@@ -249,6 +250,21 @@ not evidence that external reporting failed. No test report or draft advisory
 was created, and no other repository or security setting was changed. Local
 HEAD remained `bea61ca27669b1314f8e2c672ac334ebdf875967`, `main` remained 0/0
 with `origin/main`, and no tag was created during the online operation.
+
+### Private conduct-reporting gate — 2026-08-10
+
+The user selected an existing dedicated project email channel for private Code
+of Conduct, harassment, and community-safety reports. The user confirmed
+control of the address, authorized its public inclusion in the repository, and
+accepted the exposure and spam risk. The authoritative address appears only in
+[`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md) and is not duplicated in this
+audit. No test message was requested or sent.
+
+This channel is separate from GitHub Private Vulnerability Reporting. Conduct
+and community-safety reports use the dedicated conduct channel; security
+vulnerabilities continue to use the private flow documented in `SECURITY.md`.
+The channel configuration closes the conduct-reporting policy gate, but it
+does not create a tag, GitHub Release, announcement, or V1.0.0 release decision.
 
 ## Automated quality coverage
 
@@ -541,9 +557,11 @@ not production support claims.
 - GitHub Private Vulnerability Reporting is enabled, and the public
   non-administrator Security view exposes **Report a vulnerability**. A public
   Issue is not a private vulnerability channel.
-- `CODE_OF_CONDUCT.md` still requires a separate private conduct-reporting
-  channel. PVR is not represented as a conduct channel; no personal address is
-  guessed or published.
+- `CODE_OF_CONDUCT.md` now publishes the user-authorized dedicated project
+  conduct-reporting channel. The user confirmed control and the private-review
+  purpose; the address is not repeated in this audit, and no test message was
+  sent. PVR remains limited to security vulnerabilities and is not represented
+  as a conduct channel.
 - Verification is on one Apple M2 MacBook Air with 24 GB memory and macOS
   26.5.2. V1.0.0 is macOS 26-only; the local verification is complete on that
   host. A clean committed `bea61ca…` baseline was verified before the Public

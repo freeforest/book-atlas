@@ -21,10 +21,16 @@ not acceptable in project spaces.
 ## Enforcement
 
 Maintainers may edit or remove content, close participation, or ban a
-participant when necessary to protect the community. Security vulnerabilities
-must follow `SECURITY.md`; do not disclose sensitive details in a public issue.
+participant when necessary to protect the community.
 
-A private conduct-reporting channel has not yet been configured. Establishing
-one without publishing a maintainer's personal address is a release gate in
-`docs/RELEASE_CHECKLIST.md`. Until then, do not include private or identifying
-material in a report.
+Private reports about this Code of Conduct, harassment, community safety, or
+incidents involving personal information may be sent to the dedicated Book
+Atlas conduct-reporting address
+[freeforest2024@gmail.com](mailto:freeforest2024@gmail.com). The project
+maintainer reviews these reports privately. Include only the information
+needed to understand and respond to the concern; do not disclose private,
+identifying, harassment, or security details in a public Issue.
+
+This conduct-reporting address is not a security-vulnerability channel.
+Security vulnerabilities must use the GitHub Private Vulnerability Reporting
+flow described in `SECURITY.md`.
