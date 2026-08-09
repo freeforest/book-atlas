@@ -74,11 +74,16 @@ source. It is not replaced by PVR, which remains limited to security
 vulnerabilities. The conduct-channel documentation was committed and pushed at
 `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`, closing that gate. The release
 materials are finalized for the confirmed 2026-08-10 date, and the final
-independent pre-tag review has passed. External tag and Release completion is
-established by the publication operation and its post-publication verification,
-not by this Milestone 5 record. Repository operations require explicit
-repository-owner authorization, and any authentication challenge remains
-owner-only.
+independent pre-tag review has passed. The subsequent publication operation
+created annotated tag `v1.0.0` at
+`991d932a5fafe0d9821b46ec5e779cd6c9849171` and published the source-only Latest
+Release `Book Atlas v1.0.0` at
+<https://github.com/freeforest/book-atlas/releases/tag/v1.0.0>. Public and CLI
+verification confirmed a non-draft, non-prerelease Release with zero custom
+assets, only GitHub-generated source archives, and no precompiled application
+attachment. Repository operations require explicit owner authorization, and
+any authentication challenge remains owner-only. This follow-on publication
+does not create Prompt 11.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -206,10 +211,10 @@ It does not replace the separate GitHub source-publication checklist.
   `.xcresult`, certificate, key, signing material, or private path;
 - explicit user authorization covered the completed Public/PVR operations;
   the 2026-08-10 pre-tag materials and final clean-baseline review are complete,
-  and the authorized release metadata is tag `v1.0.0` with GitHub Release title
-  `Book Atlas v1.0.0`, distributed only through GitHub-generated source archives
-  without a precompiled application attachment; external publication results
-  are confirmed by post-publication verification rather than this plan.
+  and post-publication verification confirms annotated tag `v1.0.0` targets
+  `991d932a5fafe0d9821b46ec5e779cd6c9849171`; GitHub Release
+  `Book Atlas v1.0.0` is published as Latest with zero custom assets, only
+  GitHub-generated source archives, and no precompiled application attachment.
 
 Apple Developer, App Store, Developer ID, distribution signing, notarization,
 stapling, and Gatekeeper binary distribution are not applicable to the current

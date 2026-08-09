@@ -8,7 +8,16 @@ Prompts 0–10 are complete. Prompt 10 passed independent acceptance at document
 
 The later V1.0.0 macOS 26 source-publication verification uses clean committed baseline `71ec000c65179bdbcae08981631c9dff7df7c711`. Its final UI result actually executed and passed 41/41 tests after XCUIAutomation initialized, including immediate exact-value checks for `Manual Acceptance Author` and `A101`; the two earlier transient failures did not reproduce and their unique underlying cause remains unknown. Fresh Debug and local Hardened Runtime Release builds succeeded, and the fresh complete non-UI result executed and passed 200/200 tests, all with zero failures or skips. Actual products report version 1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`, and minimum macOS 26.0. A human fixed-fictional in-memory check displayed the real macOS `NSOpenPanel` and safely cancelled it without browsing, selecting, or reading a file; the library stayed at two books and gained no local-file record. Repository/privacy scans found no tracked private data, secret, database, bookmark, build product, result bundle, certificate, key, or provisioning material.
 
-On 2026-08-10, after complete reachable-history and online public-surface checks, `freeforest/book-atlas` changed from Private to Public. The user explicitly authorized publication of the two historical non-GitHub-noreply commit email identities without exposing their values here. Both the logged-in repository page and an independent public non-administrator view confirmed Public access; the default branch remained `main`, and the transition state had 35 commits and 0 tags. GitHub Private Vulnerability Reporting was enabled, its settings page showed **Disable private vulnerability reporting**, and the public Security page exposed **Report a vulnerability**. No test vulnerability was submitted. This Public/PVR state does not mean that tag `v1.0.0`, GitHub Release `Book Atlas v1.0.0`, a source attachment or application upload, or the V1.0.0 formal release exists.
+On 2026-08-10, after complete reachable-history and online public-surface checks, `freeforest/book-atlas` changed from Private to Public. The user explicitly authorized publication of the two historical non-GitHub-noreply commit email identities without exposing their values here. Both the logged-in repository page and an independent public non-administrator view confirmed Public access; the default branch remained `main`, and the transition state had 35 commits and 0 tags. GitHub Private Vulnerability Reporting was enabled, its settings page showed **Disable private vulnerability reporting**, and the public Security page exposed **Report a vulnerability**. No test vulnerability was submitted. At the time of that visibility transition, no tag, GitHub Release, source attachment, application upload, or formal V1.0.0 release existed.
+
+Book Atlas v1.0.0 was formally published as a GitHub source-only Release on
+2026-08-10. The annotated tag [`v1.0.0`](https://github.com/freeforest/book-atlas/releases/tag/v1.0.0)
+points to source snapshot `991d932a5fafe0d9821b46ec5e779cd6c9849171`.
+The Release is titled `Book Atlas v1.0.0`, is neither a draft nor a prerelease,
+and is marked Latest. Its body matches the repository release notes, its custom
+asset list is empty, and distribution consists only of GitHub-generated source
+archives. No `.app`, `.dmg`, `.pkg`, binary application archive, or other
+precompiled application attachment was uploaded.
 
 Import previews and field mapping use bounded temporary disk staging and do not write the library. They identify Exact/Strong duplicates against the current library and earlier batch rows; confirmed import rechecks and never overwrites or automatically merges candidates. Backups use SQLite's online backup API and restore requires physical plus exact versioned application-schema object validation, preview, explicit confirmation, a verified recovery copy, backend-authoritative cancellation boundaries, and process-interruption-safe rollback/restart recovery. The graph combines same-author, shared-tag, same-list, same-source, and manual-relation evidence, defaults to one layer and 80 nodes/200 edges, and provides deterministic layout plus a keyboard/accessibility list. A catalog-owned content revision invalidates stale projections after every graph-relevant mutation; unchanged re-entry retains the current local layout, while changed data rebuilds and discards stale asynchronous results. Canvas drag mode is fixed at gesture start so cumulative pan input is applied exactly once.
 
@@ -47,8 +56,8 @@ The Xcode project and Swift module are both `BookAtlas`, the display name is
 
 ## GitHub source-publication policy
 
-The approved Book Atlas V1.0.0 source snapshot is designated for a source-only
-formal release at
+The approved Book Atlas V1.0.0 source snapshot was formally published as a
+source-only Release at
 [`freeforest/book-atlas`](https://github.com/freeforest/book-atlas). The
 repository became Public on 2026-08-10 after the history and online-surface
 checks summarized above. It will not be
@@ -75,12 +84,13 @@ pre-tag review passed on clean baseline
 That reviewed source snapshot is the authorized source-only content for the tag
 and GitHub Release. Repository operations require explicit repository-owner
 authorization, and any password, Passkey, 2FA, recovery-code, or CAPTCHA
-challenge remains owner-only. Distribution is limited to GitHub-generated
-source archives and the prepared release notes; it excludes an `.app`, `.dmg`,
-`.pkg`, binary application archive, or other precompiled application
-attachment. `CHANGELOG.md` and the release notes are finalized for the stated
-date. External tag and Release completion is established by the publication
-operation and its post-publication verification, not by this snapshot metadata.
+challenge remains owner-only. The published annotated tag resolves to
+`991d932a5fafe0d9821b46ec5e779cd6c9849171`, and the public Release URL is
+<https://github.com/freeforest/book-atlas/releases/tag/v1.0.0>. Distribution is
+limited to GitHub-generated source archives and the prepared release notes; it
+excludes an `.app`, `.dmg`, `.pkg`, binary application archive, other
+precompiled application attachment, or custom uploaded asset. `CHANGELOG.md`
+and the release notes are finalized for the stated date.
 
 The selected private security channel is GitHub Private Vulnerability
 Reporting. It was enabled on 2026-08-10, and an independent public

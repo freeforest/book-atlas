@@ -1,10 +1,11 @@
 # Roadmap
 
-The development roadmap was sequential and is now complete through Prompt 10.
-No Prompt 11 starts automatically. Subsequent GitHub source-publication
-preparation is an operational/publication task, not a new product-development
-stage. Git commits and all external publication actions remain explicit user
-decisions, never automatic.
+The development roadmap was sequential and is complete through Prompt 10. No
+Prompt 11 starts automatically. The separate GitHub source-publication task
+completed the source-only V1.0.0 release on 2026-08-10; it was an operational
+publication task, not a new product-development stage. Repository operations
+require explicit owner authorization, and authentication challenges remain
+owner-only.
 
 ## Milestones
 
@@ -118,9 +119,12 @@ The authorized release definition is source-only, dated 2026-08-10, and uses
 tag `v1.0.0` with GitHub Release title `Book Atlas v1.0.0`; it excludes
 precompiled application uploads and manually uploaded source attachments.
 Repository operations require explicit repository-owner authorization, and
-authentication challenges remain owner-only. External publication status is
-established by the release operation and its post-publication verification,
-not by this roadmap.
+authentication challenges remain owner-only. Post-publication verification
+confirmed the annotated tag points exactly to
+`991d932a5fafe0d9821b46ec5e779cd6c9849171`; the public Release is non-draft,
+non-prerelease, Latest, and available at
+<https://github.com/freeforest/book-atlas/releases/tag/v1.0.0>. Its custom asset
+list is empty and only GitHub-generated source archives are distributed.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197
@@ -193,14 +197,13 @@ workflow.
 
 Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
 
-The source-release sequence through baseline `0009ec83…` has finalized the
-2026-08-10 release materials and completed the final independent clean-baseline
-review. Its authorized source-only release metadata is tag `v1.0.0` and GitHub
-Release title `Book Atlas v1.0.0`, without a precompiled application attachment.
-External publication completion is determined by the release operation and its
-post-publication verification. Repository operations require explicit
-repository-owner authorization, while authentication challenges remain
-owner-only. This publication sequence is not Prompt 11.
+The source-release sequence finalized the 2026-08-10 materials, completed the
+final independent clean-baseline review, published annotated tag `v1.0.0`, and
+published the Latest GitHub Release `Book Atlas v1.0.0`. Public verification
+confirmed a source-only Release with zero custom assets and no precompiled
+application attachment. Repository operations require explicit owner
+authorization, while authentication challenges remain owner-only. This
+completed publication sequence is not Prompt 11.
 
 ## Cross-cutting gates
 

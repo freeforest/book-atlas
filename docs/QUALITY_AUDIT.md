@@ -225,13 +225,38 @@ review passed on clean baseline
 `0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`; it found no P0, P1, or P2 product,
 test, privacy, security, or publication-material issue. At the time of that
 review, no tag, Release, source attachment, application-binary upload, or formal
-V1.0.0 announcement existed. Remaining release operations require explicit
-repository-owner authorization, and authentication challenges remain
-owner-only. If a
+V1.0.0 announcement existed. The subsequent source-only publication is recorded
+below. Repository operations require explicit repository-owner authorization,
+and authentication challenges remain owner-only. If a
 precompiled GitHub Release
 application is considered later, Developer ID, notarization, Gatekeeper,
 signing, integrity, installation, and update policy must be reopened in a new
 authorized task.
+
+### V1.0.0 GitHub source release — 2026-08-10
+
+The annotated tag `v1.0.0` was created and pushed with tag object
+`b79a2bbaa325896e22d7362c2116180cf27fd7b7`; its peeled commit is exactly
+`991d932a5fafe0d9821b46ec5e779cd6c9849171`. A draft Release was first created
+and checked before publication. Its tag and title were `v1.0.0` and
+`Book Atlas v1.0.0`, it was not a prerelease, its body matched
+`docs/RELEASE_NOTES-1.0.0.md`, and its custom asset list was empty.
+
+The draft was then published as Latest at
+<https://github.com/freeforest/book-atlas/releases/tag/v1.0.0>. GitHub reported
+`publishedAt = 2026-08-09T18:52:41Z`, corresponding to 2026-08-10 02:52:41
+UTC+08:00. Post-publication CLI and public-page checks confirmed `isDraft =
+false`, `isPrerelease = false`, the exact Release Notes body, zero custom assets,
+and only GitHub-generated Source code (zip) and Source code (tar.gz) archives.
+The repository remained Public, default branch `main` was unchanged, and the
+public Security page continued to expose **Report a vulnerability**. No custom
+source archive, application binary, Discussion, or other attachment was added.
+
+This publication evidence does not expand the accepted product evidence. The
+real `NSOpenPanel` result still covers display and safe cancellation only;
+Inspector zero-warning evidence still covers only states A and B; the earlier
+transient UI failures still have no proven unique root cause; and no cross-device
+or binary-distribution claim is made.
 
 ### Public and PVR online gate — 2026-08-10
 
