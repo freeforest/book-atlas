@@ -212,18 +212,43 @@ XCUIAutomation initialization, fixed-fictional data, actual-product metadata,
 entitlement, real-panel cancel, and repository/privacy checks are recorded
 above for `71ec000c…`.
 
-The confirmed repository is `freeforest/book-atlas` and remains Private. The
-confirmed copyright is `2026 FreeForest`; version 1.0.0, tag `v1.0.0`, Release
-title `Book Atlas v1.0.0`, and bundle identifier
-`io.github.freeforest.BookAtlas` are fixed. Remaining publication actions are
-independent review, a later clean post-commit verification, the user's manual
-Public transition and PVR enablement/visible-button confirmation, configuration
-of a separate private conduct-reporting channel, and explicit user execution
-of push/tag/Release actions. None of those external actions has occurred. If a
+The confirmed repository is `freeforest/book-atlas` and became Public on
+2026-08-10. The confirmed copyright is `2026 FreeForest`; version 1.0.0, tag
+`v1.0.0`, Release title `Book Atlas v1.0.0`, and bundle identifier
+`io.github.freeforest.BookAtlas` are fixed. Public access and PVR are closed
+online gates as detailed below. Remaining publication actions are review and
+manual commit/push of this status update, configuration of a separate private
+conduct-reporting channel, final independent release review, and explicit user
+creation of the tag and GitHub Release. No tag, Release, source attachment,
+application-binary upload, or formal V1.0.0 announcement has occurred. If a
 precompiled GitHub Release
 application is considered later, Developer ID, notarization, Gatekeeper,
 signing, integrity, installation, and update policy must be reopened in a new
 authorized task.
+
+### Public and PVR online gate — 2026-08-10
+
+Before the visibility change, a complete scan covered all reachable commits,
+trees, and blobs plus the GitHub online public surface. The repository history
+contained two distinct non-GitHub-noreply commit email identities; the user
+explicitly authorized both for publication, and their values are not repeated
+in this audit. The online repository had 35 commits, 0 tags, no Actions
+workflow/run/log/artifact, 0 Issues, 0 Pull requests, Discussions disabled,
+Wiki disabled or empty, no published or draft Release, and no Package. No
+online attachment or private-content risk was identified.
+
+The repository changed from Private to Public while remaining
+`freeforest/book-atlas` with default branch `main`. The logged-in page displayed
+Public, and independent access without an administrator login confirmed that
+the repository home page was publicly readable. Private Vulnerability
+Reporting was enabled; its settings page displayed **Disable private
+vulnerability reporting**, and the public Security page displayed **Report a
+vulnerability** linked to the private reporting flow. The administrator's
+**New draft security advisory** control is the role-specific maintainer view,
+not evidence that external reporting failed. No test report or draft advisory
+was created, and no other repository or security setting was changed. Local
+HEAD remained `bea61ca27669b1314f8e2c672ac334ebdf875967`, `main` remained 0/0
+with `origin/main`, and no tag was created during the online operation.
 
 ## Automated quality coverage
 
@@ -319,8 +344,8 @@ private payloads.
   rejection, and transactional restore/merge guarantees remain unchanged.
 - The repository ignore policy covers databases and sidecars,
   `.bookatlasbackup`, bookmarks, signing material, `DerivedData`, and
-  `.xcresult`. The source-publication checklist requires a tracked-file scan
-  before the repository is made public.
+  `.xcresult`. The tracked-file and complete reachable-history scans were
+  completed before the repository became Public on 2026-08-10.
 - The local Release configuration enables Hardened Runtime and disables
   Xcode's base-entitlement injection. Inspection of the built product found
   only App Sandbox, user-selected read/write, and app-scoped bookmarks; it did
@@ -513,16 +538,16 @@ not production support claims.
   `io.github.freeforest.BookAtlas`, marketing version 1.0.0, build 1, and
   minimum macOS 26.0.
 - `LICENSE` now contains the user-confirmed `2026 FreeForest` line.
-- GitHub Private Vulnerability Reporting is selected but cannot be enabled
-  while the repository is Private. The user must enable and verify it during
-  the Public transition; a public Issue is not a private vulnerability channel.
+- GitHub Private Vulnerability Reporting is enabled, and the public
+  non-administrator Security view exposes **Report a vulnerability**. A public
+  Issue is not a private vulnerability channel.
 - `CODE_OF_CONDUCT.md` still requires a separate private conduct-reporting
   channel. PVR is not represented as a conduct channel; no personal address is
   guessed or published.
 - Verification is on one Apple M2 MacBook Air with 24 GB memory and macOS
   26.5.2. V1.0.0 is macOS 26-only; the local verification is complete on that
-  host, while cross-device coverage and a later clean post-commit verification
-  remain outside this uncommitted evidence update.
+  host. A clean committed `bea61ca…` baseline was verified before the Public
+  transition; cross-device coverage remains outside this evidence.
 - Debug XCUIAutomation produced existing-library launch, page-load, and
   scrolling/hitch metrics. A Release Instruments run using the same
   pre-generated-library protocol could not be authorized through the current

@@ -96,13 +96,14 @@ its documented baseline boundary.
 
 ## Security reports
 
-Sensitive reports will use GitHub Private Vulnerability Reporting through the
-repository Security page. Because the repository remains Private during
-preparation, the user must enable and verify **Report a vulnerability** during
-the manual transition to Public. Do not disclose vulnerabilities, private
-library content, paths, bookmarks, recovery data, credentials, keys, or
-certificates through public Issues. Ordinary non-sensitive bugs may use the
-public bug template with fixed fictional examples.
+The repository became Public on 2026-08-10. GitHub Private Vulnerability
+Reporting is enabled, and an independent public non-administrator view
+confirmed **Report a vulnerability** on the repository Security page. Use that
+entry for sensitive reports. Do not disclose vulnerabilities, private library
+content, paths, bookmarks, recovery data, credentials, keys, or certificates
+through public Issues. Ordinary non-sensitive bugs may use the public bug
+template with fixed fictional examples.
 
-This draft does not state that the repository is Public, tag `v1.0.0` exists,
-the GitHub Release exists, or V1.0.0 has been published.
+This document remains a draft: tag `v1.0.0` and GitHub Release
+`Book Atlas v1.0.0` do not exist, and no formal release date or V1.0.0
+publication has been declared.

@@ -87,13 +87,13 @@ stapling, Gatekeeper acceptance for a downloadable binary, and precompiled
 gates for the current plan. Local ad-hoc Debug/Release, App Sandbox, Hardened
 Runtime, and entitlement inspection remain build evidence only.
 
-V1.0.0 local source-publication preparation evidence is now collected for
-independent review. The production
+V1.0.0 local source-publication preparation evidence is collected. The production
 project and all three targets declare macOS 26.0; the app metadata is version
 1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`. The
-confirmed repository `freeforest/book-atlas` remains Private, the MIT copyright
-is `2026 FreeForest`, and the intended first tag/Release are `v1.0.0` and
-`Book Atlas v1.0.0`. No macOS 14/15 compatibility promise or matrix is made.
+confirmed repository `freeforest/book-atlas` became Public on 2026-08-10 after
+history and online-surface checks, the MIT copyright is `2026 FreeForest`, and
+the intended first tag/Release remain `v1.0.0` and `Book Atlas v1.0.0`. No
+macOS 14/15 compatibility promise or matrix is made.
 
 On clean committed baseline `71ec000c…`, the final UI result re-parsed as 41/41
 passed after XCUIAutomation initialized; fresh Debug/Release builds succeeded;
@@ -101,12 +101,15 @@ the fresh complete non-UI result re-parsed as 200/200 passed; actual products
 matched version 1.0.0/build 1, `io.github.freeforest.BookAtlas`, and minimum
 macOS 26.0; the real `NSOpenPanel` display/cancel check passed; and final
 repository/privacy scans found no private data or release artifact. All valid
-test results had zero failures and skips. GitHub Private Vulnerability
-Reporting can only be enabled after the repository becomes Public and remains
-a user-operated transition gate; a separate private conduct-reporting channel
-also remains unconfigured. Independent review, a later clean post-commit check,
-and all Git/GitHub actions remain outstanding. No repository-publication, push,
-tag, GitHub Release, source upload, `.app` upload, or announcement has occurred.
+test results had zero failures and skips. Public access was confirmed from both
+logged-in and independent public non-administrator views. GitHub Private
+Vulnerability Reporting is enabled, and the public Security page exposes
+**Report a vulnerability**; the administrator's **New draft security
+advisory** is a role-specific view. A separate private conduct-reporting
+channel remains unconfigured. The Public/PVR status-document update still
+requires user review, commit, and push, followed by final independent release
+review. No tag, GitHub Release, application upload, or formal V1.0.0
+announcement has occurred, and no source attachment has been uploaded.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197
@@ -179,9 +182,11 @@ workflow.
 
 Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
 
-Current follow-on task: **independent review of the collected GitHub
-source-publication preparation evidence**. It is not Prompt 11 and does not
-itself authorize Git or GitHub writes.
+Current follow-on work: **close the separate private conduct-reporting channel,
+review and commit the Public/PVR status documents, complete final independent
+release review, then perform any separately authorized tag and GitHub Release
+actions**. It is not Prompt 11 and does not itself authorize Git or GitHub
+writes.
 
 ## Cross-cutting gates
 

@@ -31,15 +31,18 @@ The production `MACOSX_DEPLOYMENT_TARGET` is 26.0 throughout the project and
 all three targets. Earlier macOS 14 references in historical milestones,
 ADR-0003, and isolated technical-spike evidence are not current support claims.
 
-The confirmed repository is `freeforest/book-atlas`, currently Private. The
-confirmed copyright line is `2026 FreeForest`; the intended version/tag/Release
-are 1.0.0, `v1.0.0`, and `Book Atlas v1.0.0`. Every Git/GitHub write remains a
-manual user action. GitHub Private Vulnerability Reporting is selected but can
-only be enabled after the repository becomes Public; until the user enables
-and verifies it, that security channel remains a pending publication gate. The
-separate private conduct-reporting channel also remains unconfigured; PVR is
-not represented as a conduct channel, and no personal address is guessed or
-published. A future decision to ship a precompiled `.app`
+The confirmed repository is `freeforest/book-atlas`, which became Public on
+2026-08-10 after complete reachable-history and online public-surface checks.
+Both a logged-in view and an independent public non-administrator view
+confirmed Public access. GitHub Private Vulnerability Reporting is enabled,
+and the external view confirmed **Report a vulnerability**; the administrator
+view's **New draft security advisory** is the expected role-specific surface.
+The confirmed copyright line is `2026 FreeForest`; the intended version,
+still-uncreated tag, and still-uncreated Release are 1.0.0, `v1.0.0`, and
+`Book Atlas v1.0.0`. Every remaining Git/GitHub write remains a manual user
+action. The separate private conduct-reporting channel remains unconfigured;
+PVR is not represented as a conduct channel, and no personal address is
+guessed or published. A future decision to ship a precompiled `.app`
 through GitHub Releases would require a new release task covering Developer ID,
 notarization, Gatekeeper, signing, download integrity, installation, and update
 strategy.

@@ -1,7 +1,9 @@
 # Security policy
 
-Book Atlas is preparing its first source-only public version, 1.0.0. Until the
-repository is made public, no public-version support commitment has started.
+Book Atlas is preparing its first formal source-only version, 1.0.0. The
+repository became Public on 2026-08-10, but tag `v1.0.0` and the corresponding
+GitHub Release do not yet exist; public source availability is not a claim that
+V1.0.0 has been formally released.
 
 The project security model, threat boundaries, import/URL/backup controls,
 dependency policy, and logging rules are documented in
@@ -10,16 +12,15 @@ dependency policy, and logging rules are documented in
 
 ## Reporting
 
-The selected private channel is GitHub Private Vulnerability Reporting. GitHub
-currently exposes that feature for public repositories, while this repository
-remains Private during preparation. When the user manually changes the
-repository to Public for V1.0.0, they must also manually enable Private
-Vulnerability Reporting and confirm that the repository Security page shows
-**Report a vulnerability**. Until that confirmation, the channel is planned
-but not enabled and remains a publication gate.
+GitHub Private Vulnerability Reporting is enabled. On 2026-08-10 an independent
+public non-administrator view confirmed that the repository Security page
+shows **Report a vulnerability** and routes reporters into GitHub's private
+vulnerability-reporting flow. The administrator view shows **New draft
+security advisory** instead; this is a role difference, not an alternate
+public reporting channel. No test vulnerability report was created.
 
-After it is enabled, report sensitive security issues through the repository's
-Security page using **Report a vulnerability**. Do not publish exploit details,
+Report sensitive security issues through the repository's Security page using
+**Report a vulnerability**. Do not publish exploit details,
 private library content, local paths, bookmarks, credentials, keys,
 certificates, recovery data, or signing material in a public Issue. No personal
 email address is designated as an alternate security channel.

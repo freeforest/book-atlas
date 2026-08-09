@@ -2,9 +2,10 @@
 
 This checklist applies only to the source-only publication of
 [`freeforest/book-atlas`](https://github.com/freeforest/book-atlas). The
-repository exists and remains Private during preparation. The user—not
-Codex—will perform every Git/GitHub write, change visibility to Public, create
-tag `v1.0.0`, and create the GitHub Release titled `Book Atlas v1.0.0`.
+repository became Public on 2026-08-10 after the required history and online
+surface checks. The user—not Codex—will perform every remaining Git/GitHub
+write, create tag `v1.0.0`, and create the GitHub Release titled
+`Book Atlas v1.0.0`.
 
 The Release will use the tag's GitHub source archives and prepared notes only.
 It will not upload a precompiled `.app`, `.dmg`, `.pkg`, binary application
@@ -21,7 +22,9 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 
 - [x] GitHub owner `freeforest`, display name `FreeForest`, repository
       `book-atlas`, URL `https://github.com/freeforest/book-atlas`.
-- [x] Repository exists and is currently Private.
+- [x] Repository became Public on 2026-08-10; logged-in and independent public
+      non-administrator views both confirmed access, and the default branch
+      remained `main`.
 - [x] Public source version is 1.0.0; intended tag is `v1.0.0`; intended
       Release title is `Book Atlas v1.0.0`.
 - [x] Publication is source-only and users build with a compatible Xcode 26
@@ -42,17 +45,20 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 - [x] ADR-0009 supersedes the historical ADR-0003 macOS 14 decision.
 - [x] Verify deployment target, version, build, and bundle identifier in the
       fresh Debug and Release products.
-- [ ] Verify from a clean post-commit checkout before public visibility changes.
+- [x] Verify clean committed baseline `bea61ca…`, `main...origin/main` 0/0,
+      clean worktree, and no tag before the public visibility change.
 
 ## Security reporting
 
 - [x] `SECURITY.md` selects GitHub Private Vulnerability Reporting and forbids
       sensitive disclosure through public Issues.
 - [x] No personal email or invented alternate private channel is published.
-- [ ] After the repository becomes Public, the user enables Private
-      Vulnerability Reporting and confirms **Report a vulnerability** appears
-      on the repository Security page. GitHub does not expose this feature for
-      the current Private repository.
+- [x] Private Vulnerability Reporting is enabled; the settings page shows
+      **Disable private vulnerability reporting**, and an independent public
+      non-administrator view confirms **Report a vulnerability** on the
+      repository Security page. The administrator's **New draft security
+      advisory** control is the expected role-specific view. No test report was
+      created.
 - [ ] Establish a separate private conduct-reporting channel. Security PVR is
       not a conduct-reporting substitute, and no personal address is guessed or
       published.
@@ -84,9 +90,18 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 - [x] Confirm `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, Issue/PR
       templates, SampleData, Scripts, roadmap, quality, privacy, and security
       documents agree with the final evidence and explicitly retain the pending
-      conduct/PVR publication gates.
+      conduct and formal-release gates.
 - [x] Confirm all committed samples and generated examples are fixed fictional
       data and use only safe destinations such as `example.invalid`.
+- [x] Before Public conversion, inspect the online surface: 35 commits, 0 tags,
+      no Actions workflow/run/log/artifact, 0 Issues, 0 Pull requests,
+      Discussions disabled, Wiki disabled or empty, no published or draft
+      Release, and no Package.
+- [x] Confirm both historical non-GitHub-noreply commit email identities were
+      explicitly authorized by the user for Public history without recording
+      their values in project documentation.
+- [x] No source attachment, precompiled application, or other binary artifact
+      was uploaded during the Public/PVR operation.
 
 ## Privacy, security, and artifact scan
 
@@ -119,17 +134,20 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 - [x] Real browser, Apple Books private-library targeting, and real long-lived
       bookmark behavior remain outside the accepted evidence.
 
-## Manual public actions — intentionally incomplete
+## Public and release actions
 
 - [ ] User reviews and records the final manual Git changes.
 - [ ] User pushes the final source changes.
-- [ ] User changes `freeforest/book-atlas` from Private to Public.
-- [ ] User enables and verifies GitHub Private Vulnerability Reporting.
+- [x] `freeforest/book-atlas` changed from Private to Public on 2026-08-10.
+- [x] Anonymous/public non-administrator access to the repository home page was
+      independently verified.
+- [x] Private Vulnerability Reporting was enabled and the public **Report a
+      vulnerability** entry was independently verified.
 - [ ] User creates tag `v1.0.0`.
 - [ ] User creates and publishes GitHub Release `Book Atlas v1.0.0` using only
       the source archives and prepared notes.
 - [ ] User publishes any announcement they choose.
 
-Preparation does not authorize or imply completion of any item in this final
-section. Whether V1.0.0 meets publication conditions belongs to independent
-review after the evidence above is complete.
+Unchecked release actions remain subject to explicit user execution and final
+independent review. Public repository access and PVR do not by themselves mean
+that V1.0.0 has been formally released.

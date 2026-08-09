@@ -6,7 +6,9 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 Prompts 0–10 are complete. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`; its verified code baseline is `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. There is no automatic Prompt 11: subsequent work is GitHub source-publication preparation, not a new product-development stage. The final accepted evidence includes successful Debug and local Hardened Runtime Release builds, 3/3 targeted historical graph regressions, 41/41 complete macOS UI tests after XCUIAutomation initialized, and 200/200 complete non-UI tests, with zero failures and zero skips. Schema remains 5 with migration path `1 → 2 → 3 → 4 → 5`. Fixed-fictional manual evidence covers Light/Dark, the purple accent, Reduce Motion, complete pointer-free keyboard operation, VoiceOver, exact 520×360, and the repaired graph layout. Inspector formal audits reported zero warnings separately in the unselected-library state and selected A101 detail state; this is evidence only for those two states. Earlier accent, Reduce Motion, keyboard, and VoiceOver evidence was not fully rerun on `4cc20b8c…`, automation is not substituted for human gates, and the Prompt 10 native-file result remains historical `PASS WITH LIMITATION` because that run did not display an actual `NSOpenPanel`.
 
-The later V1.0.0 macOS 26 source-publication verification uses clean committed baseline `71ec000c65179bdbcae08981631c9dff7df7c711`. Its final UI result actually executed and passed 41/41 tests after XCUIAutomation initialized, including immediate exact-value checks for `Manual Acceptance Author` and `A101`; the two earlier transient failures did not reproduce and their unique underlying cause remains unknown. Fresh Debug and local Hardened Runtime Release builds succeeded, and the fresh complete non-UI result executed and passed 200/200 tests, all with zero failures or skips. Actual products report version 1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`, and minimum macOS 26.0. A human fixed-fictional in-memory check displayed the real macOS `NSOpenPanel` and safely cancelled it without browsing, selecting, or reading a file; the library stayed at two books and gained no local-file record. Repository/privacy scans found no tracked private data, secret, database, bookmark, build product, result bundle, certificate, key, or provisioning material. These are local preparation results awaiting independent publication review; they do not state that the repository is Public, PVR is enabled, a tag or GitHub Release exists, or V1.0.0 is published.
+The later V1.0.0 macOS 26 source-publication verification uses clean committed baseline `71ec000c65179bdbcae08981631c9dff7df7c711`. Its final UI result actually executed and passed 41/41 tests after XCUIAutomation initialized, including immediate exact-value checks for `Manual Acceptance Author` and `A101`; the two earlier transient failures did not reproduce and their unique underlying cause remains unknown. Fresh Debug and local Hardened Runtime Release builds succeeded, and the fresh complete non-UI result executed and passed 200/200 tests, all with zero failures or skips. Actual products report version 1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`, and minimum macOS 26.0. A human fixed-fictional in-memory check displayed the real macOS `NSOpenPanel` and safely cancelled it without browsing, selecting, or reading a file; the library stayed at two books and gained no local-file record. Repository/privacy scans found no tracked private data, secret, database, bookmark, build product, result bundle, certificate, key, or provisioning material.
+
+On 2026-08-10, after complete reachable-history and online public-surface checks, `freeforest/book-atlas` changed from Private to Public. The user explicitly authorized publication of the two historical non-GitHub-noreply commit email identities without exposing their values here. Both the logged-in repository page and an independent public non-administrator view confirmed Public access; the default branch remained `main`, and the transition state had 35 commits and 0 tags. GitHub Private Vulnerability Reporting was enabled, its settings page showed **Disable private vulnerability reporting**, and the public Security page exposed **Report a vulnerability**. No test vulnerability was submitted. This Public/PVR state does not mean that tag `v1.0.0`, GitHub Release `Book Atlas v1.0.0`, a source attachment or application upload, or the V1.0.0 formal release exists.
 
 Import previews and field mapping use bounded temporary disk staging and do not write the library. They identify Exact/Strong duplicates against the current library and earlier batch rows; confirmed import rechecks and never overwrites or automatically merges candidates. Backups use SQLite's online backup API and restore requires physical plus exact versioned application-schema object validation, preview, explicit confirmation, a verified recovery copy, backend-authoritative cancellation boundaries, and process-interruption-safe rollback/restart recovery. The graph combines same-author, shared-tag, same-list, same-source, and manual-relation evidence, defaults to one layer and 80 nodes/200 edges, and provides deterministic layout plus a keyboard/accessibility list. A catalog-owned content revision invalidates stale projections after every graph-relevant mutation; unchanged re-entry retains the current local layout, while changed data rebuilds and discards stale asynchronous results. Canvas drag mode is fixed at gesture start so cumulative pan input is applied exactly once.
 
@@ -45,10 +47,10 @@ The Xcode project and Swift module are both `BookAtlas`, the display name is
 
 ## GitHub source-publication policy
 
-Book Atlas V1.0.0 is being prepared for source-only publication at
+Book Atlas V1.0.0 is being prepared for a source-only formal release at
 [`freeforest/book-atlas`](https://github.com/freeforest/book-atlas). The
-repository exists and remains Private during preparation; the user will
-manually change it to Public for V1.0.0. It will not be
+repository became Public on 2026-08-10 after the history and online-surface
+checks summarized above. It will not be
 submitted to the Mac App Store, and the project does not plan to use an Apple
 Developer account, App Store Connect, Developer ID, distribution certificates,
 provisioning profiles, Apple notarization, stapling, or Gatekeeper acceptance
@@ -65,19 +67,20 @@ tests declare `MACOSX_DEPLOYMENT_TARGET = 26.0`. Source builders need a
 compatible Xcode 26 toolchain. ADR-0009 supersedes the earlier macOS 14 target;
 historical Prompt and technical-spike records retain their original context.
 
-The confirmed public version is 1.0.0, with intended tag `v1.0.0` and intended
-GitHub Release title `Book Atlas v1.0.0`. The user will perform every Git and
-GitHub write manually. The Release will use GitHub's source archives and the
+The confirmed formal version is 1.0.0, with intended tag `v1.0.0` and intended
+GitHub Release title `Book Atlas v1.0.0`. The user will perform every remaining
+Git and GitHub write manually. The Release will use GitHub's source archives and the
 prepared release notes only; it will not upload an `.app`, `.dmg`, `.pkg`, or
-binary application archive. The repository has not been made public; no tag,
-GitHub Release, source publication, application upload, or announcement has
-occurred.
+binary application archive. The repository is Public, but no tag, GitHub
+Release, application upload, or formal V1.0.0 announcement has occurred;
+`CHANGELOG.md` therefore remains `[1.0.0] - Unreleased`.
 
 The selected private security channel is GitHub Private Vulnerability
-Reporting. GitHub documents it for public repositories, so it cannot be
-enabled while this repository remains Private. The user must enable and verify
-it as part of the manual Public transition; until then it remains a pending
-publication gate. A separate private conduct-reporting channel is not yet
+Reporting. It was enabled on 2026-08-10, and an independent public
+non-administrator view confirmed the repository Security page's **Report a
+vulnerability** entry. The administrator view instead exposes **New draft
+security advisory**; that role-specific presentation is not a failed external
+reporting check. A separate private conduct-reporting channel is not yet
 configured; security PVR is not represented as a substitute for conduct
 reports, and no personal address is guessed or published. If precompiled GitHub Release applications are considered
 in the future, that requires a separate authorized release task covering

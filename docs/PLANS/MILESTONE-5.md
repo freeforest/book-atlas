@@ -58,13 +58,17 @@ privacy/artifact scans found no private data or release product. All valid test
 results had zero failures and skips. This local evidence now awaits independent
 review and a later clean post-commit verification.
 
-The confirmed repository `freeforest/book-atlas` remains Private. The intended
-first tag and GitHub Release are `v1.0.0` and `Book Atlas v1.0.0`, source-only,
-with no uploaded application binary. GitHub Private Vulnerability Reporting
-will be enabled and confirmed manually when the repository becomes Public; it
-cannot be enabled on the current Private repository. A separate private
-conduct-reporting channel remains unconfigured and is not replaced by PVR. No
-Git/GitHub write is authorized to Codex.
+In a separate follow-on publication task on 2026-08-10, the confirmed
+repository `freeforest/book-atlas` became Public after complete history and
+online-surface checks. Public access was independently confirmed without an
+administrator login. GitHub Private Vulnerability Reporting is enabled and the
+public Security page exposes **Report a vulnerability**; the administrator's
+**New draft security advisory** control is the role-specific maintainer view.
+This follow-on work is not Prompt 11 and does not rewrite the Prompt 10 state
+above. The intended first tag and GitHub Release remain `v1.0.0` and
+`Book Atlas v1.0.0`, source-only, with no uploaded application binary. A
+separate private conduct-reporting channel remains unconfigured and is not
+replaced by PVR. Remaining Git/GitHub writes are user-operated.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -171,22 +175,27 @@ It does not replace the separate GitHub source-publication checklist.
 - repository identity `freeforest/book-atlas`, version 1.0.0, tag `v1.0.0`,
   Release title `Book Atlas v1.0.0`, and source-only scope are confirmed;
 - `LICENSE` is resolved to the user-authorized `2026 FreeForest` line;
-- GitHub Private Vulnerability Reporting is selected but must be enabled and
-  verified manually after the Private repository becomes Public; public Issues
-  are not a private vulnerability channel;
+- the repository became Public on 2026-08-10 after a clean committed-baseline,
+  complete reachable-history, and online-surface review; two historical
+  non-GitHub-noreply commit email identities were explicitly authorized by the
+  user without publishing their values in the documentation;
+- GitHub Private Vulnerability Reporting is enabled and independently verified
+  from the public non-administrator **Report a vulnerability** entry; public
+  Issues are not a private vulnerability channel;
 - the project/docs are aligned to macOS 26-only; fresh Debug/Release, complete
   non-UI, complete UI with XCUIAutomation initialized, fixed-fictional data,
   actual-product inspection, real native-panel display/cancel verification,
-  and repository/privacy scans are recorded for `71ec000c…`; independent review
-  and a later clean post-commit checkout remain evidence gates;
+  and repository/privacy scans are recorded for `71ec000c…`; the clean
+  post-commit `bea61ca…` baseline was verified before Public conversion;
 - README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Issue/PR templates,
   fictional samples/generator, roadmap, known limitations, and final
   bundle/version metadata have been reviewed; the separate private
   conduct-reporting channel remains an explicit publication gate;
 - tracked-file scans found no database, WAL/SHM, backup, bookmark, DerivedData,
   `.xcresult`, certificate, key, signing material, or private path;
-- obtain explicit user authorization before push, making the repository
-  public, tag, GitHub Release, upload, or announcement.
+- explicit user authorization covered the completed Public/PVR operations;
+  push of this status update, tag, GitHub Release, upload, and announcement
+  remain separate user actions.
 
 Apple Developer, App Store, Developer ID, distribution signing, notarization,
 stapling, and Gatekeeper binary distribution are not applicable to the current
