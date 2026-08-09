@@ -217,11 +217,14 @@ The confirmed repository is `freeforest/book-atlas` and became Public on
 `v1.0.0`, Release title `Book Atlas v1.0.0`, and bundle identifier
 `io.github.freeforest.BookAtlas` are fixed. Public access and PVR are closed
 online gates as detailed below. The separate private conduct-reporting channel
-is now configured as detailed below. Remaining publication actions are review
-and manual commit/push of this conduct-channel status update, final independent
-release review, and explicit user creation of the tag and GitHub Release. No
-tag, Release, source attachment, application-binary upload, or formal V1.0.0
-announcement has occurred. If a
+is configured as detailed below, and its documentation was committed and
+pushed at `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`, closing that policy
+gate. The confirmed release date is 2026-08-10, and the changelog and release
+notes are finalized for that date. The post-finalization sequence—independent
+review and user recording of these documents, a final clean-baseline review,
+then explicit user creation of the tag and GitHub Release—is tracked in the
+release checklist. No tag, Release, source attachment, application-binary
+upload, or formal V1.0.0 announcement has occurred. If a
 precompiled GitHub Release
 application is considered later, Developer ID, notarization, Gatekeeper,
 signing, integrity, installation, and update policy must be reopened in a new

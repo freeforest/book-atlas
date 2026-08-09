@@ -87,9 +87,11 @@ preparation is not Prompt 11 and is not proof that publication occurred.
       placeholders.
 - [x] README states macOS 26-only, source-only, build-from-source requirements,
       repository identity, version/tag/Release strategy, and binary exclusions.
-- [x] `CHANGELOG.md` keeps `[1.0.0] - Unreleased` until the user publishes.
-- [x] `docs/RELEASE_NOTES-1.0.0.md` is a draft and has no release date or
-      private/test-temporary path.
+- [x] The user confirmed the formal V1.0.0 release date as 2026-08-10.
+- [x] `CHANGELOG.md` finalizes the 1.0.0 entry as 2026-08-10.
+- [x] `docs/RELEASE_NOTES-1.0.0.md` removes the draft state and is finalized
+      for 2026-08-10 without a private/test-temporary path or a premature claim
+      that the tag or GitHub Release already exists.
 - [x] Confirm `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, Issue/PR
       templates, SampleData, Scripts, roadmap, quality, privacy, and security
       documents agree with the final evidence and explicitly distinguish the
@@ -139,13 +141,17 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 
 ## Public and release actions
 
-- [ ] User reviews and records the conduct-channel documentation changes.
-- [ ] User pushes the conduct-channel documentation changes.
+- [x] User reviewed and recorded the conduct-channel documentation at
+      `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`.
+- [x] User pushed the conduct-channel documentation and established a clean
+      `main...origin/main` 0/0 baseline.
 - [x] `freeforest/book-atlas` changed from Private to Public on 2026-08-10.
 - [x] Anonymous/public non-administrator access to the repository home page was
       independently verified.
 - [x] Private Vulnerability Reporting was enabled and the public **Report a
       vulnerability** entry was independently verified.
+- [ ] User reviews, records, and pushes the 2026-08-10 pre-tag documentation
+      finalization.
 - [ ] Final independent V1.0.0 release review confirms the clean committed
       publication baseline.
 - [ ] User creates tag `v1.0.0`.

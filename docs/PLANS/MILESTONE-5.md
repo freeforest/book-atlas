@@ -70,8 +70,10 @@ above. The intended first tag and GitHub Release remain `v1.0.0` and
 separate private conduct-reporting channel is now configured, with
 [`CODE_OF_CONDUCT.md`](../../CODE_OF_CONDUCT.md) as the authoritative contact
 source. It is not replaced by PVR, which remains limited to security
-vulnerabilities. The conduct-channel documentation still requires user review,
-commit, and push; remaining Git/GitHub writes are user-operated.
+vulnerabilities. The conduct-channel documentation was committed and pushed at
+`fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`, closing that gate. The release
+materials are finalized for the confirmed 2026-08-10 date; final independent
+review, tag, Release, and announcement actions remain user-operated.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -193,13 +195,14 @@ It does not replace the separate GitHub source-publication checklist.
 - README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Issue/PR templates,
   fictional samples/generator, roadmap, known limitations, and final
   bundle/version metadata have been reviewed; the separate private
-  conduct-reporting channel is configured, with its current documentation
-  review, commit, and push remaining an explicit publication gate;
+  conduct-reporting channel is configured and its documentation was committed
+  and pushed at `fb0c073…`, so it is no longer a publication blocker;
 - tracked-file scans found no database, WAL/SHM, backup, bookmark, DerivedData,
   `.xcresult`, certificate, key, signing material, or private path;
 - explicit user authorization covered the completed Public/PVR operations;
-  push of this status update, tag, GitHub Release, upload, and announcement
-  remain separate user actions.
+  the 2026-08-10 pre-tag materials, final clean-baseline review, tag, GitHub
+  Release, upload, and announcement remain governed by the separate
+  user-controlled publication sequence.
 
 Apple Developer, App Store, Developer ID, distribution signing, notarization,
 stapling, and Gatekeeper binary distribution are not applicable to the current

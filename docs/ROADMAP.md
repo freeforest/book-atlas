@@ -109,10 +109,12 @@ advisory** is a role-specific view. A separate private conduct-reporting
 channel is now configured, with [`CODE_OF_CONDUCT.md`](../CODE_OF_CONDUCT.md)
 as the authoritative contact source; PVR remains limited to security
 vulnerabilities. The Public/PVR status documents have been user-committed and
-pushed. The current conduct-channel documentation still requires user review,
-commit, and push, followed by final independent release review. No tag, GitHub
-Release, application upload, or formal V1.0.0 announcement has occurred, and
-no source attachment has been uploaded.
+pushed, and the conduct-channel documentation was likewise committed and
+pushed at `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`; that gate is closed.
+The release materials are finalized for the confirmed 2026-08-10 date. Final
+independent review and the separately authorized user tag/Release actions
+remain. No tag, GitHub Release, application upload, or formal V1.0.0
+announcement has occurred, and no source attachment has been uploaded.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197
@@ -185,10 +187,11 @@ workflow.
 
 Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
 
-Current follow-on work: **review and manually commit/push the configured
-conduct-channel documentation, complete final independent release review, then
-perform any separately authorized tag and GitHub Release actions**. It is not
-Prompt 11 and does not itself authorize Git or GitHub writes.
+The source-release sequence after `fb0c073…` is: **finalize the 2026-08-10
+release materials, record them through the user-controlled Git workflow,
+complete final independent clean-baseline review, then perform any separately
+authorized tag and GitHub Release actions**. This sequence is not Prompt 11
+and does not itself authorize Git or GitHub writes.
 
 ## Cross-cutting gates
 

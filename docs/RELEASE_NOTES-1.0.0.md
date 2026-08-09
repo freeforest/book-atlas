@@ -1,6 +1,6 @@
-# Book Atlas v1.0.0 — GitHub source release notes draft
+# Book Atlas v1.0.0 — GitHub source release notes
 
-**Draft — not published**
+**Release date: 2026-08-10**
 
 Book Atlas · 图书志 is a local-first native macOS bibliography manager for
 maintaining a personal book catalog and exploring bounded relationships among
@@ -104,6 +104,8 @@ content, paths, bookmarks, recovery data, credentials, keys, or certificates
 through public Issues. Ordinary non-sensitive bugs may use the public bug
 template with fixed fictional examples.
 
-This document remains a draft: tag `v1.0.0` and GitHub Release
-`Book Atlas v1.0.0` do not exist, and no formal release date or V1.0.0
-publication has been declared.
+These release notes are finalized for the 2026-08-10 release date, tag
+`v1.0.0`, and GitHub Release title `Book Atlas v1.0.0`. The user will create
+the tag and GitHub Release manually only after final independent review; this
+documentation finalization does not create either one, publish V1.0.0, or
+upload an application or other binary attachment.

@@ -73,7 +73,10 @@ Git and GitHub write manually. The Release will use GitHub's source archives and
 prepared release notes only; it will not upload an `.app`, `.dmg`, `.pkg`, or
 binary application archive. The repository is Public, but no tag, GitHub
 Release, application upload, or formal V1.0.0 announcement has occurred;
-`CHANGELOG.md` therefore remains `[1.0.0] - Unreleased`.
+the confirmed release date is 2026-08-10, and `CHANGELOG.md` plus the release
+notes are finalized for that date. This pre-tag documentation finalization does
+not state that the tag, GitHub Release, binary upload, or announcement already
+exists.
 
 The selected private security channel is GitHub Private Vulnerability
 Reporting. It was enabled on 2026-08-10, and an independent public
@@ -104,7 +107,7 @@ Developer ID, notarization, Gatekeeper, integrity, installation, and updates.
 - [Milestone plans](docs/PLANS/README.md)
 - [GitHub source publication checklist](docs/RELEASE_CHECKLIST.md)
 - [Changelog](CHANGELOG.md)
-- [V1.0.0 source release notes draft](docs/RELEASE_NOTES-1.0.0.md)
+- [V1.0.0 source release notes](docs/RELEASE_NOTES-1.0.0.md)
 
 ## Repository data policy
 
