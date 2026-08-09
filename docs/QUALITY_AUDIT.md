@@ -220,11 +220,14 @@ online gates as detailed below. The separate private conduct-reporting channel
 is configured as detailed below, and its documentation was committed and
 pushed at `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`, closing that policy
 gate. The confirmed release date is 2026-08-10, and the changelog and release
-notes are finalized for that date. The post-finalization sequence—independent
-review and user recording of these documents, a final clean-baseline review,
-then explicit user creation of the tag and GitHub Release—is tracked in the
-release checklist. No tag, Release, source attachment, application-binary
-upload, or formal V1.0.0 announcement has occurred. If a
+notes are finalized for that date. On 2026-08-10, the final independent pre-tag
+review passed on clean baseline
+`0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`; it found no P0, P1, or P2 product,
+test, privacy, security, or publication-material issue. At the time of that
+review, no tag, Release, source attachment, application-binary upload, or formal
+V1.0.0 announcement existed. Remaining release operations require explicit
+repository-owner authorization, and authentication challenges remain
+owner-only. If a
 precompiled GitHub Release
 application is considered later, Developer ID, notarization, Gatekeeper,
 signing, integrity, installation, and update policy must be reopened in a new

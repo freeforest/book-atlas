@@ -55,8 +55,9 @@ re-parsed as 200/200 passed; actual product metadata and entitlements matched
 the source-only policy; the real `NSOpenPanel` appeared and was safely
 cancelled against a two-book fixed-fictional in-memory library; and final
 privacy/artifact scans found no private data or release product. All valid test
-results had zero failures and skips. This local evidence now awaits independent
-review and a later clean post-commit verification.
+results had zero failures and skips. The final independent pre-tag review later
+passed on clean baseline
+`0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`, with no P0, P1, or P2 finding.
 
 In a separate follow-on publication task on 2026-08-10, the confirmed
 repository `freeforest/book-atlas` became Public after complete history and
@@ -72,8 +73,10 @@ separate private conduct-reporting channel is now configured, with
 source. It is not replaced by PVR, which remains limited to security
 vulnerabilities. The conduct-channel documentation was committed and pushed at
 `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`, closing that gate. The release
-materials are finalized for the confirmed 2026-08-10 date; final independent
-review, tag, Release, and announcement actions remain user-operated.
+materials are finalized for the confirmed 2026-08-10 date, and the final
+independent pre-tag review has passed. Tag, Release, and announcement actions
+have not been executed; they require explicit repository-owner authorization,
+and any authentication challenge remains owner-only.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -200,9 +203,9 @@ It does not replace the separate GitHub source-publication checklist.
 - tracked-file scans found no database, WAL/SHM, backup, bookmark, DerivedData,
   `.xcresult`, certificate, key, signing material, or private path;
 - explicit user authorization covered the completed Public/PVR operations;
-  the 2026-08-10 pre-tag materials, final clean-baseline review, tag, GitHub
-  Release, upload, and announcement remain governed by the separate
-  user-controlled publication sequence.
+  the 2026-08-10 pre-tag materials and final clean-baseline review are complete,
+  while tag, GitHub Release, upload, and announcement remain separate,
+  explicitly owner-authorized publication operations.
 
 Apple Developer, App Store, Developer ID, distribution signing, notarization,
 stapling, and Gatekeeper binary distribution are not applicable to the current

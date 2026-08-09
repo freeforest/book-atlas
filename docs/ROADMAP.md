@@ -111,10 +111,13 @@ as the authoritative contact source; PVR remains limited to security
 vulnerabilities. The Public/PVR status documents have been user-committed and
 pushed, and the conduct-channel documentation was likewise committed and
 pushed at `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`; that gate is closed.
-The release materials are finalized for the confirmed 2026-08-10 date. Final
-independent review and the separately authorized user tag/Release actions
-remain. No tag, GitHub Release, application upload, or formal V1.0.0
-announcement has occurred, and no source attachment has been uploaded.
+The release materials are finalized for the confirmed 2026-08-10 date. The
+final independent pre-tag review passed on clean baseline
+`0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`, with no P0, P1, or P2 finding.
+Remaining release operations require explicit repository-owner authorization;
+authentication challenges remain owner-only. No tag, GitHub Release,
+application upload, or formal V1.0.0 announcement has occurred, and no source
+attachment has been uploaded.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197
@@ -187,11 +190,12 @@ workflow.
 
 Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
 
-The source-release sequence after `fb0c073…` is: **finalize the 2026-08-10
-release materials, record them through the user-controlled Git workflow,
-complete final independent clean-baseline review, then perform any separately
-authorized tag and GitHub Release actions**. This sequence is not Prompt 11
-and does not itself authorize Git or GitHub writes.
+The source-release sequence through baseline `0009ec83…` has finalized the
+2026-08-10 release materials and completed the final independent clean-baseline
+review. The remaining tag and GitHub Release operations require explicit
+repository-owner authorization, while authentication challenges remain
+owner-only. This publication sequence is not Prompt 11 and does not by itself
+mean that V1.0.0 has been formally released.
 
 ## Cross-cutting gates
 

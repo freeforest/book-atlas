@@ -3,9 +3,9 @@
 This checklist applies only to the source-only publication of
 [`freeforest/book-atlas`](https://github.com/freeforest/book-atlas). The
 repository became Public on 2026-08-10 after the required history and online
-surface checks. The user—not Codex—will perform every remaining Git/GitHub
-write, create tag `v1.0.0`, and create the GitHub Release titled
-`Book Atlas v1.0.0`.
+surface checks. Remaining release operations require explicit repository-owner
+authorization. Password, Passkey, 2FA, recovery-code, and CAPTCHA challenges
+remain owner-only and must never be read, recorded, or delegated.
 
 The Release will use the tag's GitHub source archives and prepared notes only.
 It will not upload a precompiled `.app`, `.dmg`, `.pkg`, binary application
@@ -152,13 +152,14 @@ preparation is not Prompt 11 and is not proof that publication occurred.
       vulnerability** entry was independently verified.
 - [x] The 2026-08-10 pre-tag changelog, release notes, and publication
       documents are finalized in this source snapshot.
-- [ ] Final independent V1.0.0 release review confirms the clean committed
-      publication baseline.
-- [ ] User creates tag `v1.0.0`.
-- [ ] User creates and publishes GitHub Release `Book Atlas v1.0.0` using only
+- [x] Final independent V1.0.0 release review passed on clean committed baseline
+      `0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`, with no P0, P1, or P2 finding.
+- [ ] Create tag `v1.0.0` under explicit repository-owner authorization.
+- [ ] Create and publish GitHub Release `Book Atlas v1.0.0` using only
       the source archives and prepared notes.
-- [ ] User publishes any announcement they choose.
+- [ ] Publish any separately authorized announcement.
 
-Unchecked release actions remain subject to explicit user execution and final
-independent review. Public repository access and PVR do not by themselves mean
-that V1.0.0 has been formally released.
+Unchecked release actions remain subject to explicit repository-owner
+authorization, and authentication challenges remain owner-only. Public
+repository access, PVR, and the completed independent review do not by
+themselves mean that V1.0.0 has been formally released.

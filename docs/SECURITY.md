@@ -73,8 +73,12 @@ or Gatekeeper binary-distribution gate.
 ## Reporting vulnerabilities
 
 The repository-level `SECURITY.md` directs contributors here and warns against
-public disclosure of private content. The selected channel is GitHub Private
-Vulnerability Reporting. GitHub exposes it for public repositories, so the
-user must enable and verify it during the manual transition from Private to
-Public. Until then it remains a publication gate. Do not publish a personal
-address or invent an unmonitored alternate channel.
+public disclosure of private content. The repository became Public on
+2026-08-10, GitHub Private Vulnerability Reporting is enabled, and the public
+non-administrator Security page displays **Report a vulnerability**. The
+administrator view instead displays **New draft security advisory**; this is a
+role-specific presentation, not a failed external-reporting check. PVR is only
+for security vulnerabilities. Private conduct, harassment, and community-safety
+reports use the separate channel defined in `CODE_OF_CONDUCT.md`. Do not publish
+a personal alternate security address or invent an unmonitored reporting
+channel.

@@ -68,15 +68,20 @@ compatible Xcode 26 toolchain. ADR-0009 supersedes the earlier macOS 14 target;
 historical Prompt and technical-spike records retain their original context.
 
 The confirmed formal version is 1.0.0, with intended tag `v1.0.0` and intended
-GitHub Release title `Book Atlas v1.0.0`. The user will perform every remaining
-Git and GitHub write manually. The Release will use GitHub's source archives and the
-prepared release notes only; it will not upload an `.app`, `.dmg`, `.pkg`, or
-binary application archive. The repository is Public, but no tag, GitHub
-Release, application upload, or formal V1.0.0 announcement has occurred;
-the confirmed release date is 2026-08-10, and `CHANGELOG.md` plus the release
-notes are finalized for that date. This pre-tag documentation finalization does
-not state that the tag, GitHub Release, binary upload, or announcement already
-exists.
+GitHub Release title `Book Atlas v1.0.0`. The final independent pre-tag review
+passed on clean baseline
+`0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`, with no P0, P1, or P2 finding.
+That reviewed source snapshot is the authorized source-only content for the tag
+and GitHub Release. Remaining release operations require explicit
+repository-owner authorization, and any password, Passkey, 2FA, recovery-code,
+or CAPTCHA challenge remains owner-only. The Release will use GitHub's source
+archives and the prepared release notes only; it will not upload an `.app`,
+`.dmg`, `.pkg`, or binary application archive. The repository is Public, but no
+tag, GitHub Release, application upload, or formal V1.0.0 announcement has
+occurred; the confirmed release date is 2026-08-10, and `CHANGELOG.md` plus the
+release notes are finalized for that date. Approval of this source snapshot
+does not state that the tag, GitHub Release, binary upload, or announcement
+already exists.
 
 The selected private security channel is GitHub Private Vulnerability
 Reporting. It was enabled on 2026-08-10, and an independent public
