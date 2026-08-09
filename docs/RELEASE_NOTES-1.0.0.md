@@ -104,8 +104,8 @@ content, paths, bookmarks, recovery data, credentials, keys, or certificates
 through public Issues. Ordinary non-sensitive bugs may use the public bug
 template with fixed fictional examples.
 
-These release notes are finalized for the 2026-08-10 release date, tag
-`v1.0.0`, and GitHub Release title `Book Atlas v1.0.0`. The user will create
-the tag and GitHub Release manually only after final independent review; this
-documentation finalization does not create either one, publish V1.0.0, or
-upload an application or other binary attachment.
+These release notes define the 2026-08-10 source-only release metadata: tag
+`v1.0.0` and GitHub Release title `Book Atlas v1.0.0`. Distribution is limited
+to GitHub-generated source archives; no `.app`, `.dmg`, `.pkg`, binary
+application archive, or other precompiled application attachment is part of
+V1.0.0.

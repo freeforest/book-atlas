@@ -150,8 +150,8 @@ preparation is not Prompt 11 and is not proof that publication occurred.
       independently verified.
 - [x] Private Vulnerability Reporting was enabled and the public **Report a
       vulnerability** entry was independently verified.
-- [ ] User reviews, records, and pushes the 2026-08-10 pre-tag documentation
-      finalization.
+- [x] The 2026-08-10 pre-tag changelog, release notes, and publication
+      documents are finalized in this source snapshot.
 - [ ] Final independent V1.0.0 release review confirms the clean committed
       publication baseline.
 - [ ] User creates tag `v1.0.0`.
