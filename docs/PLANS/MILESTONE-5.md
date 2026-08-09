@@ -66,17 +66,19 @@ administrator login. GitHub Private Vulnerability Reporting is enabled and the
 public Security page exposes **Report a vulnerability**; the administrator's
 **New draft security advisory** control is the role-specific maintainer view.
 This follow-on work is not Prompt 11 and does not rewrite the Prompt 10 state
-above. The intended first tag and GitHub Release remain `v1.0.0` and
-`Book Atlas v1.0.0`, source-only, with no uploaded application binary. A
+above. The formal release metadata is tag `v1.0.0` and GitHub Release title
+`Book Atlas v1.0.0`, source-only, with no precompiled application attachment. A
 separate private conduct-reporting channel is now configured, with
 [`CODE_OF_CONDUCT.md`](../../CODE_OF_CONDUCT.md) as the authoritative contact
 source. It is not replaced by PVR, which remains limited to security
 vulnerabilities. The conduct-channel documentation was committed and pushed at
 `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`, closing that gate. The release
 materials are finalized for the confirmed 2026-08-10 date, and the final
-independent pre-tag review has passed. Tag, Release, and announcement actions
-have not been executed; they require explicit repository-owner authorization,
-and any authentication challenge remains owner-only.
+independent pre-tag review has passed. External tag and Release completion is
+established by the publication operation and its post-publication verification,
+not by this Milestone 5 record. Repository operations require explicit
+repository-owner authorization, and any authentication challenge remains
+owner-only.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -204,8 +206,10 @@ It does not replace the separate GitHub source-publication checklist.
   `.xcresult`, certificate, key, signing material, or private path;
 - explicit user authorization covered the completed Public/PVR operations;
   the 2026-08-10 pre-tag materials and final clean-baseline review are complete,
-  while tag, GitHub Release, upload, and announcement remain separate,
-  explicitly owner-authorized publication operations.
+  and the authorized release metadata is tag `v1.0.0` with GitHub Release title
+  `Book Atlas v1.0.0`, distributed only through GitHub-generated source archives
+  without a precompiled application attachment; external publication results
+  are confirmed by post-publication verification rather than this plan.
 
 Apple Developer, App Store, Developer ID, distribution signing, notarization,
 stapling, and Gatekeeper binary distribution are not applicable to the current

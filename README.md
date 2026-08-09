@@ -47,7 +47,8 @@ The Xcode project and Swift module are both `BookAtlas`, the display name is
 
 ## GitHub source-publication policy
 
-Book Atlas V1.0.0 is being prepared for a source-only formal release at
+The approved Book Atlas V1.0.0 source snapshot is designated for a source-only
+formal release at
 [`freeforest/book-atlas`](https://github.com/freeforest/book-atlas). The
 repository became Public on 2026-08-10 after the history and online-surface
 checks summarized above. It will not be
@@ -67,21 +68,19 @@ tests declare `MACOSX_DEPLOYMENT_TARGET = 26.0`. Source builders need a
 compatible Xcode 26 toolchain. ADR-0009 supersedes the earlier macOS 14 target;
 historical Prompt and technical-spike records retain their original context.
 
-The confirmed formal version is 1.0.0, with intended tag `v1.0.0` and intended
-GitHub Release title `Book Atlas v1.0.0`. The final independent pre-tag review
-passed on clean baseline
+The formal release metadata is version 1.0.0, tag `v1.0.0`, GitHub Release
+title `Book Atlas v1.0.0`, and release date 2026-08-10. The final independent
+pre-tag review passed on clean baseline
 `0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`, with no P0, P1, or P2 finding.
 That reviewed source snapshot is the authorized source-only content for the tag
-and GitHub Release. Remaining release operations require explicit
-repository-owner authorization, and any password, Passkey, 2FA, recovery-code,
-or CAPTCHA challenge remains owner-only. The Release will use GitHub's source
-archives and the prepared release notes only; it will not upload an `.app`,
-`.dmg`, `.pkg`, or binary application archive. The repository is Public, but no
-tag, GitHub Release, application upload, or formal V1.0.0 announcement has
-occurred; the confirmed release date is 2026-08-10, and `CHANGELOG.md` plus the
-release notes are finalized for that date. Approval of this source snapshot
-does not state that the tag, GitHub Release, binary upload, or announcement
-already exists.
+and GitHub Release. Repository operations require explicit repository-owner
+authorization, and any password, Passkey, 2FA, recovery-code, or CAPTCHA
+challenge remains owner-only. Distribution is limited to GitHub-generated
+source archives and the prepared release notes; it excludes an `.app`, `.dmg`,
+`.pkg`, binary application archive, or other precompiled application
+attachment. `CHANGELOG.md` and the release notes are finalized for the stated
+date. External tag and Release completion is established by the publication
+operation and its post-publication verification, not by this snapshot metadata.
 
 The selected private security channel is GitHub Private Vulnerability
 Reporting. It was enabled on 2026-08-10, and an independent public

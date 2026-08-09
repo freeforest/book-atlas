@@ -87,12 +87,12 @@ stapling, Gatekeeper acceptance for a downloadable binary, and precompiled
 gates for the current plan. Local ad-hoc Debug/Release, App Sandbox, Hardened
 Runtime, and entitlement inspection remain build evidence only.
 
-V1.0.0 local source-publication preparation evidence is collected. The production
+V1.0.0 local source-publication evidence is collected. The production
 project and all three targets declare macOS 26.0; the app metadata is version
 1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`. The
 confirmed repository `freeforest/book-atlas` became Public on 2026-08-10 after
 history and online-surface checks, the MIT copyright is `2026 FreeForest`, and
-the intended first tag/Release remain `v1.0.0` and `Book Atlas v1.0.0`. No
+the formal tag/Release metadata is `v1.0.0` and `Book Atlas v1.0.0`. No
 macOS 14/15 compatibility promise or matrix is made.
 
 On clean committed baseline `71ec000c…`, the final UI result re-parsed as 41/41
@@ -114,10 +114,13 @@ pushed at `fb0c073fc9fad7a0846d78bc560c213ff5fcc8df`; that gate is closed.
 The release materials are finalized for the confirmed 2026-08-10 date. The
 final independent pre-tag review passed on clean baseline
 `0009ec83cc192d4b2f0e67a4cc7efd4e3e25bc81`, with no P0, P1, or P2 finding.
-Remaining release operations require explicit repository-owner authorization;
-authentication challenges remain owner-only. No tag, GitHub Release,
-application upload, or formal V1.0.0 announcement has occurred, and no source
-attachment has been uploaded.
+The authorized release definition is source-only, dated 2026-08-10, and uses
+tag `v1.0.0` with GitHub Release title `Book Atlas v1.0.0`; it excludes
+precompiled application uploads and manually uploaded source attachments.
+Repository operations require explicit repository-owner authorization, and
+authentication challenges remain owner-only. External publication status is
+established by the release operation and its post-publication verification,
+not by this roadmap.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197
@@ -192,10 +195,12 @@ Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Pro
 
 The source-release sequence through baseline `0009ec83…` has finalized the
 2026-08-10 release materials and completed the final independent clean-baseline
-review. The remaining tag and GitHub Release operations require explicit
+review. Its authorized source-only release metadata is tag `v1.0.0` and GitHub
+Release title `Book Atlas v1.0.0`, without a precompiled application attachment.
+External publication completion is determined by the release operation and its
+post-publication verification. Repository operations require explicit
 repository-owner authorization, while authentication challenges remain
-owner-only. This publication sequence is not Prompt 11 and does not by itself
-mean that V1.0.0 has been formally released.
+owner-only. This publication sequence is not Prompt 11.
 
 ## Cross-cutting gates
 
