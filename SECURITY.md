@@ -1,9 +1,11 @@
 # Security policy
 
-Book Atlas is preparing its first formal source-only version, 1.0.0. The
-repository became Public on 2026-08-10, but tag `v1.0.0` and the corresponding
-GitHub Release do not yet exist; public source availability is not a claim that
-V1.0.0 has been formally released.
+Book Atlas v1.0.0 was formally published as a source-only GitHub Release on
+2026-08-10. The annotated tag `v1.0.0` points to source snapshot
+`991d932a5fafe0d9821b46ec5e779cd6c9849171`. The public Release is available at
+<https://github.com/freeforest/book-atlas/releases/tag/v1.0.0> and contains only
+GitHub-generated source archives; no precompiled application or custom release
+asset is distributed.
 
 The project security model, threat boundaries, import/URL/backup controls,
 dependency policy, and logging rules are documented in

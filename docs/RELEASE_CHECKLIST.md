@@ -160,6 +160,15 @@ source publication is a separate operational task and is not Prompt 11.
       repository-owner authorization.
 - [x] Create and publish GitHub Release `Book Atlas v1.0.0` using only
       the source archives and prepared notes.
+- [x] Complete the post-release security-policy consistency review: it found a
+      stale pre-release opening paragraph in the root `SECURITY.md`, while the
+      Reporting section and PVR guidance remained correct throughout.
+- [x] Correct the root security-policy status on the default branch while
+      leaving annotated tag `v1.0.0` unchanged at
+      `991d932a5fafe0d9821b46ec5e779cd6c9849171`.
+- [x] Record that the immutable `v1.0.0` source snapshot retains the old opening
+      paragraph as a documented limitation; the published Release was not
+      edited, deleted, or recreated.
 - [ ] Publish any separately authorized announcement.
 
 V1.0.0 was formally published and publicly verified on 2026-08-10 as a Latest,

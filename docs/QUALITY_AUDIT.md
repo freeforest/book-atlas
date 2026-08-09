@@ -258,6 +258,23 @@ Inspector zero-warning evidence still covers only states A and B; the earlier
 transient UI failures still have no proven unique root cause; and no cross-device
 or binary-distribution claim is made.
 
+### Post-release security-policy consistency review — 2026-08-10
+
+An independent post-release review reconfirmed the published tag, Release,
+Latest status, source-only scope, and zero custom assets. It also found that the
+opening paragraph of the root `SECURITY.md` still described the pre-release
+state. The Reporting section and GitHub Private Vulnerability Reporting channel
+remained correct and available throughout. A minimal post-release documentation
+change corrected the security-policy status on the default branch; the current
+default-branch `SECURITY.md` is the authoritative security policy.
+
+The published `v1.0.0` tag was not moved, deleted, or recreated and still points
+to `991d932a5fafe0d9821b46ec5e779cd6c9849171`. Its immutable source snapshot
+therefore retains the old pre-release opening paragraph as a documented
+limitation. The public Release was not edited, deleted, or recreated. This
+documentation limitation does not alter the accepted product tests, privacy,
+entitlement, real-`NSOpenPanel`, or Inspector evidence and boundaries.
+
 ### Public and PVR online gate — 2026-08-10
 
 Before the visibility change, a complete scan covered all reachable commits,
