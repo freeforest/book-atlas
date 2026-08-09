@@ -54,9 +54,25 @@ Prompt 10 passed independent acceptance at documentation baseline
 `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. That accepted evidence includes
 successful Debug/Release builds, 3/3 targeted graph regressions, 41/41 complete
 UI tests after XCUIAutomation initialized, and 200/200 complete non-UI tests,
-with zero failures and zero skips. Fresh V1.0.0 macOS 26 metadata builds/tests
-and actual-product inspection are recorded separately in the quality audit
-when completed.
+with zero failures and zero skips.
+
+The later V1.0.0 macOS 26 verification re-parsed its final UI result as 41/41
+passed after XCUIAutomation initialized and its fresh complete non-UI result as
+200/200 passed, all with zero failures or skips. Fresh Debug and local Hardened
+Runtime Release builds succeeded. Actual products report version 1.0.0, build
+1, `io.github.freeforest.BookAtlas`, and minimum macOS 26.0, with the documented
+sandbox/file entitlements and no network client entitlement. The two earlier
+transient UI input/search failures did not reproduce; exact-value diagnostics
+now cover both paths, but their unique underlying cause remains unknown rather
+than being attributed to a product or system defect.
+
+A fixed-fictional in-memory manual check displayed the real macOS
+`NSOpenPanel` and cancelled it without browsing, selecting, or reading a file.
+The library remained at two books and gained no local-file record. This closes
+only the display-and-cancel check; real file selection and long-lived bookmark
+behavior remain outside the evidence. Repository/privacy scans found no private
+data, secret, tracked database/bookmark, build product, result bundle,
+certificate, key, or provisioning material.
 
 Accessibility Inspector reported zero warnings separately for the unselected
 Library state and the selected fixed-fictional A101 detail state. This is not a

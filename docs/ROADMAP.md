@@ -67,13 +67,17 @@ Inspector formal audits returned zero warnings separately for the unselected
 Library state and selected fixed-fictional A101 detail state, without claiming
 permanent whole-application zero warnings. Prior purple-accent, Reduce Motion,
 complete pointer-free keyboard, and VoiceOver evidence was retained and not
-misrepresented as fully rerun on `4cc20b8c…`. The native file action remains
-`PASS WITH LIMITATION` because no actual `NSOpenPanel` appeared.
+misrepresented as fully rerun on `4cc20b8c…`. At that Prompt 10 baseline, the
+native file action remained `PASS WITH LIMITATION` because no actual
+`NSOpenPanel` appeared.
 
 The accepted evidence preserves the state boundaries above and does not claim
 whole-application permanent-zero Inspector results or a passed real
 `NSOpenPanel`. Earlier accent, Reduce Motion, pointer-free keyboard, and
-VoiceOver evidence was not fully rerun on `4cc20b8c…`.
+VoiceOver evidence was not fully rerun on `4cc20b8c…`. The later V1.0.0
+fixed-fictional system-adapter check displayed and safely cancelled the real
+panel without browsing, selecting, or reading a file; that result does not
+rewrite the historical Prompt 10 limitation or validate long-lived bookmarks.
 
 Book Atlas will be published, if separately authorized, as GitHub source code
 only. The plan excludes Mac App Store, Apple Developer membership, App Store
@@ -83,19 +87,26 @@ stapling, Gatekeeper acceptance for a downloadable binary, and precompiled
 gates for the current plan. Local ad-hoc Debug/Release, App Sandbox, Hardened
 Runtime, and entitlement inspection remain build evidence only.
 
-V1.0.0 source-publication preparation is now in progress. The production
+V1.0.0 local source-publication preparation evidence is now collected for
+independent review. The production
 project and all three targets declare macOS 26.0; the app metadata is version
 1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`. The
 confirmed repository `freeforest/book-atlas` remains Private, the MIT copyright
 is `2026 FreeForest`, and the intended first tag/Release are `v1.0.0` and
 `Book Atlas v1.0.0`. No macOS 14/15 compatibility promise or matrix is made.
 
-Fresh builds/tests, actual-product inspection, the real `NSOpenPanel` check,
-privacy scan, and independent publication review remain separate evidence
-gates. GitHub Private Vulnerability Reporting can only be enabled after the
-repository becomes Public and therefore remains a user-operated transition
-gate. No repository-publication, push, tag, GitHub Release, source upload,
-`.app` upload, or announcement has occurred.
+On clean committed baseline `71ec000c…`, the final UI result re-parsed as 41/41
+passed after XCUIAutomation initialized; fresh Debug/Release builds succeeded;
+the fresh complete non-UI result re-parsed as 200/200 passed; actual products
+matched version 1.0.0/build 1, `io.github.freeforest.BookAtlas`, and minimum
+macOS 26.0; the real `NSOpenPanel` display/cancel check passed; and final
+repository/privacy scans found no private data or release artifact. All valid
+test results had zero failures and skips. GitHub Private Vulnerability
+Reporting can only be enabled after the repository becomes Public and remains
+a user-operated transition gate; a separate private conduct-reporting channel
+also remains unconfigured. Independent review, a later clean post-commit check,
+and all Git/GitHub actions remain outstanding. No repository-publication, push,
+tag, GitHub Release, source upload, `.app` upload, or announcement has occurred.
 
 Earlier Prompt 10 closure history remains relevant. One earlier local closure
 had successful Debug and hardened local Release builds, 197/197
@@ -168,8 +179,9 @@ workflow.
 
 Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
 
-Next task, when authorized: **GitHub source-publication preparation**. It is not
-Prompt 11 and does not itself authorize Git or GitHub writes.
+Current follow-on task: **independent review of the collected GitHub
+source-publication preparation evidence**. It is not Prompt 11 and does not
+itself authorize Git or GitHub writes.
 
 ## Cross-cutting gates
 

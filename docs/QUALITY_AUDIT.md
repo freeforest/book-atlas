@@ -114,7 +114,7 @@ These results show that the historical warnings did not reproduce in the two
 audited current states. They do not claim every page or future UI state is
 permanently warning-free. No new product defect was confirmed by either audit.
 
-### Native file panel limitation
+### Historical native file panel limitation
 
 With fixed-fictional A101 selected, “选择本地文件…” returned cancellation
 semantics without actually displaying a macOS `NSOpenPanel`. No file was
@@ -126,6 +126,72 @@ selected or read, the library remained unchanged, no browser or Apple Books
 launch was observed, no real long-lived bookmark was exercised, and real
 external-system behavior remains unverified. These are functional-integration
 limitations, not Mac App Store or Apple binary-distribution gates.
+
+## V1.0.0 macOS 26 source-publication verification
+
+The clean committed verification baseline is
+`71ec000c65179bdbcae08981631c9dff7df7c711`. The sole change after
+`223e3ccfe12c8decd8e7a292cac2df34e27c6154` is
+`BookAtlasUITests/BookAtlasUITests.swift`: it adds immediate exact-value
+diagnostics after the existing author-field and Command-F inputs, without a
+production-code change, retry, sleep, focus bypass, shortened string, or
+weakened business assertion. Original and diagnostic author/Command-F paths
+each passed 10/10 relaunch-enabled no-retry repetitions. The earlier transient
+space-loss and missing-A101 failures did not reproduce, and their unique
+underlying cause remains unknown rather than being attributed to the product,
+macOS, focus, window activation, or an input method.
+
+The final UI result
+`/tmp/bookatlas-v1-full-ui-diagnostic-223e3cc.xcresult` was re-parsed from its
+summary, tests tree, and relevant activities. XCUIAutomation initialized on
+macOS 26.5.2 arm64; 41/41 tests passed, with zero failed, zero skipped, and zero
+expected failures. Both historical paths are present, and the activities
+actually execute `value == "Manual Acceptance Author"` and
+`value == "A101"`. Six Xcode `[Internal]` QoS runtime diagnostics occur in six
+other passing tests. Without a stack trace or reproducible product symptom,
+they remain tool warnings and are not promoted to product defects.
+
+Fresh Debug and Release products built successfully under separate new `/tmp`
+DerivedData paths. The fresh complete non-UI bundle parsed consistently in the
+summary and tests tree as 200/200 passed, zero failed, zero skipped, and zero
+expected failures on macOS 26.5.2 arm64. Schema remains 5 with migration path
+`1 → 2 → 3 → 4 → 5`. The build logs contain the ordinary AppIntents metadata
+extraction skip because no AppIntents framework dependency exists; no
+deterministic compiler or linker failure occurred.
+
+Actual Debug and Release products both report version 1.0.0, build 1, bundle
+identifier `io.github.freeforest.BookAtlas`, and minimum macOS 26.0. Debug is
+arm64 and ad-hoc signed with App Sandbox, user-selected read/write,
+app-scoped bookmarks, and Debug-only `get-task-allow`. Release contains arm64
+and x86_64 slices, both with minimum macOS 26.0, and is ad-hoc signed with
+Hardened Runtime plus only App Sandbox, user-selected read/write, and
+app-scoped bookmarks. Neither has a network-client, Apple Events, automation,
+or Downloads entitlement, Team ID, Developer ID, distribution certificate, or
+provisioning profile. Local ad-hoc signing is not distribution signing.
+
+The final Debug app used an in-memory store, two fixed-fictional A101 records,
+fixed-fictional reading entries, and the explicit system-file-panel QA switch.
+Only file selection/bookmark services used their production system adapters.
+The human observer saw a real macOS `NSOpenPanel` and cancelled it immediately,
+without browsing, selecting, or reading any file. The app remained stable, the
+library count stayed at two, no local-file record appeared, and the app showed
+“已取消选择；书库未更改。” The current narrow result is
+`PASS — 真实 NSOpenPanel 已显示并安全取消`. It supersedes the current limitation
+for display-and-cancel only while retaining the earlier `PASS WITH LIMITATION`
+as history; real file selection, bookmark creation/resolution, browser, Apple
+Books, and other external-system behavior remain unverified.
+
+Tracked/untracked artifact and tracked-text scans found no private database,
+WAL/SHM/journal, backup, bookmark BLOB, real reading list/note, current-user
+absolute path, private URL, secret, API credential, DerivedData, `.xcresult`,
+`.app`, `.dmg`, `.pkg`, binary application archive, certificate, private key,
+provisioning profile, or signing material. `LocalData/.gitkeep` is empty;
+samples and the generator are fixed fictional and use `example.invalid`.
+Production has no telemetry, advertising, tracking, crash upload, network
+client entitlement, third-party binary dependency, or new permission. A
+read-only process check could not read the process table because the system
+monitoring service was unavailable, so no claim of “no residual process” is
+made; the user reported the test window closed.
 
 ## GitHub source-publication boundary
 
@@ -140,19 +206,21 @@ entitlement inspection remain accepted local evidence only.
 
 V1.0.0 supports macOS 26 only, without macOS 14/15 compatibility promises or a
 multi-version matrix. The production project, application, unit tests, and UI
-tests now declare deployment target 26.0; ADR-0009 supersedes the historical
-macOS 14 decision. The target change requires fresh Debug, Release, complete
-non-UI, complete UI with actual XCUIAutomation initialization, fixed-fictional
-data checks, and affected human verification before this preparation can close.
+tests declare deployment target 26.0; ADR-0009 supersedes the historical macOS
+14 decision. The fresh Debug, Release, complete non-UI, complete UI with actual
+XCUIAutomation initialization, fixed-fictional data, actual-product metadata,
+entitlement, real-panel cancel, and repository/privacy checks are recorded
+above for `71ec000c…`.
 
 The confirmed repository is `freeforest/book-atlas` and remains Private. The
 confirmed copyright is `2026 FreeForest`; version 1.0.0, tag `v1.0.0`, Release
 title `Book Atlas v1.0.0`, and bundle identifier
-`io.github.freeforest.BookAtlas` are fixed. Remaining blockers are the fresh
-macOS 26 revalidation, real native-panel result, tracked-artifact/privacy scan,
-the user's Public-transition enablement of GitHub Private Vulnerability
-Reporting, and explicit user execution of public/tag/Release actions. None of
-those external actions has occurred. If a precompiled GitHub Release
+`io.github.freeforest.BookAtlas` are fixed. Remaining publication actions are
+independent review, a later clean post-commit verification, the user's manual
+Public transition and PVR enablement/visible-button confirmation, configuration
+of a separate private conduct-reporting channel, and explicit user execution
+of push/tag/Release actions. None of those external actions has occurred. If a
+precompiled GitHub Release
 application is considered later, Developer ID, notarization, Gatekeeper,
 signing, integrity, installation, and update policy must be reopened in a new
 authorized task.
@@ -428,28 +496,33 @@ zero tests despite `xcodebuild` reporting success. It is retained as a
 non-evidence command error; the corrected focused result executed 4/4 key
 selection paths, and the unique complete bundle executed all 37 tests.
 
-### Other checks not closed by the accepted evidence
+### Remaining evidence boundaries after local V1.0.0 verification
 
-Current physical-pointer visual checks are recorded above. Real external-system
-behavior, a genuinely displayed native file panel, and whole-application
-Inspector coverage remain evidence limitations. A distribution-signed archive,
-notarization, Gatekeeper binary assessment, and macOS 14 runtime matrix are not
-applicable to the confirmed source-only/macOS 26 policy. The actual unresolved
-platform item is alignment of the still-14.0 project target to macOS 26 and
-revalidation afterward.
+Current physical-pointer visual checks and the real-panel display/cancel pass
+are recorded above. Real file selection and bookmark creation/resolution, real
+browser/Apple Books behavior, and whole-application Inspector coverage remain
+evidence limitations. A distribution-signed archive, notarization, Gatekeeper
+binary assessment, and macOS 14 runtime matrix are not applicable to the
+confirmed source-only/macOS 26 policy. The production project and products are
+aligned to minimum macOS 26.0; historical technical-spike macOS 14 settings are
+not production support claims.
 
 ## GitHub source-publication risks and gates
 
-- Project metadata is set to bundle identifier
-  `io.github.freeforest.BookAtlas`, marketing version 1.0.0, and build 1; actual
-  Debug/Release products must still be checked after the fresh builds.
+- Project and actual Debug/Release products agree on bundle identifier
+  `io.github.freeforest.BookAtlas`, marketing version 1.0.0, build 1, and
+  minimum macOS 26.0.
 - `LICENSE` now contains the user-confirmed `2026 FreeForest` line.
 - GitHub Private Vulnerability Reporting is selected but cannot be enabled
   while the repository is Private. The user must enable and verify it during
   the Public transition; a public Issue is not a private vulnerability channel.
+- `CODE_OF_CONDUCT.md` still requires a separate private conduct-reporting
+  channel. PVR is not represented as a conduct channel; no personal address is
+  guessed or published.
 - Verification is on one Apple M2 MacBook Air with 24 GB memory and macOS
-  26.5.2. V1.0.0 is macOS 26-only; the project change is made, but clean
-  revalidation remains required before the preparation evidence can close.
+  26.5.2. V1.0.0 is macOS 26-only; the local verification is complete on that
+  host, while cross-device coverage and a later clean post-commit verification
+  remain outside this uncommitted evidence update.
 - Debug XCUIAutomation produced existing-library launch, page-load, and
   scrolling/hitch metrics. A Release Instruments run using the same
   pre-generated-library protocol could not be authorized through the current

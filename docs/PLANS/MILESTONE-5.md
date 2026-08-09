@@ -28,13 +28,16 @@ Inspector formal audits returned zero warnings separately for the unselected
 Library state and selected fixed-fictional A101 detail state, without making a
 whole-application permanent-zero claim. Prior purple-accent, Reduce Motion,
 complete pointer-free keyboard, and VoiceOver evidence is retained as a prior
-human gate, not a complete `4cc20b8c…` rerun. The native file path remains
-`PASS WITH LIMITATION` because an actual `NSOpenPanel` was not displayed.
+human gate, not a complete `4cc20b8c…` rerun. At that Prompt 10 baseline, the
+native file path remained `PASS WITH LIMITATION` because an actual
+`NSOpenPanel` was not displayed.
 
 This acceptance closes Milestone 5 development. It did not publish GitHub,
 push, create a tag or GitHub Release, upload source or an `.app`, or perform
 Apple binary distribution. Real external-system behavior and the state-specific
-Inspector/native-panel limitations remain as documented evidence boundaries.
+Inspector/native-panel limitations remained as documented evidence boundaries
+at that baseline. The later V1.0.0 check below supersedes only the narrow
+real-panel display/cancel limitation.
 
 The confirmed follow-on strategy is GitHub source code only. It excludes Mac
 App Store, Apple Developer membership, App Store Connect/Review, Developer ID,
@@ -43,20 +46,25 @@ Gatekeeper binary acceptance, and precompiled `.app` downloads. These are not
 pending gates for the current source-only strategy. Local ad-hoc builds, App
 Sandbox, Hardened Runtime, and entitlement checks remain local evidence.
 
-The source-publication preparation task is now aligning V1.0.0 to macOS 26.0,
-version 1.0.0/build 1, and bundle identifier
-`io.github.freeforest.BookAtlas`. It remains separate from Milestone 5 and is
-not Prompt 11. Fresh Debug, Release, full non-UI, full UI with actual
-XCUIAutomation initialization, fixed-fictional checks, actual-product
-inspection, and the real `NSOpenPanel` check remain required before its
-evidence can close.
+The source-publication preparation task aligned V1.0.0 to macOS 26.0, version
+1.0.0/build 1, and bundle identifier `io.github.freeforest.BookAtlas`. It
+remains separate from Milestone 5 and is not Prompt 11. On clean committed
+baseline `71ec000c…`, final UI re-parsed as 41/41 passed after XCUIAutomation
+initialized; fresh Debug/Release builds succeeded; fresh complete non-UI
+re-parsed as 200/200 passed; actual product metadata and entitlements matched
+the source-only policy; the real `NSOpenPanel` appeared and was safely
+cancelled against a two-book fixed-fictional in-memory library; and final
+privacy/artifact scans found no private data or release product. All valid test
+results had zero failures and skips. This local evidence now awaits independent
+review and a later clean post-commit verification.
 
 The confirmed repository `freeforest/book-atlas` remains Private. The intended
 first tag and GitHub Release are `v1.0.0` and `Book Atlas v1.0.0`, source-only,
 with no uploaded application binary. GitHub Private Vulnerability Reporting
 will be enabled and confirmed manually when the repository becomes Public; it
-cannot be enabled on the current Private repository. No Git/GitHub write is
-authorized to Codex.
+cannot be enabled on the current Private repository. A separate private
+conduct-reporting channel remains unconfigured and is not replaced by PVR. No
+Git/GitHub write is authorized to Codex.
 
 Earlier closure history is retained below. One earlier local closure had
 successful Debug and hardened local Release builds, 197/197
@@ -168,13 +176,15 @@ It does not replace the separate GitHub source-publication checklist.
   are not a private vulnerability channel;
 - the project/docs are aligned to macOS 26-only; fresh Debug/Release, complete
   non-UI, complete UI with XCUIAutomation initialized, fixed-fictional data,
-  actual-product inspection, real native-panel verification, and a later clean
-  post-commit checkout remain evidence gates;
-- confirm README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Issue/PR
-  templates, fictional samples/generator, roadmap, known limitations, and the
-  final bundle/version metadata decision;
-- scan tracked files for databases, WAL/SHM, backups, bookmarks, DerivedData,
-  `.xcresult`, certificates, keys, signing material, and private paths;
+  actual-product inspection, real native-panel display/cancel verification,
+  and repository/privacy scans are recorded for `71ec000c…`; independent review
+  and a later clean post-commit checkout remain evidence gates;
+- README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, Issue/PR templates,
+  fictional samples/generator, roadmap, known limitations, and final
+  bundle/version metadata have been reviewed; the separate private
+  conduct-reporting channel remains an explicit publication gate;
+- tracked-file scans found no database, WAL/SHM, backup, bookmark, DerivedData,
+  `.xcresult`, certificate, key, signing material, or private path;
 - obtain explicit user authorization before push, making the repository
   public, tag, GitHub Release, upload, or announcement.
 

@@ -40,7 +40,7 @@ preparation is not Prompt 11 and is not proof that publication occurred.
       `io.github.freeforest.BookAtlas`; test bundle identifiers use the same
       namespace and retain the correct host relationship.
 - [x] ADR-0009 supersedes the historical ADR-0003 macOS 14 decision.
-- [ ] Verify deployment target, version, build, and bundle identifier in the
+- [x] Verify deployment target, version, build, and bundle identifier in the
       fresh Debug and Release products.
 - [ ] Verify from a clean post-commit checkout before public visibility changes.
 
@@ -53,20 +53,23 @@ preparation is not Prompt 11 and is not proof that publication occurred.
       Vulnerability Reporting and confirms **Report a vulnerability** appears
       on the repository Security page. GitHub does not expose this feature for
       the current Private repository.
+- [ ] Establish a separate private conduct-reporting channel. Security PVR is
+      not a conduct-reporting substitute, and no personal address is guessed or
+      published.
 
 ## Build and verification
 
-- [ ] Debug build succeeds from a new `/tmp` DerivedData path.
-- [ ] Release build succeeds from a separate new `/tmp` DerivedData path.
-- [ ] Complete non-UI suite executes with zero failures and zero skips.
-- [ ] Complete UI suite initializes XCUIAutomation, executes every test, and
+- [x] Debug build succeeds from a new `/tmp` DerivedData path.
+- [x] Release build succeeds from a separate new `/tmp` DerivedData path.
+- [x] Complete non-UI suite executes 200/200 with zero failures and zero skips.
+- [x] Complete UI suite initializes XCUIAutomation, executes 41/41, and
       has zero failures and zero skips.
-- [ ] `xcresulttool` summaries and tests trees agree with the reported counts.
-- [ ] Actual Debug/Release entitlements confirm App Sandbox, user-selected file
+- [x] `xcresulttool` summaries and tests trees agree with the reported counts.
+- [x] Actual Debug/Release entitlements confirm App Sandbox, user-selected file
       access, and app-scoped bookmarks only; no network, Apple Events,
       automation, Downloads, Team ID, Developer ID, distribution certificate,
       or provisioning profile is present.
-- [ ] A real macOS `NSOpenPanel` appears from fixed-fictional in-memory data,
+- [x] A real macOS `NSOpenPanel` appears from fixed-fictional in-memory data,
       is cancelled without selecting a file, and leaves the library unchanged.
 
 ## Repository and public materials
@@ -78,27 +81,28 @@ preparation is not Prompt 11 and is not proof that publication occurred.
 - [x] `CHANGELOG.md` keeps `[1.0.0] - Unreleased` until the user publishes.
 - [x] `docs/RELEASE_NOTES-1.0.0.md` is a draft and has no release date or
       private/test-temporary path.
-- [ ] Confirm `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, Issue/PR
+- [x] Confirm `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, Issue/PR
       templates, SampleData, Scripts, roadmap, quality, privacy, and security
-      documents render and agree with the final evidence.
-- [ ] Confirm all committed samples and generated examples are fixed fictional
+      documents agree with the final evidence and explicitly retain the pending
+      conduct/PVR publication gates.
+- [x] Confirm all committed samples and generated examples are fixed fictional
       data and use only safe destinations such as `example.invalid`.
 
 ## Privacy, security, and artifact scan
 
-- [ ] Scan tracked and untracked paths for databases, WAL/SHM/journal files,
+- [x] Scan tracked and untracked paths for databases, WAL/SHM/journal files,
       backups, exports, bookmarks, real reading lists/notes, credentials,
       certificates, keys, provisioning profiles, `DerivedData`, `.xcresult`,
       `.app`, `.dmg`, `.pkg`, and binary archives.
-- [ ] Scan tracked text for current-user absolute paths, private URLs, real
+- [x] Scan tracked text for current-user absolute paths, private URLs, real
       library content, temporary evidence paths, secrets, and signing material;
       classify documented fictional and historical test values explicitly.
-- [ ] Confirm `.gitignore` covers private data and generated artifacts.
-- [ ] Confirm no telemetry, advertising, tracking, crash upload, network
+- [x] Confirm `.gitignore` covers private data and generated artifacts.
+- [x] Confirm no telemetry, advertising, tracking, crash upload, network
       client, third-party binary dependency, or new entitlement was introduced.
-- [ ] Confirm Schema remains 5 and migration path remains
+- [x] Confirm Schema remains 5 and migration path remains
       `1 → 2 → 3 → 4 → 5`.
-- [ ] Review the final diff and pass `git diff --check`.
+- [x] Review the final diff and pass `git diff --check`.
 
 ## Evidence boundaries to retain
 
@@ -109,8 +113,9 @@ preparation is not Prompt 11 and is not proof that publication occurred.
       warnings without claiming permanent whole-application zero.
 - [x] Prior accent, Reduce Motion, complete keyboard, and VoiceOver evidence is
       not represented as fully rerun on `4cc20b8c…`.
-- [ ] Replace the historical native-panel `PASS WITH LIMITATION` only if a real
-      `NSOpenPanel` is observed and safely cancelled.
+- [x] Retain the historical native-panel `PASS WITH LIMITATION` and record the
+      later V1.0.0 `PASS` only after a real `NSOpenPanel` is observed and safely
+      cancelled without selecting or reading a file.
 - [x] Real browser, Apple Books private-library targeting, and real long-lived
       bookmark behavior remain outside the accepted evidence.
 

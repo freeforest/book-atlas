@@ -36,8 +36,10 @@ confirmed copyright line is `2026 FreeForest`; the intended version/tag/Release
 are 1.0.0, `v1.0.0`, and `Book Atlas v1.0.0`. Every Git/GitHub write remains a
 manual user action. GitHub Private Vulnerability Reporting is selected but can
 only be enabled after the repository becomes Public; until the user enables
-and verifies it, that security channel remains a pending publication gate. A
-future decision to ship a precompiled `.app`
+and verifies it, that security channel remains a pending publication gate. The
+separate private conduct-reporting channel also remains unconfigured; PVR is
+not represented as a conduct channel, and no personal address is guessed or
+published. A future decision to ship a precompiled `.app`
 through GitHub Releases would require a new release task covering Developer ID,
 notarization, Gatekeeper, signing, download integrity, installation, and update
 strategy.
@@ -140,14 +142,78 @@ permanent whole-application zero-warning result. The earlier 25-warning and
 findings and the separately classified system/framework warnings, remain in
 the audit history.
 
-The native-file action remains `PASS WITH LIMITATION`: clicking “选择本地文件…”
-on fixed-fictional A101 returned cancellation semantics without displaying an
-actual macOS `NSOpenPanel`; no file was selected or read and the library did
-not change. A browser and Apple Books were not actually launched, real
-long-lived bookmarks were not exercised, and real external-system behavior
-remains unverified. These are integration limitations, not Apple-store
-distribution gates. Distribution signing, notarization, and Gatekeeper binary
-distribution are not applicable to the current source-only plan.
+The Prompt 10 native-file action remains historical `PASS WITH LIMITATION`:
+clicking “选择本地文件…” on fixed-fictional A101 returned cancellation semantics
+without displaying an actual macOS `NSOpenPanel`; no file was selected or read
+and the library did not change. The later V1.0.0 verification below supersedes
+that limitation for the narrow display-and-cancel path without rewriting the
+earlier observation.
+
+### V1.0.0 macOS 26 source-publication verification
+
+The clean committed baseline is
+`71ec000c65179bdbcae08981631c9dff7df7c711`. Relative to
+`223e3ccfe12c8decd8e7a292cac2df34e27c6154`, it changes only
+`BookAtlasUITests/BookAtlasUITests.swift`, adding immediate exact-value
+diagnostics after the existing author-field and Command-F keyboard inputs. It
+does not change production code or weaken the focus, multiword input, A101 row,
+or B202 exclusion assertions. Both original paths and both diagnostic paths
+passed 10/10 relaunch-enabled, no-retry repetitions. The final full bundle
+`/tmp/bookatlas-v1-full-ui-diagnostic-223e3cc.xcresult` parsed as 41/41 passed,
+zero failed, zero skipped, zero expected failures on macOS 26.5.2 arm64 after
+XCUIAutomation initialized. Its activity tree executed both
+`value == "Manual Acceptance Author"` and `value == "A101"`. The historical
+transient failures did not reproduce; no product defect or unique system,
+focus, window, or input-method root cause was established. Six Xcode
+`[Internal]` QoS runtime diagnostics occur in six other passing cases without a
+stack trace or reproducible product symptom and remain tool-warning evidence,
+not product failures.
+
+Fresh local products were built under `/tmp/bookatlas-v1-final-debug` and
+`/tmp/bookatlas-v1-final-release`; Debug and Release both succeeded. The fresh
+non-UI bundle `/tmp/bookatlas-v1-final-nonui.xcresult` parsed consistently in
+summary and tests tree as 200/200 passed, zero failed, zero skipped, zero
+expected failures on macOS 26.5.2 arm64. Schema remains 5 and the migration
+path remains `1 → 2 → 3 → 4 → 5`. The builds reported only the ordinary
+AppIntents metadata-extraction skip because the app has no AppIntents framework
+dependency; no deterministic compilation failure occurred.
+
+Both actual products report version 1.0.0, build 1, bundle identifier
+`io.github.freeforest.BookAtlas`, and minimum macOS 26.0. Debug is arm64 and
+ad-hoc signed with App Sandbox, user-selected read/write, app-scoped bookmarks,
+and Debug-only `get-task-allow`. Release contains x86_64 and arm64 slices, both
+with minimum macOS 26.0, and is ad-hoc signed with Hardened Runtime plus only
+App Sandbox, user-selected read/write, and app-scoped bookmarks. Neither product
+contains a network-client, Apple Events, automation, or Downloads entitlement,
+Team ID, Developer ID, distribution certificate, or provisioning profile.
+This is local build evidence, not distribution signing.
+
+The final Debug app was launched with an in-memory store, fixed fictional books
+and reading entries, and the explicit system-file-panel QA switch. Only the
+file selector and bookmark service used their production system adapters; the
+other external integrations remained fictional/no-op. A human observer saw the
+real macOS `NSOpenPanel` and cancelled it immediately without browsing,
+selecting, or reading a file. The app remained stable, the fixed-fictional
+library remained at two books, no local-file record was added, and the visible
+result was “已取消选择；书库未更改。” This narrow check is
+`PASS — 真实 NSOpenPanel 已显示并安全取消`; it does not validate a selected real
+file, bookmark creation, long-lived bookmark resolution, browser launch, or
+Apple Books behavior.
+
+The final repository scan covered tracked and untracked names, tracked text,
+samples, the generator, metadata, entitlements, `.gitignore`, and public
+documents. It found no private data, current-user absolute path, secret,
+database/WAL/SHM/journal, backup, bookmark BLOB, DerivedData, `.xcresult`, app
+or installer archive, certificate, private key, provisioning profile, or
+signing material. The only production dependency is system SQLite; the
+technical-spike Swift package and historical macOS 14/placeholder identifiers
+remain explicitly historical, not V1.0.0 production settings.
+
+A browser and Apple Books were not actually launched, a real file was not
+selected or read, and real long-lived bookmark behavior remains unverified.
+These are integration limitations, not Apple-store distribution gates.
+Distribution signing, notarization, and Gatekeeper binary distribution are not
+applicable to the current source-only plan.
 
 ### Earlier Prompt 10 closure validation
 
@@ -533,8 +599,11 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
   purple accent, Reduce Motion, complete pointer-free keyboard use, and
   VoiceOver; those items were not all rerun on `4cc20b8c…`. The current build
   adds Light/Dark, graph, exact 520×360, and Inspector state A/B evidence.
-  Inspector coverage remains state-specific, and the native file panel remains
-  `PASS WITH LIMITATION` because no actual `NSOpenPanel` appeared.
+  Inspector coverage remains state-specific. The Prompt 10 native panel result
+  remains historical `PASS WITH LIMITATION`; the later V1.0.0 fixed-fictional
+  system-adapter check displayed and safely cancelled a real `NSOpenPanel`
+  without selecting or reading a file. Real selection and long-lived bookmark
+  behavior remain unverified.
 - Debug existing-library launch/page/scroll measurements are recorded; the
   equivalent Release Instruments launch was not obtained. It is not a blocker
   for source-only publication.
