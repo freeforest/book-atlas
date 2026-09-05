@@ -1154,6 +1154,211 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testManualRelationEmptyStateKeyboardCancellationAndEscapeOwnership() {
+        let app = launchInMemoryApp(seedFictionalBooks: true)
+        XCTAssertTrue(element("book-detail-view", in: app).waitForExistence(timeout: 3))
+        let emptyState = element("manual-relations-empty", in: app)
+        XCTAssertTrue(emptyState.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: emptyState).contains("尚无手动关系"))
+
+        app.typeKey("r", modifierFlags: [.command, .shift])
+        let editor = element("manual-relation-editor", in: app)
+        let search = element("manual-relation-target-search", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(waitForKeyboardFocus(search, timeout: 3))
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(emptyState.exists)
+
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("book-detail-view", in: app).exists)
+        XCTAssertFalse(editor.exists)
+        XCTAssertFalse(element("book-editor-sheet", in: app).exists)
+    }
+
+    @MainActor
+    func testManualRelationFilteredCounterpartUsesExactFocusAndClearFlow() {
+        let app = launchInMemoryApp(seedManualRelations: true)
+        let incomingID =
+            "manual-relation-row-incoming-00000000-0000-0000-0000-000000000303-responds_to"
+        scrollToElement(incomingID, in: app)
+        let incoming = element(incomingID, in: app)
+        XCTAssertTrue(incoming.waitForExistence(timeout: 3))
+        let incomingText = accessibilityText(of: incoming)
+        XCTAssertTrue(incomingText.contains("传入关系"))
+        XCTAssertTrue(incomingText.contains("C303"))
+        XCTAssertTrue(incomingText.contains("North Shore Author"))
+        XCTAssertTrue(incomingText.contains("类型 回应"))
+        XCTAssertTrue(incomingText.contains("方向：来源书籍 → 当前书籍"))
+        XCTAssertTrue(incomingText.contains("备注 固定虚构传入关系备注"))
+
+        app.typeKey("f", modifierFlags: .command)
+        let librarySearch = app.searchFields.firstMatch
+        XCTAssertTrue(waitForKeyboardFocus(librarySearch, timeout: 3))
+        replaceText(in: librarySearch, with: "Harbor", using: app)
+        XCTAssertTrue(
+            waitForLibraryCount(displayed: 1, total: 1, in: app, timeout: 5)
+        )
+        scrollToElement(incomingID, in: app)
+        incoming.click()
+
+        let unavailable = element("library-selection-unavailable", in: app)
+        XCTAssertTrue(unavailable.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.staticTexts["所选书籍不在当前结果中"]
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertFalse(element("book-detail-view", in: app).exists)
+
+        let clear = element("clear-filters-selection-issue", in: app)
+        XCTAssertTrue(clear.waitForExistence(timeout: 3))
+        clear.click()
+        let recoveredTitle = element("book-detail-title", in: app)
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                recoveredTitle,
+                containing: "C303",
+                timeout: 5
+            ),
+            "Clearing filters must recover C303, observed: \(accessibilityText(of: recoveredTitle))"
+        )
+        XCTAssertTrue(unavailable.waitForNonExistence(timeout: 3))
+        XCTAssertFalse(
+            waitForAccessibilityText(
+                element("book-detail-title", in: app),
+                containing: "A101",
+                timeout: 0.5
+            )
+        )
+    }
+
+    @MainActor
+    func testManualRelationKeyboardCreateNavigateConfirmedDeleteAndGraphRefresh() {
+        let app = launchInMemoryApp(seedManualRelations: true)
+        let sourceID = "00000000-0000-0000-0000-000000000101"
+        let targetID = "00000000-0000-0000-0000-000000000202"
+        let incomingID = "00000000-0000-0000-0000-000000000303"
+        let outgoingRowID = "manual-relation-row-outgoing-\(targetID)-related"
+        let outgoingDeleteID = "delete-manual-relation-outgoing-\(targetID)-related"
+
+        scrollToElement("add-manual-relation", in: app)
+        app.typeKey("r", modifierFlags: [.command, .shift])
+        let editor = element("manual-relation-editor", in: app)
+        let targetSearch = element("manual-relation-target-search", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(waitForKeyboardFocus(targetSearch, timeout: 3))
+        targetSearch.typeText("9780000000202")
+
+        let target = element("manual-relation-target-\(targetID)", in: app)
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                element("manual-relation-target-count", in: app),
+                containing: "已显示 1 本，共 1 本可选目标",
+                timeout: 5
+            )
+        )
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        XCTAssertFalse(element("manual-relation-target-\(sourceID)", in: app).exists)
+        targetSearch.typeKey(.return, modifierFlags: .command)
+        XCTAssertTrue(
+            waitForAccessibilityText(target, containing: "已选择", timeout: 3)
+        )
+
+        let kind = element("manual-relation-kind", in: app)
+        XCTAssertTrue(kind.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: kind).contains("相关"))
+        replaceText(
+            in: element("manual-relation-note", in: app),
+            with: "固定虚构新建关系备注",
+            using: app
+        )
+        let preview = element("manual-relation-direction-preview", in: app)
+        XCTAssertTrue(preview.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: preview).contains("方向：A101 → B202"))
+        XCTAssertTrue(accessibilityText(of: preview).contains("类型：相关"))
+
+        targetSearch.click()
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(editor.waitForNonExistence(timeout: 5))
+        scrollToElement(outgoingRowID, in: app)
+        let outgoing = element(outgoingRowID, in: app)
+        XCTAssertTrue(outgoing.waitForExistence(timeout: 5))
+        let outgoingText = accessibilityText(of: outgoing)
+        XCTAssertTrue(outgoingText.contains("传出关系"))
+        XCTAssertTrue(outgoingText.contains("B202"))
+        XCTAssertTrue(outgoingText.contains("Forest Author"))
+        XCTAssertTrue(outgoingText.contains("类型 相关"))
+        XCTAssertTrue(outgoingText.contains("方向：当前书籍 → 目标书籍"))
+        XCTAssertTrue(outgoingText.contains("备注 固定虚构新建关系备注"))
+
+        scrollToElement("show-local-graph-button", in: app)
+        element("show-local-graph-button", in: app).click()
+        XCTAssertTrue(element("local-graph-page", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("graph-node-\(targetID)", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            element("graph-relation-\(sourceID)-\(targetID)", in: app)
+                .waitForExistence(timeout: 5)
+        )
+
+        element("navigation-library", in: app).click()
+        XCTAssertTrue(element("book-detail-view", in: app).waitForExistence(timeout: 3))
+        scrollToElement(outgoingRowID, in: app)
+        outgoing.click()
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                element("book-detail-title", in: app),
+                containing: "B202",
+                timeout: 5
+            )
+        )
+
+        let sourceRow = element("library-book-\(sourceID)", in: app)
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 3))
+        sourceRow.click()
+        XCTAssertTrue(
+            waitForAccessibilityText(
+                element("book-detail-title", in: app),
+                containing: "A101",
+                timeout: 5
+            )
+        )
+        scrollToElement(outgoingDeleteID, in: app)
+
+        element(outgoingDeleteID, in: app).click()
+        XCTAssertTrue(
+            element("cancel-delete-manual-relation", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        XCTAssertTrue(
+            app.staticTexts["只删除关系记录，两本书都会保留。"]
+                .waitForExistence(timeout: 3)
+        )
+        element("cancel-delete-manual-relation", in: app).click()
+        XCTAssertTrue(outgoing.waitForExistence(timeout: 3))
+
+        element(outgoingDeleteID, in: app).click()
+        XCTAssertTrue(
+            element("confirm-delete-manual-relation", in: app)
+                .waitForExistence(timeout: 3)
+        )
+        element("confirm-delete-manual-relation", in: app).click()
+        XCTAssertTrue(outgoing.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(element("library-book-\(sourceID)", in: app).exists)
+        XCTAssertTrue(element("library-book-\(targetID)", in: app).exists)
+
+        scrollToElement("show-local-graph-button", in: app)
+        element("show-local-graph-button", in: app).click()
+        XCTAssertTrue(element("local-graph-page", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("graph-node-\(targetID)", in: app).waitForNonExistence(timeout: 3))
+        XCTAssertTrue(element("graph-node-\(incomingID)", in: app).waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            element("graph-relation-\(sourceID)-\(incomingID)", in: app)
+                .waitForExistence(timeout: 5)
+        )
+    }
+
+    @MainActor
     func testReadingEntryEmptyStateRejectsUnsafeURLsAndEscapeCancelsEditor() {
         let app = launchInMemoryApp(seedFictionalBooks: true)
         let addLink = element("add-reading-link", in: app)
@@ -1693,7 +1898,7 @@ final class BookAtlasUITests: XCTestCase {
         in app: XCUIApplication,
         timeout: TimeInterval
     ) -> Bool {
-        let status = app.staticTexts["library-result-count"]
+        let status = element("library-result-count", in: app)
         guard status.waitForExistence(timeout: timeout) else {
             return false
         }
@@ -1745,6 +1950,7 @@ final class BookAtlasUITests: XCTestCase {
         seedGraphLimit: Bool = false,
         seedReadingEntries: Bool = false,
         seedPagination: Bool = false,
+        seedManualRelations: Bool = false,
         focusMissingBook: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -1782,6 +1988,9 @@ final class BookAtlasUITests: XCTestCase {
         if seedPagination {
             app.launchArguments.append("-BookAtlasSeedPaginationUITestData")
         }
+        if seedManualRelations {
+            app.launchArguments.append("-BookAtlasSeedManualRelationUITestData")
+        }
         if focusMissingBook {
             app.launchArguments.append("-BookAtlasFocusMissingBookUITestState")
         }
@@ -1800,9 +2009,15 @@ final class BookAtlasUITests: XCTestCase {
     private func scrollToElement(_ identifier: String, in app: XCUIApplication) {
         let target = element(identifier, in: app)
         let editorScrollView = element("book-editor-sheet", in: app).scrollViews.firstMatch
-        let scrollView = editorScrollView.exists
-            ? editorScrollView
-            : app.scrollViews.firstMatch
+        let detailScrollView = element("book-detail-scroll", in: app)
+        let scrollView: XCUIElement
+        if editorScrollView.exists {
+            scrollView = editorScrollView
+        } else if detailScrollView.exists {
+            scrollView = detailScrollView
+        } else {
+            scrollView = app.scrollViews.firstMatch
+        }
         for _ in 0..<8 {
             if target.exists, target.isHittable { return }
             scrollView.scroll(byDeltaX: 0, deltaY: -250)

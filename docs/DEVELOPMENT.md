@@ -12,7 +12,32 @@ macOS 14/15 support or compatibility matrix is promised.
 
 The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. An explicit focus request returns that same bounded page plus at most one book selected by UUID under the same filters; it does not scan preceding pages or expand the page size. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
-The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. Prompts 0–10 are complete; there is no automatic Prompt 11. Subsequent work is a separate GitHub source-publication preparation task. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
+The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. Prompts 0–10 are complete; Prompt 11A was later explicitly authorized, but its local implementation is `BLOCKED — WAITING FOR CONTROLLER REVIEW` and is not accepted. Prompt 11B is not authorized. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
+
+## Prompt 11A local implementation
+
+`ManualRelationStore` is separate from `LibraryStore` and binds every relation
+snapshot, target search, create, and delete operation to one `bookID`. It clears
+old rows synchronously on a book switch, cancels the old task, and rejects late
+publication unless both generation and book identity still match. Target search
+reuses `LibraryQuery`, exact totals, and explicit paging while excluding the
+source. Counterpart navigation uses the existing UUID focus path and filtered-
+out recovery flow. `LibraryCatalogService` remains the only presentation-facing
+route to repository relation queries and mutations; successful create/delete
+advances the existing graph-content revision.
+
+Local fixed-fictional evidence passed the 10-test new domain/repository/catalog/
+store gate, the 10-test relationship/merge/backup/graph regression gate, Debug
+build, the complete 209/209 non-UI suite, and the 3/3 targeted relation UI gate,
+all with zero failures and zero skips. The first complete UI run collected all
+44 tests but ended 31 passed, 13 failed, 0 skipped after the application
+connection was lost and subsequent launches lost UI-test authorization. Its one
+permitted fresh-path retry then repeatedly dropped synthesized input characters
+in unchanged existing tests and was stopped under the Prompt 11A retry rule;
+Xcode exited 73 and could not completely seal that retry result bundle. Release,
+the final configuration/privacy audits, and the real-interface mouse/keyboard
+check are therefore `UNTESTED` or `NOT VERIFIED`, and no local result is
+controller acceptance.
 
 ## GitHub source publication and platform alignment
 

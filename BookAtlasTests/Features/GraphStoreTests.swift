@@ -379,6 +379,67 @@ extension GraphStoreTests {
         XCTAssertFalse(store.scene?.snapshot.nodes.contains { $0.id == neighbor.id } == true)
     }
 
+    func testManualRelationAddAndDeleteRefreshVisibleGraphEvidence() async throws {
+        let (service, center, neighbor) = try await Task.detached {
+            let repository = try BookRepository.inMemory()
+            let center = try makeGraphTestBook(
+                repository,
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000008201")!,
+                title: "《手动关系刷新中心》",
+                author: "虚构作者甲"
+            )
+            let neighbor = try makeGraphTestBook(
+                repository,
+                id: UUID(uuidString: "00000000-0000-0000-0000-000000008202")!,
+                title: "《手动关系刷新邻书》",
+                author: "虚构作者乙"
+            )
+            return (LibraryCatalogService(repository: repository), center, neighbor)
+        }.value
+        let store = GraphStore(catalog: service)
+        store.enter(centerBookID: center.id)
+        await settle(store)
+        XCTAssertEqual(store.state, .empty)
+        let initialRevision = await service.graphContentRevision()
+
+        let relation = try ManualBookRelation(
+            sourceBookID: center.id,
+            targetBookID: neighbor.id,
+            kind: .respondsTo,
+            note: "固定虚构图谱刷新备注",
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+        _ = try await service.addManualRelation(relation)
+        await settle(store)
+        let addedRevision = await service.graphContentRevision()
+
+        XCTAssertGreaterThan(addedRevision, initialRevision)
+        XCTAssertEqual(store.loadedRevision, addedRevision)
+        let edge = try XCTUnwrap(store.scene?.snapshot.edges.first)
+        XCTAssertEqual(edge.relationTypes, [.manual])
+        XCTAssertTrue(edge.evidence.contains { evidence in
+            guard case let .manual(id, kind, _, sourceID, targetID, hasNote) = evidence else {
+                return false
+            }
+            return id == relation.id
+                && kind == .respondsTo
+                && sourceID == center.id
+                && targetID == neighbor.id
+                && hasNote
+        })
+
+        try await service.deleteManualRelation(relation)
+        await settle(store)
+        let deletedRevision = await service.graphContentRevision()
+
+        XCTAssertGreaterThan(deletedRevision, addedRevision)
+        XCTAssertEqual(store.loadedRevision, deletedRevision)
+        XCTAssertEqual(store.state, .empty)
+        XCTAssertEqual(store.scene?.snapshot.nodes.map(\.id), [center.id])
+        XCTAssertTrue(store.scene?.snapshot.edges.isEmpty == true)
+        XCTAssertFalse(store.scene?.snapshot.nodes.contains { $0.id == neighbor.id } == true)
+    }
+
     func testDeletedNeighborDoesNotSurviveReentry() async throws {
         let (service, center, neighbor) = try await Task.detached {
             let repository = try BookRepository.inMemory()

@@ -203,7 +203,18 @@ struct LibraryView: View {
                         List(
                             selection: Binding(
                                 get: { listSelection.selectedBookID },
-                                set: { listSelection.selectFromList($0) }
+                                set: { selectedBookID in
+                                    if selectedBookID == nil,
+                                       store.selectedBookID != nil
+                                    {
+                                        // List can transiently echo nil while a
+                                        // programmatic exact selection is being
+                                        // synchronized. The store remains the
+                                        // authority for that transition.
+                                        return
+                                    }
+                                    listSelection.selectFromList(selectedBookID)
+                                }
                             )
                         ) {
                             ForEach(store.books) { book in
@@ -241,7 +252,9 @@ struct LibraryView: View {
                         BookDetailView(
                             book: book,
                             readingEntries: store.readingEntries,
-                            onShowGraph: onShowGraph
+                            manualRelations: store.manualRelations,
+                            onShowGraph: onShowGraph,
+                            onOpenRelatedBook: store.focusBookPreservingQuery
                         )
                     } else if let issue = store.selectionIssue {
                         LibrarySelectionIssueView(

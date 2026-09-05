@@ -3,6 +3,9 @@ import Foundation
 enum CatalogServiceError: Error, Equatable {
     case nameConflict
     case invalidMerge
+    case manualRelationConflict
+    case manualRelationEndpointMissing
+    case manualRelationNotFound
 }
 
 protocol LibraryCataloging: Actor {
@@ -89,6 +92,11 @@ protocol LibraryCataloging: Actor {
     ) throws -> GraphScene
     func graphContentRevision() -> GraphContentRevision
     func graphContentRevisions() -> AsyncStream<GraphContentRevision>
+    func manualRelationSummaries(for bookID: UUID) throws -> [ManualRelationSummary]
+    func manualRelationTargetPage(
+        _ query: LibraryQuery,
+        excludingBookID: UUID
+    ) throws -> LibraryPage
     func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation
     func deleteManualRelation(_ relation: ManualBookRelation) throws
     func prepareImport(from url: URL, mapping: CSVFieldMapping?) throws -> ImportPreview
@@ -241,6 +249,15 @@ extension LibraryCataloging {
         AsyncStream { continuation in
             continuation.yield(.initial)
         }
+    }
+    func manualRelationSummaries(for bookID: UUID) throws -> [ManualRelationSummary] {
+        []
+    }
+    func manualRelationTargetPage(
+        _ query: LibraryQuery,
+        excludingBookID: UUID
+    ) throws -> LibraryPage {
+        throw BookRepositoryError.entityNotFound
     }
     func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation {
         throw BookRepositoryError.entityNotFound
@@ -640,15 +657,39 @@ actor LibraryCatalogService: LibraryCataloging {
         try repository.deleteLocalFileReference(id: id)
     }
 
+    func manualRelationSummaries(for bookID: UUID) throws -> [ManualRelationSummary] {
+        try repository.manualRelationSummaries(forBookID: bookID)
+    }
+
+    func manualRelationTargetPage(
+        _ query: LibraryQuery,
+        excludingBookID: UUID
+    ) throws -> LibraryPage {
+        try repository.queryManualRelationTargetPage(
+            query,
+            excludingBookID: excludingBookID
+        )
+    }
+
     func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation {
-        let created = try repository.addManualRelation(relation)
-        markGraphContentChanged()
-        return created
+        do {
+            let created = try repository.addManualRelation(relation)
+            markGraphContentChanged()
+            return created
+        } catch BookRepositoryError.manualRelationConflict {
+            throw CatalogServiceError.manualRelationConflict
+        } catch BookRepositoryError.bookNotFound {
+            throw CatalogServiceError.manualRelationEndpointMissing
+        }
     }
 
     func deleteManualRelation(_ relation: ManualBookRelation) throws {
-        try repository.deleteManualRelation(id: relation.id)
-        markGraphContentChanged()
+        do {
+            try repository.deleteManualRelation(id: relation.id)
+            markGraphContentChanged()
+        } catch BookRepositoryError.entityNotFound {
+            throw CatalogServiceError.manualRelationNotFound
+        }
     }
 
     func graphContentRevision() -> GraphContentRevision {

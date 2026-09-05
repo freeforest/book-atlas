@@ -46,6 +46,85 @@ final class LibraryCatalogServiceTests: XCTestCase {
             XCTAssertEqual(error as? BookRepositoryError, .bookNotFound)
         }
     }
+
+    func testManualRelationCatalogMapsConflictsAndMissingEntitiesWithoutPayloads() async throws {
+        let repository = try BookRepository.inMemory()
+        let service = LibraryCatalogService(repository: repository)
+        let source = try await service.createBook(
+            from: BookEditorDraft(title: "《目录关系来源》", author: "虚构作者甲")
+        )
+        let target = try await service.createBook(
+            from: BookEditorDraft(title: "《目录关系目标》", author: "虚构作者乙")
+        )
+        let initialRevision = await service.graphContentRevision()
+        let relation = try ManualBookRelation(
+            sourceBookID: source.id,
+            targetBookID: target.id,
+            kind: .companion,
+            note: "固定虚构目录关系备注",
+            createdAt: FictionalLibraryFixtures.timestamp
+        )
+
+        _ = try await service.addManualRelation(relation)
+        let addedRevision = await service.graphContentRevision()
+        XCTAssertGreaterThan(addedRevision, initialRevision)
+        let summaries = try await service.manualRelationSummaries(for: source.id)
+        XCTAssertEqual(summaries.map(\.otherBookID), [target.id])
+        XCTAssertEqual(summaries.map(\.direction), [.outgoing])
+
+        do {
+            _ = try await service.addManualRelation(
+                ManualBookRelation(
+                    sourceBookID: source.id,
+                    targetBookID: target.id,
+                    kind: .companion,
+                    createdAt: FictionalLibraryFixtures.timestamp
+                )
+            )
+            XCTFail("Expected a safe relation conflict")
+        } catch {
+            XCTAssertEqual(error as? CatalogServiceError, .manualRelationConflict)
+        }
+        let revisionAfterConflict = await service.graphContentRevision()
+        XCTAssertEqual(revisionAfterConflict, addedRevision)
+
+        do {
+            _ = try await service.addManualRelation(
+                ManualBookRelation(
+                    sourceBookID: source.id,
+                    targetBookID: UUID(),
+                    kind: .related,
+                    createdAt: FictionalLibraryFixtures.timestamp
+                )
+            )
+            XCTFail("Expected a safe missing endpoint error")
+        } catch {
+            XCTAssertEqual(error as? CatalogServiceError, .manualRelationEndpointMissing)
+        }
+
+        try await service.deleteManualRelation(relation)
+        let deletedRevision = await service.graphContentRevision()
+        XCTAssertGreaterThan(deletedRevision, addedRevision)
+        let sourcePage = try await service.queryBookPage(
+            LibraryQuery(),
+            focusedBookID: source.id
+        )
+        let targetPage = try await service.queryBookPage(
+            LibraryQuery(),
+            focusedBookID: target.id
+        )
+        XCTAssertNotNil(sourcePage.focusedBook)
+        XCTAssertNotNil(targetPage.focusedBook)
+
+        do {
+            try await service.deleteManualRelation(relation)
+            XCTFail("Expected a safe missing relation error")
+        } catch {
+            XCTAssertEqual(error as? CatalogServiceError, .manualRelationNotFound)
+        }
+        let revisionAfterMissingDelete = await service.graphContentRevision()
+        XCTAssertEqual(revisionAfterMissingDelete, deletedRevision)
+    }
 }
 
 private final class TestClock: @unchecked Sendable {

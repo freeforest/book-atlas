@@ -372,7 +372,7 @@ struct LocalFileReference: Identifiable, Equatable, Sendable {
     }
 }
 
-enum ManualRelationKind: String, CaseIterable, Codable, Sendable {
+enum ManualRelationKind: String, CaseIterable, Codable, Hashable, Sendable {
     case related
     case inspiredBy = "inspired_by"
     case respondsTo = "responds_to"

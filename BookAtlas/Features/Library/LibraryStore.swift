@@ -184,12 +184,14 @@ final class LibraryStore: ObservableObject {
     let graph: GraphStore
     let readingEntries: ReadingEntryStore
     let duplicateReadingEntries: ReadingEntryStore
+    let manualRelations: ManualRelationStore
 
     private let catalog: (any LibraryCataloging)?
     private var queryTask: Task<Void, Never>?
     private var loadMoreTask: Task<Void, Never>?
     private var duplicateTask: Task<Void, Never>?
     private var activeRequestID = UUID()
+    private var pendingExactSelectionAfterFilterClear: UUID?
 
     init(
         catalog: (any LibraryCataloging)? = nil,
@@ -200,6 +202,7 @@ final class LibraryStore: ObservableObject {
         organizer = CatalogOrganizerStore(catalog: catalog)
         portability = PortabilityStore(catalog: catalog)
         graph = GraphStore(catalog: catalog)
+        manualRelations = ManualRelationStore(catalog: catalog)
         let primaryReadingEntries = readingEntries ?? ReadingEntryStore(catalog: catalog)
         self.readingEntries = primaryReadingEntries
         duplicateReadingEntries = primaryReadingEntries.makeScopedStore()
@@ -275,7 +278,8 @@ final class LibraryStore: ObservableObject {
                         seedGraphUITestData: false,
                         seedGraphLimitUITestData: false,
                         seedReadingEntryUITestData: false,
-                        seedPaginationUITestData: false
+                        seedPaginationUITestData: false,
+                        seedManualRelationUITestData: false
                     )
                 }
             } else if usesTestStore {
@@ -285,7 +289,8 @@ final class LibraryStore: ObservableObject {
                     seedGraphUITestData: arguments.contains("-BookAtlasSeedGraphUITestData"),
                     seedGraphLimitUITestData: arguments.contains("-BookAtlasSeedGraphLimitUITestData"),
                     seedReadingEntryUITestData: arguments.contains("-BookAtlasSeedReadingEntryUITestData"),
-                    seedPaginationUITestData: arguments.contains("-BookAtlasSeedPaginationUITestData")
+                    seedPaginationUITestData: arguments.contains("-BookAtlasSeedPaginationUITestData"),
+                    seedManualRelationUITestData: arguments.contains("-BookAtlasSeedManualRelationUITestData")
                 )
             } else {
                 let databaseURL = try productionDatabaseURL()
@@ -333,6 +338,11 @@ final class LibraryStore: ObservableObject {
                 store.portability.seedRestoreInspectionForUITesting()
             }
             if arguments.contains("-BookAtlasSeedReadingEntryUITestData") {
+                store.focusBook(UUID(
+                    uuidString: "00000000-0000-0000-0000-000000000101"
+                )!)
+            }
+            if arguments.contains("-BookAtlasSeedManualRelationUITestData") {
                 store.focusBook(UUID(
                     uuidString: "00000000-0000-0000-0000-000000000101"
                 )!)
@@ -461,6 +471,7 @@ final class LibraryStore: ObservableObject {
     func focusBook(_ id: UUID) {
         query = LibraryQuery()
         resetPagination()
+        pendingExactSelectionAfterFilterClear = nil
         selectedBookID = id
         focusedBook = nil
         selectionIssue = nil
@@ -473,7 +484,33 @@ final class LibraryStore: ObservableObject {
         )
     }
 
+    func focusBookPreservingQuery(_ id: UUID) {
+        resetPagination()
+        pendingExactSelectionAfterFilterClear = id
+        selectedBookID = id
+        focusedBook = nil
+        selectionIssue = nil
+        scheduleQuery(
+            delay: nil,
+            selectionRequest: .exact(
+                id,
+                missingIssue: .outsideCurrentResults
+            )
+        )
+    }
+
     func selectBook(_ id: UUID?) {
+        if id == nil,
+           pendingExactSelectionAfterFilterClear != nil,
+           selectionIssue == .outsideCurrentResults
+        {
+            // A SwiftUI List can publish a transient nil selection while the
+            // exact book intentionally sits outside the current query. Keep
+            // that identity until the user clears the query or makes another
+            // explicit selection.
+            return
+        }
+        pendingExactSelectionAfterFilterClear = nil
         if selectedBookID != id {
             selectedBookID = id
         }
@@ -939,6 +976,7 @@ final class LibraryStore: ObservableObject {
         await duplicateTask?.value
         await organizer.waitForPendingWork()
         await graph.waitForPendingWork()
+        await manualRelations.waitForPendingWork()
     }
 
     private func scheduleQuery(
@@ -954,7 +992,15 @@ final class LibraryStore: ObservableObject {
             ?? selectedBookID.map {
                 .exact($0, missingIssue: .outsideCurrentResults)
             }
+            ?? pendingExactSelectionAfterFilterClear.map {
+                .exact($0, missingIssue: .outsideCurrentResults)
+            }
             ?? .automatic
+        if case let .exact(id, missingIssue) = selectionRequest,
+           missingIssue == .outsideCurrentResults
+        {
+            pendingExactSelectionAfterFilterClear = id
+        }
         queryTask?.cancel()
         loadMoreTask?.cancel()
         let requestID = UUID()
@@ -1091,16 +1137,21 @@ final class LibraryStore: ObservableObject {
         totalBookCount = resolved.page.totalCount
         switch resolved.selection {
         case .automatic:
+            pendingExactSelectionAfterFilterClear = nil
             selectedBookID = books.first?.id
             focusedBook = nil
             selectionIssue = nil
         case let .exact(book):
+            pendingExactSelectionAfterFilterClear = nil
             selectedBookID = book.id
             focusedBook = books.contains(where: { $0.id == book.id })
                 ? nil
                 : book
             selectionIssue = nil
         case let .unavailable(issue):
+            if issue != .outsideCurrentResults {
+                pendingExactSelectionAfterFilterClear = nil
+            }
             selectedBookID = nil
             focusedBook = nil
             selectionIssue = issue
@@ -1164,7 +1215,8 @@ final class LibraryStore: ObservableObject {
         seedGraphUITestData: Bool,
         seedGraphLimitUITestData: Bool,
         seedReadingEntryUITestData: Bool,
-        seedPaginationUITestData: Bool
+        seedPaginationUITestData: Bool,
+        seedManualRelationUITestData: Bool
     ) throws -> LibraryCatalogService {
         let repository = try BookRepository.inMemory()
         guard seedFictionalUITestBooks
@@ -1173,6 +1225,7 @@ final class LibraryStore: ObservableObject {
             || seedGraphLimitUITestData
             || seedReadingEntryUITestData
             || seedPaginationUITestData
+            || seedManualRelationUITestData
         else {
             return LibraryCatalogService(repository: repository)
         }
@@ -1218,7 +1271,10 @@ final class LibraryStore: ObservableObject {
                 )
             )
         }
-        if seedFictionalUITestBooks || seedReadingEntryUITestData {
+        if seedFictionalUITestBooks
+            || seedReadingEntryUITestData
+            || seedManualRelationUITestData
+        {
             _ = try repository.create(
                 BookDraft(
                     title: "A101",
@@ -1232,10 +1288,40 @@ final class LibraryStore: ObservableObject {
                 BookDraft(
                     title: seedReadingEntryUITestData ? "A101" : "B202",
                     author: seedReadingEntryUITestData ? "Harbor Author" : "Forest Author",
-                    isbn: seedReadingEntryUITestData ? "9780000000002" : ""
+                    isbn: seedReadingEntryUITestData
+                        ? "9780000000002"
+                        : (seedManualRelationUITestData ? "9780000000202" : "")
                 ),
                 id: UUID(uuidString: "00000000-0000-0000-0000-000000000202")!,
                 at: timestamp.addingTimeInterval(1)
+            )
+        }
+        if seedManualRelationUITestData {
+            let sourceID = UUID(
+                uuidString: "00000000-0000-0000-0000-000000000101"
+            )!
+            let incomingSource = try repository.create(
+                BookDraft(
+                    title: "C303",
+                    author: "North Shore Author",
+                    isbn: "9780000000303"
+                ),
+                id: UUID(
+                    uuidString: "00000000-0000-0000-0000-000000000303"
+                )!,
+                at: timestamp.addingTimeInterval(2)
+            )
+            _ = try repository.addManualRelation(
+                try ManualBookRelation(
+                    id: UUID(
+                        uuidString: "00000000-0000-0000-0000-000000000951"
+                    )!,
+                    sourceBookID: incomingSource.id,
+                    targetBookID: sourceID,
+                    kind: .respondsTo,
+                    note: "固定虚构传入关系备注",
+                    createdAt: timestamp.addingTimeInterval(3)
+                )
             )
         }
         if seedReadingEntryUITestData {

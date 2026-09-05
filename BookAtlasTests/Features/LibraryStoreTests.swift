@@ -820,7 +820,7 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertNotEqual(store.selectedBookID, seededBooks[1].id)
     }
 
-    func testZeroResultSearchShowsFocusedBookIssueAndClearingRecoversList() async throws {
+    func testZeroResultSearchShowsFocusedBookIssueAndClearingRecoversExactBook() async throws {
         let (service, seededBooks) = try await makePagedCatalog()
         let store = LibraryStore(catalog: service)
         await store.waitForPendingWork()
@@ -840,6 +840,12 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertNil(store.selectedBook)
         XCTAssertEqual(store.selectionIssue, .outsideCurrentResults)
 
+        // SwiftUI List may echo nil while the exact target is intentionally
+        // outside the current query. That synchronization event must not erase
+        // the identity needed by the clear-filter recovery flow.
+        store.selectBook(nil)
+        XCTAssertEqual(store.selectionIssue, .outsideCurrentResults)
+
         store.clearFilters()
         await store.waitForPendingWork()
 
@@ -847,7 +853,9 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertEqual(store.totalBookCount, 501)
         XCTAssertEqual(Set(store.books.map(\.id)).count, 200)
         XCTAssertNil(store.selectionIssue)
-        XCTAssertEqual(store.selectedBookID, store.books.first?.id)
+        XCTAssertEqual(store.selectedBookID, target.id)
+        XCTAssertEqual(store.pinnedFocusedBook?.id, target.id)
+        XCTAssertNotEqual(store.selectedBookID, store.books.first?.id)
     }
 
     func testCreateAndEditKeepOffPageIdentityWithoutLoadingTheWholeResult() async throws {

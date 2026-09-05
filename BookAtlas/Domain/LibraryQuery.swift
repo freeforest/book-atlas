@@ -80,6 +80,26 @@ struct FocusedLibraryPage: Equatable, Sendable {
     let focusedBook: Book?
 }
 
+/// The direction of one persisted manual relation as seen from the currently
+/// displayed book. Direction remains explicit even when graph rendering later
+/// combines evidence into a canonical visual edge.
+enum ManualRelationDirection: Equatable, Sendable {
+    case outgoing
+    case incoming
+}
+
+/// A local read model for presenting one manual relation and its opposite
+/// endpoint without putting presentation-only state into `Book`.
+struct ManualRelationSummary: Identifiable, Equatable, Sendable {
+    let relation: ManualBookRelation
+    let otherBookID: UUID
+    let otherBookTitle: String
+    let otherBookAuthor: String
+    let direction: ManualRelationDirection
+
+    var id: UUID { relation.id }
+}
+
 struct TagSummary: Identifiable, Equatable, Sendable {
     let tag: Tag
     let bookCount: Int

@@ -1,5 +1,23 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- Local Prompt 11A working-tree implementation for viewing distinct incoming
+  and outgoing manual book relations, bounded paged target search, explicit
+  source-to-target creation, exact counterpart navigation, and confirmed
+  relation-only deletion.
+
+### Validation status
+
+- `BLOCKED — WAITING FOR CONTROLLER REVIEW`: targeted relation tests, related
+  regressions, Debug build, 209/209 non-UI tests, and 3/3 targeted UI tests
+  passed, but the complete UI gate did not survive its one permitted clean
+  infrastructure retry. This entry is not controller acceptance or a release.
+- No Schema 5, CSV, backup format, dependency, entitlement, marketing version,
+  build number, or V1.0.0 release-history change is intended by Prompt 11A.
+
 ## [1.0.0] - 2026-08-10
 
 ### Added

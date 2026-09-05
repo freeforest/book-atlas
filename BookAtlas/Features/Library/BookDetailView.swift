@@ -9,7 +9,9 @@ struct BookDetailView: View {
     let book: Book
     @ObservedObject var readingEntries: ReadingEntryStore
     var readingEntryMode: ReadingEntryPresentationMode = .manage
+    var manualRelations: ManualRelationStore? = nil
     var onShowGraph: ((UUID) -> Void)? = nil
+    var onOpenRelatedBook: ((UUID) -> Void)? = nil
 
     var body: some View {
         ScrollView {
@@ -60,6 +62,14 @@ struct BookDetailView: View {
                     }
                 }
 
+                if let manualRelations {
+                    ManualRelationsSection(
+                        book: book,
+                        store: manualRelations,
+                        openBook: onOpenRelatedBook
+                    )
+                }
+
                 ReadingEntriesSection(
                     book: book,
                     store: readingEntries,
@@ -81,10 +91,458 @@ struct BookDetailView: View {
             }
             .padding()
             .frame(maxWidth: 720, alignment: .leading)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("book-detail-view")
         }
-        .accessibilityIdentifier("book-detail-view")
+        .accessibilityIdentifier("book-detail-scroll")
         .task(id: book.id) {
             readingEntries.load(bookID: book.id)
+            manualRelations?.load(bookID: book.id)
+        }
+        .onDisappear {
+            if manualRelations?.currentBookID == book.id {
+                manualRelations?.reset()
+            }
+        }
+    }
+}
+
+private struct ManualRelationsSection: View {
+    let book: Book
+    @ObservedObject var store: ManualRelationStore
+    let openBook: ((UUID) -> Void)?
+
+    var body: some View {
+        GroupBox {
+            VStack(alignment: .leading, spacing: 12) {
+                switch store.loadState {
+                case .idle, .loading:
+                    ProgressView("正在读取手动关系…")
+                        .accessibilityIdentifier("manual-relations-loading")
+                case .failed:
+                    VStack(alignment: .leading, spacing: 8) {
+                        Label(
+                            "无法读取手动关系；书籍记录未被更改。",
+                            systemImage: "exclamationmark.triangle"
+                        )
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("manual-relations-load-error")
+                        Button("重试读取", action: store.retryLoad)
+                            .accessibilityIdentifier("retry-manual-relations")
+                    }
+                case .content:
+                    if store.allRelations.isEmpty {
+                        VStack(spacing: 8) {
+                            Label("尚无手动关系", systemImage: "link")
+                            Text("可以主动选择另一本文献，建立有方向、可删除的关系。")
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityLabel(
+                            "尚无手动关系。可以主动选择另一本文献，建立有方向、可删除的关系。"
+                        )
+                        .accessibilityIdentifier("manual-relations-empty")
+                    } else {
+                        relationGroup(
+                            title: "传出关系",
+                            emptyText: "没有从当前书籍传出的关系。",
+                            relations: store.outgoingRelations
+                        )
+                        Divider()
+                        relationGroup(
+                            title: "传入关系",
+                            emptyText: "没有指向当前书籍的关系。",
+                            relations: store.incomingRelations
+                        )
+                    }
+                }
+
+                if let statusMessage = store.statusMessage {
+                    Label(statusMessage, systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .accessibilityIdentifier("manual-relation-status")
+                }
+                if let deletionErrorMessage = store.deletionErrorMessage {
+                    Label(deletionErrorMessage, systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("manual-relation-delete-error")
+                }
+            }
+            .padding(.vertical, 6)
+        } label: {
+            HStack {
+                Label("手动关系", systemImage: "point.3.connected.trianglepath.dotted")
+                Spacer()
+                Button("新增关系…", systemImage: "plus") {
+                    store.beginCreate()
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(store.loadState != .content || store.isDeleting)
+                .accessibilityIdentifier("add-manual-relation")
+            }
+        }
+        .accessibilityIdentifier("manual-relations-section")
+        .sheet(
+            isPresented: Binding(
+                get: { store.isCreating },
+                set: { if !$0 { store.cancelCreate() } }
+            )
+        ) {
+            ManualRelationEditorSheet(sourceBook: book, store: store)
+        }
+        .confirmationDialog(
+            "删除这条手动关系？",
+            isPresented: Binding(
+                get: { store.deletionCandidate != nil },
+                set: { if !$0 { store.cancelDelete() } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("删除关系", role: .destructive) {
+                if let candidate = store.deletionCandidate {
+                    Task { await store.confirmDelete(candidate) }
+                }
+            }
+            .accessibilityIdentifier("confirm-delete-manual-relation")
+            Button("取消", role: .cancel, action: store.cancelDelete)
+                .accessibilityIdentifier("cancel-delete-manual-relation")
+        } message: {
+            Text("只删除关系记录，两本书都会保留。")
+        }
+    }
+
+    @ViewBuilder
+    private func relationGroup(
+        title: String,
+        emptyText: String,
+        relations: [ManualRelationSummary]
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.headline)
+                .accessibilityIdentifier(
+                    title == "传出关系"
+                        ? "manual-relations-outgoing-heading"
+                        : "manual-relations-incoming-heading"
+                )
+            if relations.isEmpty {
+                Text(emptyText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(relations) { relation in
+                    relationRow(relation)
+                }
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(
+            title == "传出关系"
+                ? "manual-relations-outgoing"
+                : "manual-relations-incoming"
+        )
+    }
+
+    private func relationRow(_ summary: ManualRelationSummary) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Button {
+                guard let target = store.navigationTarget(for: summary) else { return }
+                openBook?(target)
+            } label: {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(summary.otherBookTitle)
+                        .fontWeight(.medium)
+                    Text(summary.otherBookAuthor)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Text(
+                        "\(summary.relation.kind.userFacingTitle) · "
+                            + directionDescription(summary)
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    if let note = summary.relation.note {
+                        Text("备注：\(note)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.borderless)
+            .contentShape(Rectangle())
+            .accessibilityLabel(accessibilityLabel(summary))
+            .accessibilityHint("打开对端书籍详情")
+            .accessibilityIdentifier(relationRowIdentifier(summary))
+
+            Button("删除", systemImage: "trash", role: .destructive) {
+                store.beginDelete(summary)
+            }
+            .labelStyle(.iconOnly)
+            .accessibilityLabel("删除这条手动关系")
+            .accessibilityHint("只删除关系记录，两本书都会保留")
+            .accessibilityIdentifier(relationDeleteIdentifier(summary))
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    private func directionDescription(_ summary: ManualRelationSummary) -> String {
+        switch summary.direction {
+        case .outgoing:
+            "方向：当前书籍 → 目标书籍"
+        case .incoming:
+            "方向：来源书籍 → 当前书籍"
+        }
+    }
+
+    private func accessibilityLabel(_ summary: ManualRelationSummary) -> String {
+        var values = [
+            "\(summary.direction.userFacingTitle)关系",
+            summary.otherBookTitle,
+            "作者 \(summary.otherBookAuthor)",
+            "类型 \(summary.relation.kind.userFacingTitle)",
+            directionDescription(summary)
+        ]
+        if let note = summary.relation.note {
+            values.append("备注 \(note)")
+        }
+        return values.joined(separator: "，")
+    }
+
+    private func relationRowIdentifier(_ summary: ManualRelationSummary) -> String {
+        "manual-relation-row-\(summary.direction.identifierComponent)-"
+            + "\(summary.otherBookID.uuidString)-\(summary.relation.kind.rawValue)"
+    }
+
+    private func relationDeleteIdentifier(_ summary: ManualRelationSummary) -> String {
+        "delete-manual-relation-\(summary.direction.identifierComponent)-"
+            + "\(summary.otherBookID.uuidString)-\(summary.relation.kind.rawValue)"
+    }
+}
+
+private struct ManualRelationEditorSheet: View {
+    let sourceBook: Book
+    @ObservedObject var store: ManualRelationStore
+    @FocusState private var searchIsFocused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("新增手动关系")
+                .font(.title2.bold())
+                .accessibilityIdentifier("manual-relation-editor")
+            Text("当前书籍固定为关系来源。搜索结果按确定性分页读取。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            TextField(
+                "按标题、作者或 ISBN 搜索目标书籍",
+                text: Binding(
+                    get: { store.targetSearchText },
+                    set: { store.updateTargetSearchText($0) }
+                )
+            )
+            .focused($searchIsFocused)
+            .accessibilityHint("输入搜索条件后，按 Command-Return 选择第一个已显示结果")
+            .accessibilityIdentifier("manual-relation-target-search")
+
+            targetResults
+                .frame(minHeight: 180, idealHeight: 220)
+
+            Picker(
+                "关系类型",
+                selection: Binding(
+                    get: { store.selectedKind },
+                    set: { store.setKind($0) }
+                )
+            ) {
+                ForEach(ManualRelationKind.allCases, id: \.rawValue) { kind in
+                    Text(kind.userFacingTitle).tag(kind)
+                }
+            }
+            .accessibilityIdentifier("manual-relation-kind")
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("备注（可选）")
+                    .font(.caption)
+                TextEditor(
+                    text: Binding(
+                        get: { store.relationNote },
+                        set: { store.setNote($0) }
+                    )
+                )
+                .frame(height: 70)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(.quaternary)
+                }
+                .accessibilityLabel("关系备注（可选）")
+                .accessibilityIdentifier("manual-relation-note")
+            }
+
+            if let target = store.selectedTarget {
+                Text(
+                    "方向：\(sourceBook.title) → \(target.title)；"
+                        + "类型：\(store.selectedKind.userFacingTitle)"
+                )
+                .font(.callout.weight(.medium))
+                .accessibilityIdentifier("manual-relation-direction-preview")
+            } else {
+                Text("选择目标后会在保存前显示完整方向。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("manual-relation-direction-placeholder")
+            }
+
+            if let creationErrorMessage = store.creationErrorMessage {
+                Label(creationErrorMessage, systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.red)
+                    .accessibilityIdentifier("manual-relation-creation-error")
+            }
+
+            HStack {
+                Button("取消", action: store.cancelCreate)
+                    .keyboardShortcut(.cancelAction)
+                    .accessibilityIdentifier("cancel-manual-relation")
+                Spacer()
+                if store.isSaving {
+                    ProgressView()
+                        .controlSize(.small)
+                        .accessibilityLabel("正在保存手动关系")
+                }
+                if store.selectedTarget == nil {
+                    saveButton
+                        .disabled(true)
+                } else {
+                    saveButton
+                        .keyboardShortcut(.defaultAction)
+                }
+            }
+        }
+        .padding(24)
+        .frame(width: 620)
+        .frame(minHeight: 560)
+        .onAppear { searchIsFocused = true }
+    }
+
+    @ViewBuilder
+    private var targetResults: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            switch store.targetSearchState {
+            case .idle, .loading:
+                ProgressView("正在搜索本地书库…")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .accessibilityIdentifier("manual-relation-target-loading")
+            case .failed:
+                ContentUnavailableView {
+                    Label("无法搜索目标书籍", systemImage: "exclamationmark.triangle")
+                } description: {
+                    Text("搜索失败；书库未更改。")
+                } actions: {
+                    Button("重试", action: store.retryTargetSearch)
+                }
+                .accessibilityIdentifier("manual-relation-target-error")
+            case .content:
+                if store.targetBooks.isEmpty {
+                    ContentUnavailableView {
+                        Label("没有可选的目标书籍", systemImage: "books.vertical")
+                    } description: {
+                        Text("当前书籍不会出现在目标结果中；可以修改搜索词。")
+                    }
+                    .accessibilityIdentifier("manual-relation-target-empty")
+                } else {
+                    List(store.targetBooks) { target in
+                        targetButton(for: target)
+                    }
+                    .accessibilityIdentifier("manual-relation-target-list")
+
+                    HStack {
+                        Text(store.targetResultDescription)
+                            .font(.caption)
+                            .accessibilityIdentifier("manual-relation-target-count")
+                        Spacer()
+                        if store.isLoadingMoreTargets {
+                            ProgressView()
+                                .controlSize(.small)
+                                .accessibilityLabel("正在载入更多目标书籍")
+                        } else if store.hasMoreTargets {
+                            Button(
+                                store.targetLoadMoreFailed ? "重试" : "加载更多",
+                                action: store.loadMoreTargets
+                            )
+                            .accessibilityHint("载入下一页，已显示的目标保持不变")
+                            .accessibilityIdentifier("manual-relation-target-load-more")
+                        } else {
+                            Text("已全部显示")
+                                .font(.caption)
+                                .accessibilityIdentifier("manual-relation-target-all-loaded")
+                        }
+                        if store.selectedTarget == nil {
+                            Button(
+                                "选择首个显示结果",
+                                action: store.selectFirstTargetFromKeyboard
+                            )
+                            .keyboardShortcut(.return, modifiers: [.command])
+                            .accessibilityHint("快捷键 Command-Return")
+                            .accessibilityIdentifier(
+                                "select-first-manual-relation-target"
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var saveButton: some View {
+        Button("保存关系") {
+            Task { await store.saveCreation() }
+        }
+        .disabled(store.isSaving)
+        .accessibilityIdentifier("save-manual-relation")
+    }
+
+    private func targetButton(for target: Book) -> some View {
+        let isSelected = store.selectedTargetID == target.id
+        return Button {
+            store.selectTarget(target.id)
+        } label: {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(target.title)
+                Text(target.author)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let isbn = target.isbn {
+                    Text("ISBN \(isbn)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                isSelected
+                    ? Color.accentColor.opacity(0.14)
+                    : Color.clear
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(
+            "目标书籍 \(target.title)，作者 \(target.author)，\(isSelected ? "已选择" : "未选择")"
+        )
+        .accessibilityValue(isSelected ? "已选择" : "未选择")
+        .accessibilityIdentifier(
+            "manual-relation-target-\(target.id.uuidString)"
+        )
+    }
+}
+
+private extension ManualRelationDirection {
+    var identifierComponent: String {
+        switch self {
+        case .outgoing: "outgoing"
+        case .incoming: "incoming"
         }
     }
 }

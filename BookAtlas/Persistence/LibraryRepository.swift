@@ -287,6 +287,7 @@ enum BookRepositoryError: Error, Equatable {
     case entityNotFound
     case invalidMerge
     case invalidQuery
+    case manualRelationConflict
 }
 
 private struct LibraryQueryComponents {
@@ -492,6 +493,51 @@ final class BookRepository {
             \(components.whereClause)
             """,
             bindings: components.bindings
+        ) ?? 0
+        guard rawTotal >= 0, rawTotal <= Int64(Int.max) else {
+            throw BookRepositoryError.invalidStoredRecord
+        }
+        return LibraryPage(
+            books: books,
+            totalCount: Int(rawTotal),
+            offset: query.offset
+        )
+    }
+
+    func queryManualRelationTargetPage(
+        _ query: LibraryQuery,
+        excludingBookID: UUID
+    ) throws -> LibraryPage {
+        let limit = try checkedLimit(query.limit)
+        guard query.offset >= 0 else {
+            throw BookRepositoryError.invalidQuery
+        }
+
+        let components = queryComponents(for: query)
+        let whereClause = components.whereClause.isEmpty
+            ? "WHERE books.id <> ?"
+            : "\(components.whereClause) AND books.id <> ?"
+        var predicateBindings = components.bindings
+        predicateBindings.append(.text(excludingBookID.uuidString))
+        var pageBindings = predicateBindings
+        pageBindings.append(.integer(Int64(limit)))
+        pageBindings.append(.integer(Int64(query.offset)))
+        let books = try database.query(
+            """
+            SELECT \(bookColumns) FROM books
+            \(whereClause)
+            ORDER BY \(components.orderClause)
+            LIMIT ? OFFSET ?
+            """,
+            bindings: pageBindings,
+            row: decodeBook
+        )
+        let rawTotal = try database.scalarInt(
+            """
+            SELECT COUNT(*) FROM books
+            \(whereClause)
+            """,
+            bindings: predicateBindings
         ) ?? 0
         guard rawTotal >= 0, rawTotal <= Int64(Int.max) else {
             throw BookRepositoryError.invalidStoredRecord
@@ -1010,6 +1056,19 @@ final class BookRepository {
 
     @discardableResult
     func addManualRelation(_ relation: ManualBookRelation) throws -> ManualBookRelation {
+        guard try entityExists(table: "books", id: relation.sourceBookID),
+              try entityExists(table: "books", id: relation.targetBookID)
+        else {
+            throw BookRepositoryError.bookNotFound
+        }
+        guard try existingRelation(
+            sourceID: relation.sourceBookID,
+            targetID: relation.targetBookID,
+            kind: relation.kind,
+            excluding: nil
+        ) == nil else {
+            throw BookRepositoryError.manualRelationConflict
+        }
         try database.execute(
             """
             INSERT INTO manual_book_relations (
@@ -1025,8 +1084,78 @@ final class BookRepository {
         return relation
     }
 
-    func manualRelations(forBookID bookID: UUID) throws -> [ManualBookRelation] {
+    func manualRelationSummaries(forBookID bookID: UUID) throws
+        -> [ManualRelationSummary]
+    {
         try database.query(
+            """
+            SELECT relation.id,
+                   relation.source_book_id,
+                   relation.target_book_id,
+                   relation.relation_kind,
+                   relation.note,
+                   relation.created_at,
+                   other.id,
+                   other.title,
+                   other.author
+            FROM manual_book_relations AS relation
+            JOIN books AS other
+              ON other.id = CASE
+                  WHEN relation.source_book_id = ? THEN relation.target_book_id
+                  ELSE relation.source_book_id
+              END
+            WHERE relation.source_book_id = ? OR relation.target_book_id = ?
+            ORDER BY CASE WHEN relation.source_book_id = ? THEN 0 ELSE 1 END ASC,
+                     other.title COLLATE NOCASE ASC,
+                     other.author COLLATE NOCASE ASC,
+                     relation.relation_kind ASC,
+                     relation.created_at ASC,
+                     relation.id ASC
+            """,
+            bindings: Array(repeating: .text(bookID.uuidString), count: 4)
+        ) { row in
+            guard let relationID = UUID(uuidString: row.string(at: 0) ?? ""),
+                  let sourceBookID = UUID(uuidString: row.string(at: 1) ?? ""),
+                  let targetBookID = UUID(uuidString: row.string(at: 2) ?? ""),
+                  let kind = ManualRelationKind(rawValue: row.string(at: 3) ?? ""),
+                  let createdAt = StorageDateCodec.decode(row.string(at: 5)),
+                  let otherBookID = UUID(uuidString: row.string(at: 6) ?? ""),
+                  let otherBookTitle = row.string(at: 7),
+                  let otherBookAuthor = row.string(at: 8)
+            else {
+                throw BookRepositoryError.invalidStoredRecord
+            }
+            let direction: ManualRelationDirection
+            if sourceBookID == bookID,
+               targetBookID == otherBookID
+            {
+                direction = .outgoing
+            } else if targetBookID == bookID,
+                      sourceBookID == otherBookID
+            {
+                direction = .incoming
+            } else {
+                throw BookRepositoryError.invalidStoredRecord
+            }
+            return ManualRelationSummary(
+                relation: try ManualBookRelation(
+                    id: relationID,
+                    sourceBookID: sourceBookID,
+                    targetBookID: targetBookID,
+                    kind: kind,
+                    note: row.string(at: 4),
+                    createdAt: createdAt
+                ),
+                otherBookID: otherBookID,
+                otherBookTitle: otherBookTitle,
+                otherBookAuthor: otherBookAuthor,
+                direction: direction
+            )
+        }
+    }
+
+    func manualRelations(forBookID bookID: UUID) throws -> [ManualBookRelation] {
+        return try database.query(
             """
             SELECT id, source_book_id, target_book_id, relation_kind, note, created_at
             FROM manual_book_relations
@@ -1693,22 +1822,26 @@ final class BookRepository {
         sourceID: UUID,
         targetID: UUID,
         kind: ManualRelationKind,
-        excluding relationID: UUID
+        excluding relationID: UUID?
     ) throws -> ManualBookRelation? {
-        try database.query(
+        let exclusionClause = relationID == nil ? "" : "AND id <> ?"
+        var bindings: [SQLiteValue] = [
+            .text(sourceID.uuidString),
+            .text(targetID.uuidString),
+            .text(kind.rawValue)
+        ]
+        if let relationID {
+            bindings.append(.text(relationID.uuidString))
+        }
+        return try database.query(
             """
             SELECT id, source_book_id, target_book_id, relation_kind, note, created_at
             FROM manual_book_relations
             WHERE source_book_id = ? AND target_book_id = ?
-              AND relation_kind = ? AND id <> ?
+              AND relation_kind = ? \(exclusionClause)
             LIMIT 1
             """,
-            bindings: [
-                .text(sourceID.uuidString),
-                .text(targetID.uuidString),
-                .text(kind.rawValue),
-                .text(relationID.uuidString)
-            ],
+            bindings: bindings,
             row: decodeRelation
         ).first
     }
