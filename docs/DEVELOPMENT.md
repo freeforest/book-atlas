@@ -767,3 +767,34 @@ Current read-only audit verified Schema 5 with migrations 1–5, CSV `bookatlas-
 Project metadata inventory excluded `.git`: 194 entries, no symlinks or database/backup/log/certificate/key/result-bundle/application artifact candidates. Four `.DS_Store` files and an experimental `.build` cache skeleton/lock remain nondelivery metadata candidates; their contents were not read or deleted. Ignore rules alone cannot establish their pending-commit exclusion. Known text/fictional-fixture scanning found no actual credential or machine-specific home path in that scope; this is not an absolute privacy guarantee. Final scope and Git checks remain PENDING with the owner; prior status/diff-check execution source remains unconfirmed.
 
 Remaining UNTESTED: in-flight save busy-state UI, Escape/sheet dismissal during the write, and real mouse/keyboard manual QA. Full UI acceptance remains BLOCKED and needs separate controller authorization. Existing U2 cancellation coverage does not replace busy-save coverage. Historical connection loss, subsequent authorization errors, missing input characters and cancellation retain separately UNKNOWN root causes; three passing probes must not be aggregated into full-suite acceptance. Stop here; no Prompt 11B authorization.
+
+## 2026-09-05 — BUSY-UI-AND-FULL-GATE-01: BLOCKED at stage 1
+
+The authorized local test-support changes are retained in LibraryStore.swift (optional relation-store injection, guarded launch switch, Debug-only non-writing asynchronous fixture), BookDetailView.swift (saving indicator identifier only), LibraryStoreTests.swift (four new test declarations), and BookAtlasUITests.swift (one busy-state test and optional launch flag). ManualRelationStore.swift and its existing 12 tests were not changed. Original 44 UI identities remain; source now declares 45. No original assertion or performance workload was reduced. No UI execution occurred.
+
+The first directed run completed with **44 executed / 43 passed / 1 failed / 0 skipped**, original xcodebuild exit **65**. The full summary and tree each parsed with exit **0**. LibraryStoreTests: 32 executed, 31 passed, 1 failed; ManualRelationStoreTests: 12/12 passed. The failing identity was `LibraryStoreTests/testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture()`: databaseUnavailable rather than content, nil rather than the fixed source identity, and idle rather than loaded relation state.
+
+Current Debug configuration does not define the Swift `DEBUG` compilation condition. Actual SwiftDriver invocations for app and unit tests contain no `-D DEBUG`. Consequently the new `#if DEBUG` fixture and its handshake test were excluded; the valid launch switch was rejected by the non-Debug branch. Four unit-test declarations were added but only three were compiled/discovered. The excluded handshake is **UNTESTED**, not passed or skipped. A Debug configuration name alone does not define that condition.
+
+Satisfying the explicitly required `#if DEBUG` boundary requires controller authorization to establish the Debug compilation condition for the app and relevant tests while leaving Release undefined. Project settings are outside this task's allowed files. No project edit, command-line macro override, correction retry or later gate was attempted. This is a scope/configuration prerequisite blocker, not evidence that the previously repaired save semantics failed.
+
+Exact local commands and paths are retained in `<EVIDENCE_DIR>/EVIDENCE.md`. The once-executed command, with the machine-local temporary root replaced by a reusable placeholder:
+
+```sh
+set -o pipefail
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath "$EVIDENCE_DIR/targeted-dd" -resultBundlePath "$EVIDENCE_DIR/targeted.xcresult" -only-testing:BookAtlasTests/ManualRelationStoreTests -only-testing:BookAtlasTests/LibraryStoreTests > "$EVIDENCE_DIR/targeted.log" 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > "$EVIDENCE_DIR/targeted-exit.txt"
+exit "$bookatlas_exit"
+```
+
+The summary and full tree were parsed separately, without rerunning tests:
+
+```sh
+xcrun xcresulttool get test-results summary --path "$EVIDENCE_DIR/targeted.xcresult" --compact
+xcrun xcresulttool get test-results tests --path "$EVIDENCE_DIR/targeted.xcresult" --compact
+```
+
+Before/after SHA-256 inventories cover 63 production/test/configuration files. Only the four authorized source/test files differ; the post-test manifest SHA-256 is `5c7b60de79a478abf60b263745e077d659bfea9cb1cca62f50d25d4f20f8d723`. No source edit followed the test. This is not a successful stage-2 freeze or a complete pending-change audit.
+
+Complete non-UI, four-test relation UI, full UI, Release and incremental product audit were **not executed because stage 1 failed and needs scope expansion**; these are not skipped test counts. Busy UI and the excluded actor remain UNTESTED. Test compilation provides Debug evidence only for actually compiled code. Prior Release/non-UI evidence does not directly cover the new changes. Historical UI causes remain separately UNKNOWN and were not rediagnosed. Human mouse/keyboard acceptance, owner Git and final pending-delivery review remain outstanding. No git/gh, `.git` access, cleanup, system-setting change or publication occurred. Prompt 11A remains BLOCKED; stop for controller review, with no Prompt 11B work.

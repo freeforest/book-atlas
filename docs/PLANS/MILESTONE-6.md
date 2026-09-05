@@ -194,3 +194,21 @@ xcrun xcresulttool get test-results tests --path /tmp/bookatlas-p11a-final-g6-fu
 - `UNTESTED`：保存忙碌态的专项原生 UI（保存中禁用、Escape、sheet dismissal）、真实鼠标键盘人工检查。完整 UI 门禁仍 `BLOCKED`；旧应用连接中断、后续授权错误、丢字符和取消的根因继续分别保留 `UNKNOWN`，本次通过不能将其归并或宣称修复。
 - Git 全部由用户手动接管。本轮未执行 git/gh、未访问 `.git`；此前 status/diff-check 的执行来源仍待确认，不能标成 USER-PROVIDED。用户尚未提供新的完整变更清单、status 和 diff-check，均 `PENDING`；未 commit、push、tag 或发布。
 - **Release 与有限 UI 恢复探针完成，等待主控决定后续验收；Prompt 11A 尚未完成整体验收，整体仍 BLOCKED。** 本轮停止，不启动 Prompt 11B。
+
+## 2026-09-05 — BUSY-UI-AND-FULL-GATE-01（BLOCKED）
+
+本轮授权最小 Debug 内存测试替身及一个原生忙碌态 UI 用例，保留原有 44 项 UI 身份和 12 项 ManualRelationStore 测试。仅 LibraryStore 的测试注入/启动隔离、BookDetailView 的稳定标识、LibraryStoreTests、BookAtlasUITests 及本计划/DEVELOPMENT 在修改范围内。不修复生产缺陷，不改保存语义、工程、Schema、格式、依赖、权限或版本。
+
+验证顺序：Store 定向（源码/单元问题最多一次有证据修正）；冻结代码后一次完整非 UI；取得本轮新会话确认后一次 4 项关系 UI；通过且同一冻结状态后一次完整 UI（原 44 项加新 1 项）；通过后同状态一次 Release 与增量核验。UI 不重跑、不拆批替代完整门禁、不改变性能负载。后续阶段以实际前置结果为准，尚未执行的门禁不是通过。真实人工 UI、完整待提交范围和 Git 操作仍由用户接管；不清理未知文件、不启动 Prompt 11B。
+
+### 本轮停止证据
+
+- 定向非 UI 一次运行：44 executed、43 passed、1 failed、0 skipped；原始 xcodebuild exit 65，summary 和完整 tests 解析各 exit 0。ManualRelationStoreTests 原有 12 项全部通过；LibraryStoreTests 32 项中 31 通过、1 失败。不是通过门禁。
+- 失败身份：`LibraryStoreTests/testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture()`。合法显式内存参数返回 databaseUnavailable，选中书籍为 nil、关系状态为 idle；三个断言失败归于同一测试。
+- 根因 `VERIFIED`：当前工程 Debug 配置未定义 Swift `DEBUG` 条件，实际 BookAtlas 与 BookAtlasTests 的 SwiftDriver 命令也没有 `-D DEBUG`。因此 `#if DEBUG` 替身和新增握手测试没有进入此次编译；新增有效入口进入 `#if !DEBUG` 拒绝分支。源码新增四项单元测试，但实际只发现三项，不能把未编译的握手用例算为 passed 或 skipped。
+- 要满足明确要求的 `#if DEBUG` 测试替身，需要另外授权 Debug 编译条件（覆盖应用与相关测试，Release 保持不定义）。工程配置不在本轮范围内；未用命令行宏绕过边界，未修改工程，未使用一次修正重跑额度。保留局部修改，等待主控决定扩展范围和后续预算。
+- 原有 44 项 UI 身份全部保留，源码增加 `testManualRelationSubmittedSaveDisablesEditingCancelAndEscape` 后为 45 项。没有运行任何 UI，也未重复 U1–U3；忙碌状态仍 `UNTESTED`。新增界面代码仅为 ProgressView 的 accessibility identifier。
+- 测试支撑设计：LibraryStore 可注入 ManualRelationStore；专用开关须显式内存参数且排除性能命令；无效组合在文件库解析前拒绝，Release 拒绝该开关。Debug actor 使用每实例 AsyncStream 等待，正常保存才进入 add，绝不转发写入；显式 finish 或调用任务取消均以错误结束，UI 测试结束仅终止其虚构内存进程，不宣称取消真实写入。该 actor 因上述条件未被编译，其运行行为 `UNTESTED`。
+- 63 文件前后清单仅四个授权源码/测试文件变化；ManualRelationStore 及其 12 项测试、工程/scheme、entitlement 保持原校验值。测试后无源码修改；当前清单摘要 `5c7b60de79a478abf60b263745e077d659bfea9cb1cca62f50d25d4f20f8d723`，不是阶段 2 已冻结/通过的证明。
+- 完整非 UI、4 项关系 UI、完整 UI、Release 和增量产物审计：**未执行，因阶段 1 未通过并需范围扩展**。本次 Debug 测试构建成功只能证明实际编译部分，不能证明被条件排除的替身。
+- 日志及结果包采用新的 `<EVIDENCE_DIR>/targeted.log`、`targeted.xcresult`，精确本机路径留在本地交付；命令见 DEVELOPMENT。旧证据保留，不复查旧故障根因。Git/完整待提交范围仍 PENDING；本轮无 git/gh、无 `.git` 访问、无提交或发布。Prompt 11A 整体仍 BLOCKED，停止等待主控。

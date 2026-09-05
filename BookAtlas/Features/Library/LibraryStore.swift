@@ -1,6 +1,57 @@
 import Foundation
 import SwiftUI
 
+#if DEBUG
+/// Per-launch, memory-only busy UI fixture. Never submits a relation to the catalog.
+/// Finishing the wait or cancelling the caller throws; neither means a real write rolled back.
+/// The UI test terminates its isolated app after assertions, discarding all fixture state.
+actor SuspendedUITestManualRelationAccess: ManualRelationAccessing {
+    private let catalog: any LibraryCataloging
+    private var pending: AsyncStream<Void>.Continuation?
+    private var submissionWaiters: [CheckedContinuation<Void, Never>] = []
+    private(set) var submissionCount = 0
+
+    init(catalog: any LibraryCataloging) {
+        self.catalog = catalog
+    }
+
+    func relations(for bookID: UUID) async throws -> [ManualRelationSummary] {
+        try await catalog.manualRelationSummaries(for: bookID)
+    }
+
+    func targetPage(matching query: LibraryQuery, excludingBookID: UUID) async throws -> LibraryPage {
+        try await catalog.manualRelationTargetPage(query, excludingBookID: excludingBookID)
+    }
+
+    func add(_ relation: ManualBookRelation) async throws -> ManualBookRelation {
+        try Task.checkCancellation()
+        guard pending == nil else { throw CancellationError() }
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        pending = continuation
+        submissionCount += 1
+        submissionWaiters.forEach { $0.resume() }
+        submissionWaiters.removeAll()
+        var iterator = stream.makeAsyncIterator()
+        _ = await iterator.next() // Cancellation also ends the stream; no timer or IPC.
+        pending = nil
+        throw CancellationError()
+    }
+
+    func delete(_ relation: ManualBookRelation) async throws {
+        throw CancellationError()
+    }
+
+    func waitUntilSubmitted() async {
+        if pending != nil { return }
+        await withCheckedContinuation { submissionWaiters.append($0) }
+    }
+
+    func finishWithoutWriting() {
+        pending?.finish()
+    }
+}
+#endif
+
 enum LibraryUserFacingError: Error, Equatable {
     case databaseUnavailable
     case loadFailed
@@ -196,13 +247,14 @@ final class LibraryStore: ObservableObject {
     init(
         catalog: (any LibraryCataloging)? = nil,
         initialError: LibraryUserFacingError? = nil,
-        readingEntries: ReadingEntryStore? = nil
+        readingEntries: ReadingEntryStore? = nil,
+        manualRelations: ManualRelationStore? = nil
     ) {
         self.catalog = catalog
         organizer = CatalogOrganizerStore(catalog: catalog)
         portability = PortabilityStore(catalog: catalog)
         graph = GraphStore(catalog: catalog)
-        manualRelations = ManualRelationStore(catalog: catalog)
+        self.manualRelations = manualRelations ?? ManualRelationStore(catalog: catalog)
         let primaryReadingEntries = readingEntries ?? ReadingEntryStore(catalog: catalog)
         self.readingEntries = primaryReadingEntries
         duplicateReadingEntries = primaryReadingEntries.makeScopedStore()
@@ -232,6 +284,19 @@ final class LibraryStore: ObservableObject {
             let performanceCommand = try PerformanceLibraryCommand.parse(
                 arguments: arguments
             )
+            let requestsSuspendedRelationSave = arguments.contains(
+                "-BookAtlasSuspendManualRelationSave"
+            )
+            if requestsSuspendedRelationSave {
+                // Reject before resolving any file-backed database, including in Release.
+                guard arguments.contains("-BookAtlasUseInMemoryStore"),
+                      performanceCommand == nil else {
+                    return LibraryStore(initialError: .databaseUnavailable)
+                }
+                #if !DEBUG
+                return LibraryStore(initialError: .databaseUnavailable)
+                #endif
+            }
             let usesTestStore = arguments.contains("-BookAtlasUseInMemoryStore")
                 || environment["XCTestConfigurationFilePath"] != nil
             let usesTestAdapters = usesTestStore || performanceCommand != nil
@@ -324,7 +389,19 @@ final class LibraryStore: ObservableObject {
             } else {
                 readingEntries = nil
             }
-            let store = LibraryStore(catalog: catalog, readingEntries: readingEntries)
+            var manualRelations: ManualRelationStore?
+            #if DEBUG
+            if requestsSuspendedRelationSave {
+                manualRelations = ManualRelationStore(
+                    access: SuspendedUITestManualRelationAccess(catalog: catalog)
+                )
+            }
+            #endif
+            let store = LibraryStore(
+                catalog: catalog,
+                readingEntries: readingEntries,
+                manualRelations: manualRelations
+            )
             if arguments.contains("-BookAtlasSeedPortabilityPreview") {
                 store.portability.seedFictionalPreviewForUITesting()
             }

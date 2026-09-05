@@ -410,6 +410,7 @@ private struct ManualRelationEditorSheet: View {
                     ProgressView("正在保存，暂不能取消")
                         .controlSize(.small)
                         .accessibilityLabel("正在保存手动关系，完成前不能取消")
+                        .accessibilityIdentifier("manual-relation-saving")
                 }
                 if store.selectedTarget == nil {
                     saveButton

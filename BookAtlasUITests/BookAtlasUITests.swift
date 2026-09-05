@@ -1178,6 +1178,58 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testManualRelationSubmittedSaveDisablesEditingCancelAndEscape() {
+        let app = launchInMemoryApp(seedManualRelations: true, suspendManualRelationSave: true)
+        // This discards a non-writing fixture process, not a cancellation/rollback assertion.
+        defer { app.terminate() }
+        scrollToElement("add-manual-relation", in: app)
+        app.typeKey("r", modifierFlags: [.command, .shift])
+        let editor = element("manual-relation-editor", in: app)
+        let search = element("manual-relation-target-search", in: app)
+        XCTAssertTrue(editor.waitForExistence(timeout: 3))
+        XCTAssertTrue(waitForKeyboardFocus(search, timeout: 3))
+        search.typeText("9780000000202")
+        XCTAssertEqual(search.value as? String, "9780000000202")
+        let target = element("manual-relation-target-00000000-0000-0000-0000-000000000202", in: app)
+        XCTAssertTrue(target.waitForExistence(timeout: 5))
+        search.typeKey(.return, modifierFlags: .command)
+        XCTAssertTrue(waitForAccessibilityText(target, containing: "已选择", timeout: 3))
+        let note = element("manual-relation-note", in: app)
+        let draft = "Fictional busy relation note"
+        replaceText(in: note, with: draft, using: app)
+        XCTAssertEqual(note.value as? String, draft)
+        let preview = element("manual-relation-direction-preview", in: app)
+        XCTAssertTrue(accessibilityText(of: preview).contains("方向：A101 → B202"))
+        XCTAssertTrue(accessibilityText(of: preview).contains("类型：相关"))
+        let save = element("save-manual-relation", in: app)
+        XCTAssertTrue(save.isEnabled)
+        save.click()
+        let saving = element("manual-relation-saving", in: app)
+        XCTAssertTrue(saving.waitForExistence(timeout: 3))
+        XCTAssertTrue(accessibilityText(of: saving).contains("正在保存"))
+        for identifier in [
+            "save-manual-relation", "cancel-manual-relation",
+            "manual-relation-target-search", "manual-relation-kind", "manual-relation-note",
+            "manual-relation-target-00000000-0000-0000-0000-000000000202"
+        ] {
+            let control = element(identifier, in: app)
+            XCTAssertTrue(control.exists, identifier)
+            XCTAssertFalse(control.isEnabled, identifier)
+        }
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(editor.exists)
+        XCTAssertTrue(saving.exists)
+        XCTAssertFalse(save.isEnabled)
+        XCTAssertEqual(search.value as? String, "9780000000202")
+        XCTAssertEqual(note.value as? String, draft)
+        XCTAssertTrue(accessibilityText(of: preview).contains("方向：A101 → B202"))
+        XCTAssertTrue(accessibilityText(of: preview).contains("类型：相关"))
+        XCTAssertFalse(element("manual-relation-creation-error", in: app).exists)
+        XCTAssertFalse(element("manual-relation-status", in: app).exists)
+        XCTAssertFalse(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "书库未更改")).firstMatch.exists)
+    }
+
+    @MainActor
     func testManualRelationFilteredCounterpartUsesExactFocusAndClearFlow() {
         let app = launchInMemoryApp(seedManualRelations: true)
         let incomingID =
@@ -1951,7 +2003,8 @@ final class BookAtlasUITests: XCTestCase {
         seedReadingEntries: Bool = false,
         seedPagination: Bool = false,
         seedManualRelations: Bool = false,
-        focusMissingBook: Bool = false
+        focusMissingBook: Bool = false,
+        suspendManualRelationSave: Bool = false
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = [
@@ -1993,6 +2046,9 @@ final class BookAtlasUITests: XCTestCase {
         }
         if focusMissingBook {
             app.launchArguments.append("-BookAtlasFocusMissingBookUITestState")
+        }
+        if suspendManualRelationSave {
+            app.launchArguments.append("-BookAtlasSuspendManualRelationSave")
         }
         app.launch()
         return app

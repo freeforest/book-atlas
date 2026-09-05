@@ -4,6 +4,109 @@ import XCTest
 
 @MainActor
 final class LibraryStoreTests: XCTestCase {
+    func testSuspendedRelationSwitchRejectsInvalidCombinationsBeforeDatabaseResolution() {
+        let flag = "-BookAtlasSuspendManualRelationSave"
+        let combinations = [
+            [flag],
+            [flag, "-BookAtlasPerformanceUseExistingLibrary", "00000000-0000-0000-0000-000000000909"],
+            [flag, "-BookAtlasUseInMemoryStore", "-BookAtlasPerformanceUseExistingLibrary", "00000000-0000-0000-0000-000000000909"],
+            [flag, "-BookAtlasUseInMemoryStore", "-BookAtlasPerformanceUnknown"]
+        ]
+        for arguments in combinations {
+            var resolvedProduction = false
+            let store = LibraryStore.makeApplicationStore(
+                arguments: arguments,
+                environment: ["XCTestConfigurationFilePath": "fictional-test-environment"],
+                productionDatabaseURL: {
+                    resolvedProduction = true
+                    throw PerformanceLibraryError.unsafeTemporaryLocation
+                }
+            )
+            XCTAssertFalse(resolvedProduction)
+            XCTAssertEqual(store.loadingState, .failed(.databaseUnavailable))
+        }
+    }
+
+    func testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture() async {
+        var resolvedProduction = false
+        let store = LibraryStore.makeApplicationStore(
+            arguments: ["-BookAtlasUseInMemoryStore", "-BookAtlasSuspendManualRelationSave", "-BookAtlasSeedManualRelationUITestData"],
+            environment: [:],
+            productionDatabaseURL: {
+                resolvedProduction = true
+                throw PerformanceLibraryError.unsafeTemporaryLocation
+            }
+        )
+        await store.waitForPendingWork()
+        XCTAssertFalse(resolvedProduction)
+        XCTAssertEqual(store.loadingState, .content)
+        XCTAssertEqual(store.selectedBookID, UUID(uuidString: "00000000-0000-0000-0000-000000000101"))
+        XCTAssertEqual(store.manualRelations.loadState, .content)
+    }
+
+    func testDefaultApplicationPathStillUsesProvidedTemporaryDatabaseAndRealRelationAccess() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("fictional.sqlite")
+        let repository = try BookRepository(databaseURL: url)
+        let source = try repository.create(BookDraft(title: "Fictional source", author: "Fictional author"))
+        let target = try repository.create(BookDraft(title: "Fictional target", author: "Fictional writer"))
+        var resolutionCount = 0
+        let store = LibraryStore.makeApplicationStore(arguments: [], environment: [:], productionDatabaseURL: {
+            resolutionCount += 1
+            return url
+        })
+        await store.waitForPendingWork()
+        XCTAssertEqual(resolutionCount, 1)
+        store.manualRelations.load(bookID: source.id)
+        await store.manualRelations.waitForPendingWork()
+        store.manualRelations.beginCreate()
+        await store.manualRelations.waitForPendingWork()
+        store.manualRelations.selectTarget(target.id)
+        let saved = await store.manualRelations.saveCreation()
+        XCTAssertTrue(saved)
+        XCTAssertEqual(store.manualRelations.outgoingRelations.count, 1)
+    }
+
+    #if DEBUG
+    func testSuspendedRelationAccessHandshakeReleaseAndCancellationNeverWrite() async throws {
+        let repository = try BookRepository.inMemory()
+        let source = try repository.create(BookDraft(title: "Fictional source", author: "Fictional author"))
+        let target = try repository.create(BookDraft(title: "Fictional target", author: "Fictional writer"))
+        let catalog = LibraryCatalogService(repository: repository)
+        let access = SuspendedUITestManualRelationAccess(catalog: catalog)
+        let store = LibraryStore(catalog: catalog, manualRelations: ManualRelationStore(access: access))
+        await store.waitForPendingWork()
+        store.manualRelations.load(bookID: source.id)
+        await store.manualRelations.waitForPendingWork()
+        store.manualRelations.beginCreate()
+        await store.manualRelations.waitForPendingWork()
+        store.manualRelations.selectTarget(target.id)
+        let first = Task { await store.manualRelations.saveCreation() }
+        await access.waitUntilSubmitted()
+        XCTAssertTrue(store.manualRelations.isSaving)
+        let before = try await catalog.manualRelationSummaries(for: source.id)
+        XCTAssertTrue(before.isEmpty)
+        await access.finishWithoutWriting()
+        let firstResult = await first.value
+        XCTAssertFalse(firstResult)
+        XCTAssertFalse(store.manualRelations.isSaving)
+        let second = Task { await store.manualRelations.saveCreation() }
+        await access.waitUntilSubmitted()
+        second.cancel()
+        let secondResult = await second.value
+        XCTAssertFalse(secondResult)
+        XCTAssertFalse(store.manualRelations.isSaving)
+        let count = await access.submissionCount
+        XCTAssertEqual(count, 2)
+        let after = try await catalog.manualRelationSummaries(for: source.id)
+        XCTAssertTrue(after.isEmpty)
+        store.manualRelations.cancelCreate()
+        XCTAssertFalse(store.manualRelations.isCreating)
+    }
+    #endif
+
     func testListSelectionStateSynchronizesProgrammaticSelectionAndCoalescesRapidInput() {
         let first = UUID(uuidString: "56000000-0000-0000-0000-000000000001")!
         let second = UUID(uuidString: "56000000-0000-0000-0000-000000000002")!
