@@ -212,3 +212,15 @@ xcrun xcresulttool get test-results tests --path /tmp/bookatlas-p11a-final-g6-fu
 - 63 文件前后清单仅四个授权源码/测试文件变化；ManualRelationStore 及其 12 项测试、工程/scheme、entitlement 保持原校验值。测试后无源码修改；当前清单摘要 `5c7b60de79a478abf60b263745e077d659bfea9cb1cca62f50d25d4f20f8d723`，不是阶段 2 已冻结/通过的证明。
 - 完整非 UI、4 项关系 UI、完整 UI、Release 和增量产物审计：**未执行，因阶段 1 未通过并需范围扩展**。本次 Debug 测试构建成功只能证明实际编译部分，不能证明被条件排除的替身。
 - 日志及结果包采用新的 `<EVIDENCE_DIR>/targeted.log`、`targeted.xcresult`，精确本机路径留在本地交付；命令见 DEVELOPMENT。旧证据保留，不复查旧故障根因。Git/完整待提交范围仍 PENDING；本轮无 git/gh、无 `.git` 访问、无提交或发布。Prompt 11A 整体仍 BLOCKED，停止等待主控。
+
+## 2026-09-05 — DEBUG-CONDITION-AND-GATE-CONTINUE-01（BLOCKED）
+
+- 本轮仅在 PBXProject Debug `BA0000000000000000000401` 插入 `SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";`。生产/测试源码和断言、Release 配置、scheme、签名、权限、版本等未修改；另仅追加两份授权文档。
+- 修改前 63 文件与上轮 after 清单一致；条件扫描仅发现已知等待替身、启动隔离和握手测试。工程 plutil 检查 exit 0，普通字节比较确认仅一项插入。修改前后各一次 Debug/Release 全目标 showBuildSettings 均 exit 0：三个唯一目标 Debug 均继承 DEBUG，且只有该设置变化；Release 均不含 DEBUG，其他配置无差异。
+- 实际 SwiftDriver 命令确认应用、单元测试及 UI 测试目标均带 `-DDEBUG`（等价于 `-D DEBUG`），未通过命令行或环境临时注入。配置修正已生效。
+- 唯一一次 Store 定向修正运行完整结束：**45 executed、44 passed、1 failed、0 skipped**，原始进程 **exit 65**；summary 和完整 tests 解析各 **exit 0**。ManualRelationStoreTests 12/12，LibraryStoreTests 32/33。新增四项均实际发现并执行，尤其握手 `testSuspendedRelationAccessHandshakeReleaseAndCancellationNeverWrite` 已通过。旧 44/43/1 失败包及其 exit 65 原样保留。
+- 唯一失败为 `testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture` 第 44 行：关系状态 idle，预期 content。书库 content、固定 UUID 和不访问生产路径的断言本次未失败。只读源码表明关系加载由 BookDetailView `.task(id:)` 触发；该单元测试仅构造 Store 并等待已有任务，未挂载详情或显式调用关系 load，故断言缺少生命周期前置。不据此认定新的生产保存缺陷。未修改测试或再次运行。
+- 配置修正加本次运行已消耗剩余唯一一次修正重跑额度。**完整非 UI、4 项关系 UI、完整 UI、Release 与增量产物审计均未执行，因定向前置未通过**，不是测试跳过计数。没有启动 UI 或沿用旧会话确认。
+- 测试对应 63 文件清单摘要 `d523ef061aadcb6ba69df83f3021fbf4415467b9aa164ed609b479b33362abbc`，测试后全数一致；本轮只有工程该项变化。阶段 2 的通过后冻结尚未发生，不能将此失败运行当成最终门禁证据。
+- 忙碌态原生 UI 仍 UNTESTED；Release 实际编译、替身排除、两架构产物权限仍 NOT VERIFIED，本轮静态 Release 设置核验不能替代构建。Intel 实机 NOT VERIFIED；真实人工检查、Git 和完整待提交范围 PENDING。旧 UI 根因分别 UNKNOWN，本轮不追查。
+- 命令与证据位置见 DEVELOPMENT 追加记录及临时交付文件。无 git/gh、无 `.git` 访问、无清理、系统调整、提交或发布。**Prompt 11A 仍 BLOCKED，停止等待主控；不开始 Prompt 11B。**

@@ -798,3 +798,40 @@ xcrun xcresulttool get test-results tests --path "$EVIDENCE_DIR/targeted.xcresul
 Before/after SHA-256 inventories cover 63 production/test/configuration files. Only the four authorized source/test files differ; the post-test manifest SHA-256 is `5c7b60de79a478abf60b263745e077d659bfea9cb1cca62f50d25d4f20f8d723`. No source edit followed the test. This is not a successful stage-2 freeze or a complete pending-change audit.
 
 Complete non-UI, four-test relation UI, full UI, Release and incremental product audit were **not executed because stage 1 failed and needs scope expansion**; these are not skipped test counts. Busy UI and the excluded actor remain UNTESTED. Test compilation provides Debug evidence only for actually compiled code. Prior Release/non-UI evidence does not directly cover the new changes. Historical UI causes remain separately UNKNOWN and were not rediagnosed. Human mouse/keyboard acceptance, owner Git and final pending-delivery review remain outstanding. No git/gh, `.git` access, cleanup, system-setting change or publication occurred. Prompt 11A remains BLOCKED; stop for controller review, with no Prompt 11B work.
+
+## 2026-09-05 — DEBUG-CONDITION-AND-GATE-CONTINUE-01: BLOCKED
+
+Only project-level Debug `BA0000000000000000000401` gained `SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";`. Byte comparison confirmed the single insertion; `plutil -lint BookAtlas.xcodeproj/project.pbxproj` exited 0. All 63 baseline files matched the preceding after manifest before editing. Existing DEBUG branches were limited to known suspended-save support. No source, test, assertion, target-level setting, Release, scheme, optimization, signature, entitlement or version change occurred.
+
+Before and after modification, these read-only commands each exited 0 (four invocations total), retaining complete JSON/logs:
+
+```sh
+xcodebuild -showBuildSettings -json -project BookAtlas.xcodeproj -alltargets -configuration Debug
+xcodebuild -showBuildSettings -json -project BookAtlas.xcodeproj -alltargets -configuration Release
+```
+
+Parsed comparison: all three unique Debug targets inherit DEBUG and only that setting changed. All Release settings remained equal without DEBUG. Actual directed-test SwiftDriver commands for BookAtlas, BookAtlasTests and BookAtlasUITests contain **`-DDEBUG`**, equivalent to `-D DEBUG`; no command-line/environment macro injection was used.
+
+The remaining correction retry was consumed by this single invocation. `$EVIDENCE_DIR` represents the fresh temporary root; exact local commands and paths are retained in the handoff `EVIDENCE.md`:
+
+```sh
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath "$EVIDENCE_DIR/targeted-dd" -resultBundlePath "$EVIDENCE_DIR/targeted.xcresult" -only-testing:BookAtlasTests/ManualRelationStoreTests -only-testing:BookAtlasTests/LibraryStoreTests > "$EVIDENCE_DIR/targeted.log" 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > "$EVIDENCE_DIR/targeted-exit.txt"
+exit "$bookatlas_exit"
+```
+
+Original exit **65**; complete run **45 executed / 44 passed / 1 failed / 0 skipped**. LibraryStoreTests 32/33; ManualRelationStoreTests 12/12. All four new tests were discovered and executed: default temporary database/real relation access passed; invalid switch combinations passed; suspended access handshake/release/cancellation passed; explicit-memory fixture failed solely at line 44, relation state idle instead of content.
+
+Summary and full test tree each parsed with exit **0**, separately from the test process:
+
+```sh
+xcrun xcresulttool get test-results summary --path "$EVIDENCE_DIR/targeted.xcresult" --compact
+xcrun xcresulttool get test-results tests --path "$EVIDENCE_DIR/targeted.xcresult" --compact
+```
+
+Failure identity: `LibraryStoreTests/testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture()`. Read-only diagnosis: BookDetailView's `.task(id:)` triggers relationship loading, but this test constructs the Store and waits for existing tasks without mounting the view or explicitly calling relation load. Its loaded-state assertion therefore lacks a lifecycle precondition. Application content, selected fictional identity and no-production-path assertions no longer fail. This is not evidence that DEBUG remains absent or that production save semantics have a new defect. No further source/test correction or rerun was performed.
+
+The tested 63-file manifest SHA-256 is `d523ef061aadcb6ba69df83f3021fbf4415467b9aa164ed609b479b33362abbc`, rechecked unchanged after testing. No successful stage-2 freeze occurred. Full non-UI, four-test UI, full UI, Release and incremental product audit were **not executed because the directed prerequisite failed**, not counted as skipped tests. Old failure evidence and exit 65 remain unchanged. No UI confirmation was reused or UI test launched.
+
+Prompt 11A remains BLOCKED. Busy native UI is UNTESTED; new Release compilation/fixture exclusion and actual product entitlements are NOT VERIFIED despite verified static Release settings. Intel execution is NOT VERIFIED. Human QA, owner Git and full pending-delivery review remain PENDING. Historical UI causes remain separately UNKNOWN and were not rediagnosed. Only MILESTONE-6 and this document received appended evidence beyond the one project setting. No git/gh, `.git` access, cleanup, system adjustment, archive or publication. Stop for controller review; no Prompt 11B.
