@@ -27,7 +27,7 @@ final class LibraryStoreTests: XCTestCase {
         }
     }
 
-    func testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture() async {
+    func testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture() async throws {
         var resolvedProduction = false
         let store = LibraryStore.makeApplicationStore(
             arguments: ["-BookAtlasUseInMemoryStore", "-BookAtlasSuspendManualRelationSave", "-BookAtlasSeedManualRelationUITestData"],
@@ -41,6 +41,10 @@ final class LibraryStoreTests: XCTestCase {
         XCTAssertFalse(resolvedProduction)
         XCTAssertEqual(store.loadingState, .content)
         XCTAssertEqual(store.selectedBookID, UUID(uuidString: "00000000-0000-0000-0000-000000000101"))
+        let sourceID = try XCTUnwrap(store.selectedBookID)
+        store.manualRelations.load(bookID: sourceID)
+        await store.manualRelations.waitForPendingWork()
+        XCTAssertEqual(store.manualRelations.currentBookID, sourceID)
         XCTAssertEqual(store.manualRelations.loadState, .content)
     }
 

@@ -835,3 +835,27 @@ Failure identity: `LibraryStoreTests/testSuspendedRelationSwitchAllowsOnlyExplic
 The tested 63-file manifest SHA-256 is `d523ef061aadcb6ba69df83f3021fbf4415467b9aa164ed609b479b33362abbc`, rechecked unchanged after testing. No successful stage-2 freeze occurred. Full non-UI, four-test UI, full UI, Release and incremental product audit were **not executed because the directed prerequisite failed**, not counted as skipped tests. Old failure evidence and exit 65 remain unchanged. No UI confirmation was reused or UI test launched.
 
 Prompt 11A remains BLOCKED. Busy native UI is UNTESTED; new Release compilation/fixture exclusion and actual product entitlements are NOT VERIFIED despite verified static Release settings. Intel execution is NOT VERIFIED. Human QA, owner Git and full pending-delivery review remain PENDING. Historical UI causes remain separately UNKNOWN and were not rediagnosed. Only MILESTONE-6 and this document received appended evidence beyond the one project setting. No git/gh, `.git` access, cleanup, system adjustment, archive or publication. Stop for controller review; no Prompt 11B.
+
+## 2026-09-05 — TEST-LIFECYCLE-AND-GATE-CONTINUE-01: non-UI complete, UI confirmation pending
+
+Only `testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture` changed: async throws, safely unwrap the selected source ID, explicitly load relations and await pending work, then assert currentBookID and the original content state. All prior assertions remain. This supplies the detail-owned prerequisite in a unit test; it does not execute SwiftUI's lifecycle. No other code, test method, helper or configuration changed.
+
+Both authorized non-UI gates ran once in unique DerivedData/result paths. In the following actual-command record, `$EVIDENCE_DIR` substitutes the new dedicated temporary directory whose exact local path is in the handoff:
+
+```sh
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath "$EVIDENCE_DIR/targeted-dd" -resultBundlePath "$EVIDENCE_DIR/targeted.xcresult" -only-testing:BookAtlasTests/ManualRelationStoreTests -only-testing:BookAtlasTests/LibraryStoreTests > "$EVIDENCE_DIR/targeted.log" 2>&1
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath "$EVIDENCE_DIR/nonui-dd" -resultBundlePath "$EVIDENCE_DIR/nonui.xcresult" -only-testing:BookAtlasTests > "$EVIDENCE_DIR/nonui.log" 2>&1
+```
+
+These were separate command sessions, each immediately capturing `$?` in `bookatlas_exit`, recording it in its own `<batch>-exit.txt` and exiting with that value. Both original xcodebuild exits were **0**. For each result bundle, summary and full tests-tree parsers separately exited **0**:
+
+```sh
+xcrun xcresulttool get test-results summary --path "$EVIDENCE_DIR/<batch>.xcresult" --compact
+xcrun xcresulttool get test-results tests --path "$EVIDENCE_DIR/<batch>.xcresult" --compact
+```
+
+Directed: **45 executed / 45 passed / 0 failed / 0 skipped**, LibraryStoreTests 33 plus ManualRelationStoreTests 12. All four new identities, including the handshake, were executed. Full non-UI: **221/221 passed, 0 failed, 0 skipped**. Complete tree names exactly matched source identity lists for both gates. Debug test compilation is the build evidence; all three actual SwiftDriver target commands show -DDEBUG. No extra independent Debug build or single-case trial was run.
+
+After directed success, 63 source/test/configuration files were frozen with manifest SHA-256 `36f3e76d74b2049f97674c23598e459093f3688a3e34dbea997add5a5f02b2ab`. Recheck after complete non-UI matched 63/63. Only the authorized test method differs from this round's incoming baseline. Original 44 UI identities remain among the current 45 source identities.
+
+No fresh interactive-session confirmation has yet been received for this round. Execution therefore pauses **before** the four relation UI cases; no old confirmation is reused. Targeted UI, full UI, Release and incremental product audit are not executed (not skipped tests); their conditional budgets remain unused. Before continuing, obtain confirmation and verify the frozen files remain identical. Busy native UI remains UNTESTED; new Release executable exclusion, architectures/signatures are NOT VERIFIED. Intel hardware runtime remains NOT VERIFIED. Human QA, manual Git and complete pending-change scope remain PENDING; prior UI causes remain separately UNKNOWN. Prompt 11A stays BLOCKED, with no Prompt 11B work. No git/gh, `.git` access, cleanup, system settings changes, archive or publication.

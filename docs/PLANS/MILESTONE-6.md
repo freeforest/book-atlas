@@ -224,3 +224,13 @@ xcrun xcresulttool get test-results tests --path /tmp/bookatlas-p11a-final-g6-fu
 - 测试对应 63 文件清单摘要 `d523ef061aadcb6ba69df83f3021fbf4415467b9aa164ed609b479b33362abbc`，测试后全数一致；本轮只有工程该项变化。阶段 2 的通过后冻结尚未发生，不能将此失败运行当成最终门禁证据。
 - 忙碌态原生 UI 仍 UNTESTED；Release 实际编译、替身排除、两架构产物权限仍 NOT VERIFIED，本轮静态 Release 设置核验不能替代构建。Intel 实机 NOT VERIFIED；真实人工检查、Git 和完整待提交范围 PENDING。旧 UI 根因分别 UNKNOWN，本轮不追查。
 - 命令与证据位置见 DEVELOPMENT 追加记录及临时交付文件。无 git/gh、无 `.git` 访问、无清理、系统调整、提交或发布。**Prompt 11A 仍 BLOCKED，停止等待主控；不开始 Prompt 11B。**
+
+## 2026-09-05 — TEST-LIFECYCLE-AND-GATE-CONTINUE-01：等待本轮 UI 会话确认
+
+- 本轮仅修改 `LibraryStoreTests.testSuspendedRelationSwitchAllowsOnlyExplicitMemoryFixture`：改为 async throws，XCTUnwrap 已选 sourceID，显式 load(bookID:) 并等待关系任务，新增 currentBookID 一致断言，保留所有原断言。不新增方法、不改生产/视图/替身/辅助函数/工程。这只模拟详情拥有的加载前置，不证明 SwiftUI 生命周期已运行。
+- 主控新授权的一次完整 Store 定向已执行：45/45 passed、0 failed、0 skipped；LibraryStoreTests 33、ManualRelationStoreTests 12，四项新增测试含握手均实际执行。原始进程 exit 0，summary/tests 解析各 exit 0，完整身份与源码清单一致。未单独试跑失败用例，未重置或使用旧额度。
+- 定向通过后冻结 63 个源码/测试/工程配置文件，清单摘要 `36f3e76d74b2049f97674c23598e459093f3688a3e34dbea997add5a5f02b2ab`。唯一源码差异为上述测试方法；既有 Debug 设置及其他文件保持基线。完整非 UI 后重新核验 63/63 一致。
+- 唯一一次完整 BookAtlasTests 完整执行 **221/221 passed、0 failed、0 skipped**；原始进程 exit 0，summary/tests 解析各 exit 0；完整树方法身份逐一匹配 221 项源码清单。其测试构建作为本轮 Debug 构建证据，不重复独立 build。实际三个目标编译命令带 -DDEBUG。
+- 当前未收到本轮新的解锁/可交互/无输入与切换/无其他 UI 自动化确认，故**停在关系定向 UI 之前**；不沿用旧确认。4 项关系 UI、完整 UI、Release 和增量产物审计均未执行，不是 skipped tests，保留原条件额度；继续前须确认会话并复核冻结状态。
+- 原有 44 项 UI 身份保留，当前 45 项清单已记录；没有单独运行 U1–U3，没有真实人工 UI。忙碌态原生 UI UNTESTED，完整 Prompt 11A 仍 BLOCKED。Release 产物/替身排除/两架构实际权限本轮 NOT VERIFIED，Intel 实机 NOT VERIFIED。Git、完整待提交范围、人工验收 PENDING，旧 UI 根因分别 UNKNOWN。
+- 精确本机命令与路径保留在新临时 EVIDENCE.md，仓库命令用 `<EVIDENCE_DIR>` 代替；见 DEVELOPMENT。历史失败包及其退出码未覆盖。仅追加本计划与 DEVELOPMENT。无 git/gh、无 `.git` 访问、无清理、系统调整或发布；不开始 Prompt 11B。
