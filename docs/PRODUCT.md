@@ -39,6 +39,11 @@ bounded, paged target list, preview source-to-target direction, create a typed
 relation with an optional note, navigate to the exact counterpart UUID, and
 confirm deletion of only the relation. This local implementation is
 `BLOCKED — WAITING FOR CONTROLLER REVIEW`, not an accepted or released feature.
+Creation can be cancelled before submission without writing. Once submitted,
+cancellation and related draft changes are temporarily disabled until the
+write result is known; dismissing a view or cancelling its Task is not database
+rollback. Runtime verification of the repaired busy-state/Escape behavior is
+still `UNTESTED`.
 It does not add relation editing, `BookKind`, a schema or backup/CSV change, or
 automatic relationship inference.
 

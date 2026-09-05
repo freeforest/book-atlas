@@ -82,6 +82,8 @@ final class ManualRelationStore: ObservableObject {
     private var searchTask: Task<Void, Never>?
     private var loadGeneration: UInt64 = 0
     private var searchGeneration: UInt64 = 0
+    private var creationGeneration: UInt64 = 0
+    private var creationHasSubmitted = false
     private var targetQuery = LibraryQuery()
     private var nextTargetOffset = 0
 
@@ -113,6 +115,7 @@ final class ManualRelationStore: ObservableObject {
 
     var canLoadMoreTargets: Bool {
         isCreating
+            && !isSaving
             && targetSearchState == .content
             && hasMoreTargets
             && !isLoadingMoreTargets
@@ -190,6 +193,7 @@ final class ManualRelationStore: ObservableObject {
     }
 
     func beginCreate() {
+        guard !isSaving else { return }
         guard currentBookID != nil else {
             creationErrorMessage = "当前书籍不可用，无法新增关系。"
             return
@@ -202,16 +206,19 @@ final class ManualRelationStore: ObservableObject {
     }
 
     func cancelCreate() {
-        guard isCreating else { return }
+        guard isCreating, !isSaving else { return }
+        let hadSubmitted = creationHasSubmitted
         clearCreationState()
-        statusMessage = "已取消新增关系；书库未更改。"
+        statusMessage = hadSubmitted
+            ? "已关闭新增关系。"
+            : "已取消新增关系；书库未更改。"
     }
 
     func updateTargetSearchText(
         _ text: String,
         delay: Duration? = .milliseconds(250)
     ) {
-        guard isCreating else { return }
+        guard isCreating, !isSaving else { return }
         guard targetSearchText != text else { return }
         targetSearchText = text
         targetQuery.searchText = text
@@ -221,7 +228,7 @@ final class ManualRelationStore: ObservableObject {
     }
 
     func retryTargetSearch() {
-        guard isCreating else { return }
+        guard isCreating, !isSaving else { return }
         targetQuery.offset = 0
         scheduleTargetSearch(delay: nil, appending: false)
     }
@@ -233,6 +240,7 @@ final class ManualRelationStore: ObservableObject {
     }
 
     func selectTarget(_ id: UUID?) {
+        guard isCreating, !isSaving else { return }
         guard let id else {
             selectedTargetID = nil
             return
@@ -250,6 +258,7 @@ final class ManualRelationStore: ObservableObject {
     }
 
     func selectFirstTargetFromKeyboard() {
+        guard isCreating, !isSaving else { return }
         guard let target = targetBooks.first else {
             creationErrorMessage = "当前没有可选择的目标书籍。"
             return
@@ -258,16 +267,19 @@ final class ManualRelationStore: ObservableObject {
     }
 
     func setKind(_ kind: ManualRelationKind) {
+        guard isCreating, !isSaving else { return }
         selectedKind = kind
         creationErrorMessage = nil
     }
 
     func setNote(_ note: String) {
+        guard isCreating, !isSaving else { return }
         relationNote = note
     }
 
     @discardableResult
     func saveCreation() async -> Bool {
+        guard !isSaving else { return false }
         guard isCreating,
               let sourceBookID = currentBookID,
               let target = selectedTarget
@@ -281,6 +293,7 @@ final class ManualRelationStore: ObservableObject {
         }
 
         let generation = loadGeneration
+        let draftGeneration = creationGeneration
         isSaving = true
         creationErrorMessage = nil
         do {
@@ -290,39 +303,71 @@ final class ManualRelationStore: ObservableObject {
                 kind: selectedKind,
                 note: relationNote
             )
+            // Freeze any in-flight target pagination as well as direct draft edits.
+            searchGeneration &+= 1
+            searchTask?.cancel()
+            searchTask = nil
+            isLoadingMoreTargets = false
+            creationHasSubmitted = true
             _ = try await access.add(relation)
-            guard isCurrentContext(bookID: sourceBookID, generation: generation) else {
-                return false
+            // Task cancellation or a new context cannot roll back an accepted write.
+            guard isCurrentCreationContext(
+                bookID: sourceBookID,
+                loadGeneration: generation,
+                creationGeneration: draftGeneration
+            ) else {
+                return true
             }
-            clearCreationState()
             load(bookID: sourceBookID)
+            let refreshGeneration = loadGeneration
+            let refreshCreationGeneration = creationGeneration
             let pendingLoad = loadTask
             await pendingLoad?.value
-            guard currentBookID == sourceBookID else { return true }
+            guard isCurrentCreationContext(
+                bookID: sourceBookID,
+                loadGeneration: refreshGeneration,
+                creationGeneration: refreshCreationGeneration
+            ) else { return true }
             statusMessage = loadState == .content
                 ? "手动关系已保存。"
                 : "手动关系已保存，但列表刷新失败；可以重试读取。"
             return true
         } catch DomainValidationError.selfRelation {
-            guard isCurrentContext(bookID: sourceBookID, generation: generation) else {
+            guard isCurrentCreationContext(
+                bookID: sourceBookID,
+                loadGeneration: generation,
+                creationGeneration: draftGeneration
+            ) else {
                 return false
             }
             creationErrorMessage = "不能把当前书籍关联到自身。"
         } catch CatalogServiceError.manualRelationConflict {
-            guard isCurrentContext(bookID: sourceBookID, generation: generation) else {
+            guard isCurrentCreationContext(
+                bookID: sourceBookID,
+                loadGeneration: generation,
+                creationGeneration: draftGeneration
+            ) else {
                 return false
             }
             creationErrorMessage = "相同方向和类型的关系已存在；书库未更改。"
         } catch CatalogServiceError.manualRelationEndpointMissing {
-            guard isCurrentContext(bookID: sourceBookID, generation: generation) else {
+            guard isCurrentCreationContext(
+                bookID: sourceBookID,
+                loadGeneration: generation,
+                creationGeneration: draftGeneration
+            ) else {
                 return false
             }
             creationErrorMessage = "源书籍或目标书籍已不存在；请重新搜索。"
         } catch {
-            guard isCurrentContext(bookID: sourceBookID, generation: generation) else {
+            guard isCurrentCreationContext(
+                bookID: sourceBookID,
+                loadGeneration: generation,
+                creationGeneration: draftGeneration
+            ) else {
                 return false
             }
-            creationErrorMessage = "未能保存手动关系；书库未更改。"
+            creationErrorMessage = "未能确认手动关系的保存结果；请重新读取关系后再决定是否重试。"
         }
         isSaving = false
         return false
@@ -500,6 +545,8 @@ final class ManualRelationStore: ObservableObject {
     }
 
     private func clearCreationState() {
+        creationGeneration &+= 1
+        creationHasSubmitted = false
         searchGeneration &+= 1
         searchTask?.cancel()
         searchTask = nil
@@ -528,6 +575,15 @@ final class ManualRelationStore: ObservableObject {
 
     private func isCurrentContext(bookID: UUID, generation: UInt64) -> Bool {
         currentBookID == bookID && loadGeneration == generation
+    }
+
+    private func isCurrentCreationContext(
+        bookID: UUID,
+        loadGeneration: UInt64,
+        creationGeneration: UInt64
+    ) -> Bool {
+        isCurrentContext(bookID: bookID, generation: loadGeneration)
+            && self.creationGeneration == creationGeneration
     }
 
     private func isCurrentSearch(bookID: UUID, generation: UInt64) -> Bool {

@@ -230,9 +230,9 @@ completed publication sequence is not Prompt 11.
 
 At every stage:
 
-1. inspect Git status and preserve user work;
+1. preserve user work and use attributable user-provided Git evidence when required; agents do not run Git/gh or access `.git`;
 2. read the active plan and relevant decisions;
 3. keep examples fictional and the application offline by default;
-4. run the real build and relevant tests once those commands exist;
+4. perform [scope-appropriate verification](DEVELOPMENT.md#verification-policy), retaining every build, full-suite, audit, and manual gate explicitly required by the current task;
 5. update documentation and state unverified behavior and risk;
 6. stop on conflicts, private data, destructive-cleanup needs, or assumptions invalidated by repository facts.

@@ -1,5 +1,46 @@
 # Development
 
+## Verification policy
+
+[AGENTS.md](../AGENTS.md) defines agent authority and manual Git boundaries.
+Use the current user/controller task for its exact scope, sequence, gates,
+and retry budget. Commands and dated results below are references or execution
+records, not instructions to rerun every check. Existing result paths must not
+be overwritten; authorized new runs use fresh task-specific temporary paths.
+
+When a task does not prescribe broader checks, use this starting point:
+
+| Change | Relevant verification |
+| --- | --- |
+| Documentation or agent instructions only | Read back the edits; check instruction consistency, links, whitespace, and preservation of existing evidence. No Xcode or UI run solely for prose changes. |
+| Domain, Repository, or Store behavior | Meaningful regression tests for changed rules and affected callers; an appropriate build. Use deterministic handshakes for async state. |
+| SwiftUI or native interaction | Relevant model tests and a build, plus authorized targeted UI/runtime checks for the changed user contract. Model tests alone do not establish native behavior. |
+| Schema, portability, dependencies, or entitlements | Relevant migration/rollback/security tests and configuration/product inspection; broader suites as required by the change and current plan. |
+| Stage acceptance or release-facing work | All explicitly required full suites, builds, audits, and manual gates. Scoped checks cannot replace those gates. |
+
+This policy does not waive an active gate or reopen an exhausted budget.
+Reuse passing evidence only when its verified inputs remain applicable and
+the current task permits reuse. Do not repeat passed checks without a change,
+failure, or relevant unresolved concern. Do not freeze historical test counts
+as proof that the current suite ran in full.
+
+Capture real build/test exit codes separately from parser exit codes. For
+test gates, reconcile the selected identities, summary, and complete test
+tree, including failures, skips, and cancellations. A parseable interrupted
+run remains incomplete for a full-suite gate. Keep `PASS`, `PARTIAL`, `FAIL`,
+`UNTESTED`, `NOT VERIFIED`, `PENDING`, and `BLOCKED` scoped to what they describe.
+
+UI automation needs an available interactive Mac session; respect the task's
+user-confirmation requirement. Do not compete for its keyboard, mouse, focus,
+or test resources. A passing probe does not establish the cause of an older
+failure. Observe the required stop rule and preserve failed-run evidence.
+
+Git checks, history review, and publication are performed by the user.
+Attribute supplied results and leave missing evidence pending. Non-Git file
+checks can verify this task's edits, not the full tracked/staged change set.
+Evidence needed only for local review should stay outside public materials;
+use relative references or redacted placeholders in repository reports.
+
 ## Current application
 
 `BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus
@@ -26,18 +67,54 @@ out recovery flow. `LibraryCatalogService` remains the only presentation-facing
 route to repository relation queries and mutations; successful create/delete
 advances the existing graph-content revision.
 
-Local fixed-fictional evidence passed the 10-test new domain/repository/catalog/
-store gate, the 10-test relationship/merge/backup/graph regression gate, Debug
-build, the complete 209/209 non-UI suite, and the 3/3 targeted relation UI gate,
-all with zero failures and zero skips. The first complete UI run collected all
-44 tests but ended 31 passed, 13 failed, 0 skipped after the application
-connection was lost and subsequent launches lost UI-test authorization. Its one
-permitted fresh-path retry then repeatedly dropped synthesized input characters
-in unchanged existing tests and was stopped under the Prompt 11A retry rule;
-Xcode exited 73 and could not completely seal that retry result bundle. Release,
-the final configuration/privacy audits, and the real-interface mouse/keyboard
-check are therefore `UNTESTED` or `NOT VERIFIED`, and no local result is
-controller acceptance.
+Creation cancellation means **提交前可取消；提交处理中不可取消**. The Store,
+not only the save button, rejects repeated saves, cancellation, reopening,
+target search/selection, and draft edits while awaiting the submitted write.
+The editor's disabled controls and interactive dismissal share `isSaving`;
+sheet binding writes still pass through the guarded Store cancellation entry.
+The existing cancel shortcut remains the only Escape owner; no monitor was
+added. A local creation generation fences both the write result and the
+post-save refresh, including a new draft for the same book. Failure restores
+editing and cancellation without discarding the draft. An unknown write error,
+view disappearance, or cancellation of the calling Task is not proof of rollback.
+
+The pre-repair 10/10 new tests, 10/10 related regressions, Debug, 209/209 non-UI,
+and 3/3 targeted UI are historical evidence, not validation of the repaired
+code. On 2026-09-05, `Prompt 11A-SAVE-LIFECYCLE-01` added eight deterministic
+in-memory continuation-handshake regressions. Before the production fix, four
+selected tests reproduced the bugs: 4 executed, 0 passed, 4 failed, 0 skipped,
+xcodebuild exit 65. This expected red run is not a passing gate. After the fix,
+Store tests passed 12/12 and the complete `BookAtlasTests` passed 217/217, both
+with zero failed/skipped and xcodebuild exit 0. Summary and complete test-tree
+parsing agreed. The subsequent single Debug build exited 0 and its parsed
+build result was `succeeded`. No verification rerun was needed.
+
+The existing full-UI-36 bundle is parseable: 44 total, 31 passed, 13 failed,
+0 skipped. The first failure reports a lost application connection; the next
+12 report UI-testing authorization errors. This chronological sequence does
+not prove a shared root cause or a revoked system permission. Its original
+test-process exit code is `UNKNOWN`; the current summary/tests parser exits
+are both 0. Retry-37 is a **可解析的中断运行，完整门禁未完成**: 5 total, 1 passed,
+4 failed, 0 skipped, including one `Testing was canceled`. Its historical
+test-process exit was 73; the current summary/tests parser exits are 0.
+The earlier result-packaging warning does not make the bundle unparseable now.
+Exact-value assertions recorded `Manual AcceptanceAuthor` instead of
+`Manual Acceptance Author`, and `A01` instead of `A101`; both tests already had
+post-input exact-value checks. The collection-row assertion and cancellation
+are separate observations. Input-event, focus, application, authorization,
+and test-host causes remain `UNKNOWN`, not a single established infrastructure
+diagnosis.
+
+No new UI test, Release build, permission reset, or manual interface operation
+was authorized or performed in this narrow repair. Runtime busy-state/Escape/
+dismissal checks and Release remain `UNTESTED`; final configuration/privacy
+audits remain `NOT VERIFIED`; the complete UI gate remains `BLOCKED`.
+All Git/GitHub operations, including read-only commands and `.git` access, are
+now manual user actions. Prior status/diff-check claims are **执行来源待确认**,
+not confirmed `USER-PROVIDED`; they were not rerun by the executor.
+See [Milestone 6](PLANS/MILESTONE-6.md) for exact commands, temporary result
+paths, structured counts, timestamped UI evidence, and remaining user checks.
+窄修复完成，等待主控复核；Prompt 11A 仍 `BLOCKED`。
 
 ## GitHub source publication and platform alignment
 
@@ -652,3 +729,41 @@ All three projections reached the deliberate 80-node/79-edge bounded result from
 - Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Automated tests prove adapter calls and state transitions, not that an external application will accept or render a particular URL or file on every Mac.
 - No supported API was established for an exact item in a user's private Apple Books library. `ibooks:` remains unverified, private-library targeting remains unsupported, public search may disclose its term after confirmation, and Unicode/IDN hosts are deliberately rejected.
 - Long-lived local references can become stale, missing, corrupt, revoked, or exceed the documented 1 MiB per-record limit and require user re-selection. The app stores bounded opaque bookmark bytes in Schema 5 and full backups but omits them, local display names and paths, and private URLs from CSV/Markdown.
+
+## 2026-09-05 — Prompt 11A finite acceptance recovery evidence
+
+This is an append-only execution record, not a new acceptance or permission to rerun. Prompt 11A remains **BLOCKED**. Production, tests, helpers, configuration and system settings were not edited. Only this document and MILESTONE-6 received appended facts. Git/GitHub and final pending-change review remain owner-operated; no git/gh command or `.git` access was performed.
+
+`$EVIDENCE_DIR` below substitutes the dedicated fresh temporary directory retained in the local handoff. Exact machine-local commands, logs, source manifests, raw JSON and process exit records are retained there in `AUDIT-EVIDENCE.md`; do not copy private absolute paths into repository documentation. Every batch had its own new DerivedData and xcresult. These commands were each invoked once, not as retries:
+
+```sh
+xcodebuild build -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath "$EVIDENCE_DIR/release-dd" -resultBundlePath "$EVIDENCE_DIR/release.xcresult"
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath "$EVIDENCE_DIR/U1-dd" -resultBundlePath "$EVIDENCE_DIR/U1.xcresult" -only-testing:BookAtlasUITests/BookAtlasUITests/testAuthorOnlyMouseSaveShowsVisibleTitleErrorAndPreservesDraft -only-testing:BookAtlasUITests/BookAtlasUITests/testCommandFFocusesLibrarySearchFromAnotherSection -only-testing:BookAtlasUITests/BookAtlasUITests/testCreateCollectionAndSourceWithKeyboardNavigation
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath "$EVIDENCE_DIR/U2-dd" -resultBundlePath "$EVIDENCE_DIR/U2.xcresult" -only-testing:BookAtlasUITests/BookAtlasUITests/testManualRelationEmptyStateKeyboardCancellationAndEscapeOwnership -only-testing:BookAtlasUITests/BookAtlasUITests/testManualRelationFilteredCounterpartUsesExactFocusAndClearFlow -only-testing:BookAtlasUITests/BookAtlasUITests/testManualRelationKeyboardCreateNavigateConfirmedDeleteAndGraphRefresh
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath "$EVIDENCE_DIR/U3-dd" -resultBundlePath "$EVIDENCE_DIR/U3.xcresult" -only-testing:BookAtlasUITests/BookAtlasUITests/testPerformanceSustainedListScrollingWithTenThousandBooks -only-testing:BookAtlasUITests/BookAtlasUITests/testSeededLibraryExposesStatusAndCombinedRowMetadata
+```
+
+The actual zsh invocations used `set -o pipefail`, piped both output streams to the matching retained log, and captured `$pipestatus[1]` immediately after the pipeline into a batch-specific variable. Each original xcodebuild process exited **0**. Parser exit codes were recorded independently:
+
+```sh
+xcrun xcresulttool get build-results --path "$EVIDENCE_DIR/release.xcresult" --compact
+# Executed separately for each of U1, U2 and U3:
+xcrun xcresulttool get test-results summary --path "$EVIDENCE_DIR/<batch>.xcresult" --compact
+xcrun xcresulttool get test-results tests --path "$EVIDENCE_DIR/<batch>.xcresult" --compact
+```
+
+All seven parser invocations exited 0. Release structured status succeeded, errorCount/warningCount/analyzerWarningCount all 0; raw log separately contains the skipped AppIntents metadata extraction warning. U1 was 3 executed / 3 passed / 0 failed / 0 skipped, U2 3/3/0/0, U3 2/2/0/0. Complete test trees matched exactly the selectors above. No interruption, skipped test, repeated batch or full UI run occurred.
+
+Release product: `<EVIDENCE_DIR>/release-dd/Build/Products/Release/BookAtlas.app`. Its executable contains x86_64 and arm64; destination and host were arm64. Intel hardware execution remains NOT VERIFIED. Environment: macOS 26.5.2 (25F84), Xcode 26.6 (17F113), Swift 6.3.3, macOS SDK 26.5. Release is local adhoc signing, not archive/distribution. Both executable slices expose exactly sandbox, user-selected read/write and app-scope bookmark entitlements; strict all-architecture signature verification exited 0. Version/build are 1.0.0/1.
+
+The 63-file production/test/configuration checksum manifest remained identical before and after Release and all UI batches: SHA-256 `bb3bdbc69e5aea8c2da59f029d12e6f83a51baccd1c1b9e2a2ab3b3e4f2df82d`. No new full non-UI run was made; the controller-provided 217/217 decision is not presented as a new run.
+
+U3 selected activity queries for each exact test ID also exited 0. At UTC+08, sustained scrolling started 16:57:30.759 and its Tear Down activity began 17:03:10.168; the ordinary seeded test started 17:03:11.073 and performed its book-row StaticText lookup at 17:03:18.369. Thus ordinary AX access occurred after the scrolling test in this run. This does not claim one continuously surviving app process, smoothness acceptance, or a repaired historical XCUI root cause. Existing workload and three measurement iterations were unchanged.
+
+User explicitly confirmed the unlocked local session, no competing UI automation and no manual input/application switching during testing. Read-only pre-batch observations were Codex/ABC (U1), Codex/SCIM.ITABC (U2), Codex/ABC (U3). No input method or permissions were changed by the executor; the reason for differing checkpoints is UNKNOWN. Checkpoints are not continuous monitoring and cannot explain old failures.
+
+Current read-only audit verified Schema 5 with migrations 1–5, CSV `bookatlas-csv/1` with 16 fields and no manual relations, backup format 1 with existing four-field manifest, no production Swift package references, SQLite/system-only linking and no Release network entitlement. Known active-network/logging symbols did not match production source; inspected NSWorkspace paths are user-initiated reading-entry dispatch, not automatic fetching. Historical byte equality, immutable tag state and complete pending-change scope were NOT VERIFIED without owner-provided Git evidence.
+
+Project metadata inventory excluded `.git`: 194 entries, no symlinks or database/backup/log/certificate/key/result-bundle/application artifact candidates. Four `.DS_Store` files and an experimental `.build` cache skeleton/lock remain nondelivery metadata candidates; their contents were not read or deleted. Ignore rules alone cannot establish their pending-commit exclusion. Known text/fictional-fixture scanning found no actual credential or machine-specific home path in that scope; this is not an absolute privacy guarantee. Final scope and Git checks remain PENDING with the owner; prior status/diff-check execution source remains unconfirmed.
+
+Remaining UNTESTED: in-flight save busy-state UI, Escape/sheet dismissal during the write, and real mouse/keyboard manual QA. Full UI acceptance remains BLOCKED and needs separate controller authorization. Existing U2 cancellation coverage does not replace busy-save coverage. Historical connection loss, subsequent authorization errors, missing input characters and cancellation retain separately UNKNOWN root causes; three passing probes must not be aggregated into full-suite acceptance. Stop here; no Prompt 11B authorization.

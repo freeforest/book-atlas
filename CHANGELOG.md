@@ -9,12 +9,26 @@
   source-to-target creation, exact counterpart navigation, and confirmed
   relation-only deletion.
 
+### Fixed
+
+- Narrow manual-relation save lifecycle repair: Store-level duplicate-submit
+  and draft-mutation guards, cancellation only before submission, and local
+  draft identity checks against late write/refresh results. Unknown failures
+  no longer claim rollback; failed drafts remain editable and cancellable.
+
 ### Validation status
 
-- `BLOCKED — WAITING FOR CONTROLLER REVIEW`: targeted relation tests, related
-  regressions, Debug build, 209/209 non-UI tests, and 3/3 targeted UI tests
-  passed, but the complete UI gate did not survive its one permitted clean
-  infrastructure retry. This entry is not controller acceptance or a release.
+- `BLOCKED — WAITING FOR CONTROLLER REVIEW`: the save-lifecycle repair first
+  reproduced four failing non-UI cases (exit 65), then passed 12/12 Store tests,
+  217/217 complete non-UI tests, and one Debug build (each exit 0). Structured
+  result parsing completed. Previous 209/209 and UI 3/3 results predate this fix.
+- Read-only UI evidence correction: full-ui-36 is 44 total / 31 passed /
+  13 failed / 0 skipped; retry-37 is a parseable interrupted run with 5 total /
+  1 passed / 4 failed / 0 skipped, including a cancellation. Connection loss,
+  authorization errors, and exact input-value mismatches do not establish a
+  common root cause. No new UI run was performed; busy-state/Escape runtime
+  checks, Release, and final audits remain unverified. This is not controller
+  acceptance or a release; all Git checks are manual user work.
 - No Schema 5, CSV, backup format, dependency, entitlement, marketing version,
   build number, or V1.0.0 release-history change is intended by Prompt 11A.
 

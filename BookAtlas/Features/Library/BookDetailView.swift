@@ -179,7 +179,7 @@ private struct ManualRelationsSection: View {
                     store.beginCreate()
                 }
                 .keyboardShortcut("r", modifiers: [.command, .shift])
-                .disabled(store.loadState != .content || store.isDeleting)
+                .disabled(store.loadState != .content || store.isDeleting || store.isSaving)
                 .accessibilityIdentifier("add-manual-relation")
             }
         }
@@ -407,9 +407,9 @@ private struct ManualRelationEditorSheet: View {
                     .accessibilityIdentifier("cancel-manual-relation")
                 Spacer()
                 if store.isSaving {
-                    ProgressView()
+                    ProgressView("正在保存，暂不能取消")
                         .controlSize(.small)
-                        .accessibilityLabel("正在保存手动关系")
+                        .accessibilityLabel("正在保存手动关系，完成前不能取消")
                 }
                 if store.selectedTarget == nil {
                     saveButton
@@ -423,6 +423,8 @@ private struct ManualRelationEditorSheet: View {
         .padding(24)
         .frame(width: 620)
         .frame(minHeight: 560)
+        .disabled(store.isSaving)
+        .interactiveDismissDisabled(store.isSaving)
         .onAppear { searchIsFocused = true }
     }
 

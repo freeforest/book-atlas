@@ -4,7 +4,15 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-Prompts 0–10 are complete. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`; its verified code baseline is `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. There is no automatic Prompt 11: subsequent work is GitHub source-publication preparation, not a new product-development stage. The final accepted evidence includes successful Debug and local Hardened Runtime Release builds, 3/3 targeted historical graph regressions, 41/41 complete macOS UI tests after XCUIAutomation initialized, and 200/200 complete non-UI tests, with zero failures and zero skips. Schema remains 5 with migration path `1 → 2 → 3 → 4 → 5`. Fixed-fictional manual evidence covers Light/Dark, the purple accent, Reduce Motion, complete pointer-free keyboard operation, VoiceOver, exact 520×360, and the repaired graph layout. Inspector formal audits reported zero warnings separately in the unselected-library state and selected A101 detail state; this is evidence only for those two states. Earlier accent, Reduce Motion, keyboard, and VoiceOver evidence was not fully rerun on `4cc20b8c…`, automation is not substituted for human gates, and the Prompt 10 native-file result remains historical `PASS WITH LIMITATION` because that run did not display an actual `NSOpenPanel`.
+Post-V1.0 product work is limited to the explicitly authorized Prompt 11A
+manual-relation loop. Its overall acceptance remains `BLOCKED`; Prompt 11B
+is not authorized. See the [active milestone](docs/PLANS/MILESTONE-6.md) for
+dated implementation and verification records. Passing a narrow repair or
+updating development-agent guidance does not accept the full stage.
+
+### Historical V1.0 acceptance and publication
+
+Prompts 0–10 are complete. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`; its verified code baseline is `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. At that acceptance, the next authorized work was GitHub source-publication preparation; the later Prompt 11A required separate authorization. The final accepted evidence includes successful Debug and local Hardened Runtime Release builds, 3/3 targeted historical graph regressions, 41/41 complete macOS UI tests after XCUIAutomation initialized, and 200/200 complete non-UI tests, with zero failures and zero skips. Schema remains 5 with migration path `1 → 2 → 3 → 4 → 5`. Fixed-fictional manual evidence covers Light/Dark, the purple accent, Reduce Motion, complete pointer-free keyboard operation, VoiceOver, exact 520×360, and the repaired graph layout. Inspector formal audits reported zero warnings separately in the unselected-library state and selected A101 detail state; this is evidence only for those two states. Earlier accent, Reduce Motion, keyboard, and VoiceOver evidence was not fully rerun on `4cc20b8c…`, automation is not substituted for human gates, and the Prompt 10 native-file result remains historical `PASS WITH LIMITATION` because that run did not display an actual `NSOpenPanel`.
 
 The later V1.0.0 macOS 26 source-publication verification uses clean committed baseline `71ec000c65179bdbcae08981631c9dff7df7c711`. Its final UI result actually executed and passed 41/41 tests after XCUIAutomation initialized, including immediate exact-value checks for `Manual Acceptance Author` and `A101`; the two earlier transient failures did not reproduce and their unique underlying cause remains unknown. Fresh Debug and local Hardened Runtime Release builds succeeded, and the fresh complete non-UI result executed and passed 200/200 tests, all with zero failures or skips. Actual products report version 1.0.0, build 1, bundle identifier `io.github.freeforest.BookAtlas`, and minimum macOS 26.0. A human fixed-fictional in-memory check displayed the real macOS `NSOpenPanel` and safely cancelled it without browsing, selecting, or reading a file; the library stayed at two books and gained no local-file record. Repository/privacy scans found no tracked private data, secret, database, bookmark, build product, result bundle, certificate, key, or provisioning material.
 
@@ -170,4 +178,9 @@ No production screenshot is committed yet. Before adding one, use only the fixed
 
 ## Working on the repository
 
-Read [AGENTS.md](AGENTS.md), the core documents, and the active plan before modifying code. Check the Git worktree first, preserve uncommitted work, keep sample data fictional, and report only commands that were actually run.
+Read [AGENTS.md](AGENTS.md), the core documents, and the active plan before
+making changes. Git/GitHub operations, including read-only checks, are manual
+user actions; agents do not run Git/gh or access `.git`. Preserve uncommitted
+work, keep sample data fictional, and report only checks actually performed.
+Use [scope-appropriate verification](docs/DEVELOPMENT.md#verification-policy)
+while retaining every gate explicitly required by the current task.

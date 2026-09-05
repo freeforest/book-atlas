@@ -19,13 +19,17 @@ Describe the focused user or maintenance outcome.
 
 ## Verification
 
-List exact commands and real results:
+List exact commands, scope, and real results under the
+[verification policy](../docs/DEVELOPMENT.md#verification-policy). Mark checks
+outside this change's scope as not applicable with a reason; required checks
+not run remain `UNTESTED` or `PENDING`. Do not imply every documentation edit
+needs full builds and UI suites, or waive an explicitly required gate.
 
 - Debug build:
 - Release build:
 - Unit/integration tests:
 - UI tests:
-- `git diff --check`:
+- `git diff --check` (manual user result; identify its source or mark pending):
 - Entitlement/dependency/privacy scans:
 
 ## Unverified items and risks
