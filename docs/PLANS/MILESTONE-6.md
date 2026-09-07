@@ -234,3 +234,13 @@ xcrun xcresulttool get test-results tests --path /tmp/bookatlas-p11a-final-g6-fu
 - 当前未收到本轮新的解锁/可交互/无输入与切换/无其他 UI 自动化确认，故**停在关系定向 UI 之前**；不沿用旧确认。4 项关系 UI、完整 UI、Release 和增量产物审计均未执行，不是 skipped tests，保留原条件额度；继续前须确认会话并复核冻结状态。
 - 原有 44 项 UI 身份保留，当前 45 项清单已记录；没有单独运行 U1–U3，没有真实人工 UI。忙碌态原生 UI UNTESTED，完整 Prompt 11A 仍 BLOCKED。Release 产物/替身排除/两架构实际权限本轮 NOT VERIFIED，Intel 实机 NOT VERIFIED。Git、完整待提交范围、人工验收 PENDING，旧 UI 根因分别 UNKNOWN。
 - 精确本机命令与路径保留在新临时 EVIDENCE.md，仓库命令用 `<EVIDENCE_DIR>` 代替；见 DEVELOPMENT。历史失败包及其退出码未覆盖。仅追加本计划与 DEVELOPMENT。无 git/gh、无 `.git` 访问、无清理、系统调整或发布；不开始 Prompt 11B。
+
+## 2026-09-07 — 同一冻结状态的 UI 续跑（BLOCKED）
+
+- 用户本轮明确确认 Mac 解锁可交互、测试期间不输入/切换应用且无其他 UI 自动化。启动前及每项门禁后均核验冻结 63 文件一致，摘要仍为 `36f3e76d74b2049f97674c23598e459093f3688a3e34dbea997add5a5f02b2ab`；本次续跑未改源码、测试或配置，既有同状态 Store 45/45、非 UI 221/221 未重跑。
+- 唯一一次 4 项关系 UI 完整通过：**4 executed / 4 passed / 0 failed / 0 skipped**，真实 xcodebuild exit 0，summary/tests 解析各 exit 0，身份恰为授权四项。实际 UI 测试编译含 DEBUG。新增忙碌态用例由原生保存进入不写入的 add 等待，验证保存/取消/草稿控件禁用、Escape 保留编辑器、方向与草稿仍在且没有提前成功或错误“未更改”提示。该证据不证明真实提交或回滚，也不将退出测试应用定义为取消数据库写入。
+- 前置通过后唯一一次完整 BookAtlasUITests 正常结束，**45 executed / 44 passed / 1 failed / 0 skipped**，真实进程 **exit 65**，summary/tests 解析各 **exit 0**。完整身份与冻结清单逐一一致，原有 44 项加新增 1 项全部执行；没有跳过、取消、重试、拆批替代或减轻负载。新增忙碌态在完整套件中通过，万本滚动及其后的普通 AX 用例也通过，但完整门禁失败。
+- 唯一失败：`testZeroResultSearchShowsFocusedIssueAndClearRecoversLibrary`，BookAtlasUITests.swift:493。UTC+08 17:29:07.125 开始；17:29:31.763 点击清除筛选；17:29:44.803 数量断言失败，期望“已显示 200 本，共 501 本，可以继续加载”；随后列表存在、筛选外提示消失的断言无失败，17:29:48.560 用例/套件结束。该次数量标签实际值未由当前提取证据记录，根因 UNKNOWN，不推定丢字符、权限或与旧故障共因。
+- 只读解析唯一失败的 test-details 和 activities，各 exit 0；仅输出短活动、时间及对应源码/日志窗口，没有输出整份 AX 树或搜索系统日志。原始包与日志完整保留。日志中伴随 Xcode 调试器版本读取警告不等于根因证明。
+- **完整 UI 额度已消耗，未启动第二轮；Release 与增量产物审计未执行，因完整 UI 前置失败**，不计为 skipped tests。当前 Release 实际编译/替身排除/两架构权限 NOT VERIFIED，Intel 实机 NOT VERIFIED。人工验收、Git 和完整待提交范围 PENDING；旧 UI 诸根因仍分别 UNKNOWN。
+- 精确命令及本机路径保留于新临时 EVIDENCE.md，仓库采用 `<UI_EVIDENCE_DIR>` 占位符；见 DEVELOPMENT 追加记录。仅追加两份授权文档。无 git/gh、无 `.git` 访问、无清理、系统调整、提交或发布。**Prompt 11A 仍 BLOCKED；停止等待主控，不开始 Prompt 11B。**
