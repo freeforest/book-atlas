@@ -261,3 +261,24 @@ exit "$bookatlas_exit"
 解析命令分别为 `xcrun xcresulttool get test-results summary --path <EVIDENCE_DIR>/test.xcresult --compact` 和 `xcrun xcresulttool get test-results tests --path <EVIDENCE_DIR>/test.xcresult --compact`；保留完整 summary.json 和 tests.json，不以解析码代替测试码。
 
 **本次 UI 用例窄修复验证通过，等待主控复核；Prompt 11A 尚未完成整体验收。** 本次不是完整 UI 通过。未重复非 UI、4 项关系 UI、完整 UI、独立构建或 Release，未做全项目扫描。修改后的完整 UI、Release 仍未验证，人工验收及完整待提交范围 PENDING，后续由主控决定。旧结果不覆盖为通过；本轮仅追加本计划，无 git/gh、无 `.git` 访问、无未知文件清理、系统调整、提交或发布。完成后停止，不开始 Prompt 11B。
+
+## 2026-09-09 — MINIMAL-RELEASE-CHECK
+
+本轮只执行一次当前代码 Release build 及最小产物核验。构建前后，既有冻结清单中其余 62 文件全部一致，UI 测试文件与 MINIMAL-COUNT-FIX 的已测校验值一致，未发现影响证据沿用的额外变化。未修改代码或配置、未运行测试、未启动应用、未做全项目扫描。
+
+真实 xcodebuild **exit 0**；`build-results` 解析 **exit 0**，status succeeded，errorCount/warningCount/analyzerWarningCount 均为 0。原始日志单独记录一条 AppIntents 元数据提取跳过警告（未依赖 AppIntents.framework），不能把结构化零警告描述为日志完全没有警告。
+
+实际 Release SwiftDriver 命令针对 arm64 和 x86_64 均没有定义 DEBUG；保存等待替身及其注入仍由源码 `#if DEBUG` 隔离。未启动应用验证测试参数。lipo 确认实际可执行文件架构为 **x86_64 arm64**；两架构 `codesign -d --arch <arch> --entitlements :-` 均 exit 0，实际权限均恰为 `com.apple.security.app-sandbox`、`com.apple.security.files.user-selected.read-write`、`com.apple.security.files.bookmarks.app-scope`，值均 true，无网络 entitlement。本机 arm64 构建不是 Intel 实机运行证明，后者 NOT VERIFIED。
+
+精确命令记录如下，`<EVIDENCE_DIR>` 代表本轮唯一新临时目录，真实本机路径由交付报告提供；产物在其 `DerivedData/Build/Products/Release/BookAtlas.app`：
+
+```sh
+xcodebuild build -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath <EVIDENCE_DIR>/DerivedData -resultBundlePath <EVIDENCE_DIR>/release.xcresult > <EVIDENCE_DIR>/release.log 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > <EVIDENCE_DIR>/build-exit.txt
+exit "$bookatlas_exit"
+```
+
+解析为 `xcrun xcresulttool get build-results --path <EVIDENCE_DIR>/release.xcresult --compact`，完整 JSON 与两架构 entitlement plist 保留在该目录。没有构建重试或附加测试。
+
+本轮 Release 最小核验完成，等待主控复核；Prompt 11A 尚未整体验收。历史完整 UI 保持 **44/45**，唯一失败用例窄修复后为独立 **1/1**，不得合并写成单轮完整 UI 45/45。修改后的完整 UI、人工验收与完整待提交范围仍待主控处理；未验证项不由本轮构建代替。仅向本计划追加事实，未执行 git/gh、未访问 `.git`，无未知文件清理、系统调整、提交、推送、archive、公证或发布。停止，不开始 Prompt 11B。
