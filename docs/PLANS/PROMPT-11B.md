@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-已授权，局部实现已形成；新增授权的两项测试前置修正验证 2/2 通过，停在 UI 启动前等待本轮用户会话确认。其余历史 11 项通过证据沿用，不表述为本轮 13/13。P11 整体待主控最终验收，未发布。P11A 功能验收与文档收口已完成，其历史证据不改写。Git 与完整待提交范围由用户核对，仍 PENDING。
+已授权，局部实现已形成；两项测试前置修正验证 2/2 通过，后续唯一一次 UI 批次 1 passed / 1 failed，状态 BLOCKED，已停止。其余历史 11 项通过证据沿用，不表述为本轮 13/13。P11 整体待主控最终验收，未发布。P11A 功能验收与文档收口已完成，其历史证据不改写。Git 与完整待提交范围由用户核对，仍 PENDING。
 
 ## 范围与检查
 
@@ -56,3 +56,25 @@ exit "$bookatlas_exit"
 解析命令为 `xcrun xcresulttool get test-results summary --path <EVIDENCE_DIR>/targeted.xcresult --compact` 及 `xcrun xcresulttool get test-results tests --path <EVIDENCE_DIR>/targeted.xcresult --compact`；完整 JSON 留存。唯一新证据目录的本机路径见交付。
 
 当前停在 UI 启动前：尚未取得本轮新会话确认，不能沿用历史确认。后续条件授权仅一次现有两项 UI，通过后一次 Release 最小核验，再等待用户虚构内存人工反馈；尚未执行，不计为 skipped tests。未额外构建或运行完整套件。Git 与完整待提交范围 PENDING，真实库持久性人工验证及 Intel 实机未完成。未运行 git/gh、未访问 `.git`、未清理或发布。
+
+## 2026-09-09 UI 条件续跑：BLOCKED
+
+用户本轮明确确认交互会话条件“已OK”。启动前、结束后均确认既有 63 文件校验一致；未修改任何生产、测试或工程配置，也未重跑非 UI。
+
+唯一一次串行批次正常结束，XCUI 实际执行 **2 项 / 1 passed / 1 failed / 0 skipped / 0 cancelled**，真实 xcodebuild **exit 65**；摘要和完整测试树解析分别 **exit 0**，身份一致：
+
+- `BookAtlasUITests/testBookKindSaveCancelDetailAndFilterRecovery()`：Failed。四处失败均为 `book-detail-kind` 的 label/value 包含文本断言（250、258、267、275 行）；首次发生在测试相对时间约 8.24 秒后的初始“图书”断言。其余断言没有记录失败，不将其单独包装成完整用例通过。根因 UNKNOWN，未证明是详情辅助功能暴露、定位或其他原因；不归入旧连接/输入故障。
+- `BookAtlasUITests/testCreateEditCancelAndSaveWithKeyboardCommands()`：Passed。
+
+没有因首个断言主动截断批次。仅查看对应源码、短日志与完整结构化结果，未扫描系统日志或输出整份 AX 树。没有本轮 UI 修正/重跑额度，故停止；Release 与人工检查未执行（前置未通过，不计 skipped tests），P11B 人工反馈仍 PENDING。P11A 功能验收不变，未发布。
+
+精确参数如下；`<UI_EVIDENCE_DIR>` 为唯一新临时目录，真实路径见交付：
+
+```sh
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath <UI_EVIDENCE_DIR>/ui-dd -resultBundlePath <UI_EVIDENCE_DIR>/ui.xcresult -only-testing:BookAtlasUITests/BookAtlasUITests/testBookKindSaveCancelDetailAndFilterRecovery -only-testing:BookAtlasUITests/BookAtlasUITests/testCreateEditCancelAndSaveWithKeyboardCommands > <UI_EVIDENCE_DIR>/ui.log 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > <UI_EVIDENCE_DIR>/ui-exit.txt
+exit "$bookatlas_exit"
+```
+
+解析命令分别为 `xcrun xcresulttool get test-results summary --path <UI_EVIDENCE_DIR>/ui.xcresult --compact` 与 `xcrun xcresulttool get test-results tests --path <UI_EVIDENCE_DIR>/ui.xcresult --compact`，JSON 与日志、结果包保留。用户 Git 和完整待提交范围仍 PENDING；真实库持久性人工验证和 Intel 实机未完成。未执行 git/gh、未访问 `.git`、未清理、调整系统或发布。

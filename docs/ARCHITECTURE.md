@@ -9,7 +9,7 @@ acceptance and remains unreleased. The controller's evidence decision is
 recorded in [Milestone 6](PLANS/MILESTONE-6.md); user Git and complete
 pending-change review remain `PENDING`. The separately authorized
 [Prompt 11B](PLANS/PROMPT-11B.md) now adds BookKind UI and query filtering;
-its two corrected non-UI tests passed, UI awaits fresh session confirmation, and P11 awaits final controller acceptance.
+its two corrected non-UI tests passed, the UI batch is BLOCKED (1 passed, 1 failed), and P11 awaits final controller acceptance.
 
 V1.0.0 source-publication preparation sets the production deployment target
 to macOS 26.0, marketing version 1.0.0, build number 1, and application bundle
