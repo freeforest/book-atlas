@@ -37,13 +37,16 @@ The Prompt 11A working tree adds a book-detail loop for explicit manual
 relations: incoming and outgoing directions stay distinct; a user can search a
 bounded, paged target list, preview source-to-target direction, create a typed
 relation with an optional note, navigate to the exact counterpart UUID, and
-confirm deletion of only the relation. This local implementation is
-`BLOCKED — WAITING FOR CONTROLLER REVIEW`, not an accepted or released feature.
+confirm deletion of only the relation. Prompt 11A has passed controller
+functional acceptance and remains unreleased; user Git and complete
+pending-change review remain `PENDING`.
 Creation can be cancelled before submission without writing. Once submitted,
 cancellation and related draft changes are temporarily disabled until the
 write result is known; dismissing a view or cancelling its Task is not database
-rollback. Runtime verification of the repaired busy-state/Escape behavior is
-still `UNTESTED`.
+rollback. The relation UI checks include the submitted-save busy-state and
+Escape boundary. The user confirmed creation, navigation, cancelled deletion,
+and confirmed deletion in the verified Release fictional in-memory instance;
+this does not verify real-user database persistence or Intel hardware execution.
 It does not add relation editing, `BookKind`, a schema or backup/CSV change, or
 automatic relationship inference.
 

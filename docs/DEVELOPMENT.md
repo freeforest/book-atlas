@@ -53,9 +53,26 @@ macOS 14/15 support or compatibility matrix is promised.
 
 The application has one direct-SQLite persistence path behind `BookRepository` and the actor-isolated `LibraryCatalogService`. The current schema is version 5 with migration path `1 → 2 → 3 → 4 → 5`. Production opens `~/Library/Application Support/BookAtlas/book-atlas.sqlite`; unit tests and explicit UI-test launches use isolated in-memory or temporary databases. The ordinary library query is paged: the production first page is 200 rows, every filtered query returns an exact total, and subsequent 200-row pages are requested explicitly. An explicit focus request returns that same bounded page plus at most one book selected by UUID under the same filters; it does not scan preceding pages or expand the page size. SwiftUI views own presentation only and do not execute SQL, migrations, duplicate rules, merge transactions, `NSWorkspace`, `NSOpenPanel`, `NSPasteboard`, or bookmark operations.
 
-The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. Prompts 0–10 are complete; Prompt 11A was later explicitly authorized, but its local implementation is `BLOCKED — WAITING FOR CONTROLLER REVIEW` and is not accepted. Prompt 11B is not authorized. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
+The accepted scope is book CRUD, local query and organization, deterministic duplicate review/merge, versioned CSV import with mapping and preview, Markdown/CSV export, full SQLite backup/restore, a bounded local relationship graph, and user-initiated external reading entries. Prompt 7 passed its third independent review at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`; Prompt 8 passed its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`; Prompt 9 passed independent review at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b`. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`. Prompts 0–10 are complete; the later explicitly authorized Prompt 11A manual-relation loop has passed controller functional acceptance and remains unreleased, with user Git and complete pending-change review PENDING. Prompt 11B is not authorized. There is no network client entitlement, AI duplicate detector, automatic merge, cloud backup, directory scanner, or whole-library graph.
 
-## Prompt 11A local implementation
+## Prompt 11A functional acceptance
+
+The controller has accepted Prompt 11A's manual-relation loop; it remains
+unreleased. Accepted evidence comprises Store 45/45, complete non-UI 221/221,
+relation UI 4/4 including submitted-save busy-state/Escape coverage, Release
+build/product checks, and user-confirmed create/navigation/cancel-delete/
+confirm-delete in the verified Release fictional in-memory instance.
+The final UI ruling uses the historical complete run (44/45) plus the isolated
+quantity-expectation repair (1/1); the controller does not require a full-suite
+rerun for that repair. This is not a single complete UI 45/45 result.
+See [Milestone 6](PLANS/MILESTONE-6.md) for the final decision.
+
+User Git and complete pending-change review remain `PENDING`. Real-user
+database persistence manual verification and Intel hardware execution remain
+unverified. Prompt 11B is not authorized. Dated failures and stop records below
+retain their original evidence and do not override this current decision.
+
+### Implementation and historical save-lifecycle repair
 
 `ManualRelationStore` is separate from `LibraryStore` and binds every relation
 snapshot, target search, create, and delete operation to one `bookID`. It clears
@@ -105,16 +122,18 @@ are separate observations. Input-event, focus, application, authorization,
 and test-host causes remain `UNKNOWN`, not a single established infrastructure
 diagnosis.
 
-No new UI test, Release build, permission reset, or manual interface operation
-was authorized or performed in this narrow repair. Runtime busy-state/Escape/
-dismissal checks and Release remain `UNTESTED`; final configuration/privacy
-audits remain `NOT VERIFIED`; the complete UI gate remains `BLOCKED`.
+At the end of the 2026-09-05 narrow repair, no new UI test, Release build,
+permission reset, or manual interface operation had been authorized or
+performed. Runtime busy-state/Escape/dismissal checks and Release were then
+`UNTESTED`; final configuration/privacy audits were `NOT VERIFIED`; the
+complete UI gate was `BLOCKED`. Subsequent evidence and the current controller
+decision are summarized above and in Milestone 6.
 All Git/GitHub operations, including read-only commands and `.git` access, are
 now manual user actions. Prior status/diff-check claims are **执行来源待确认**,
 not confirmed `USER-PROVIDED`; they were not rerun by the executor.
 See [Milestone 6](PLANS/MILESTONE-6.md) for exact commands, temporary result
 paths, structured counts, timestamped UI evidence, and remaining user checks.
-窄修复完成，等待主控复核；Prompt 11A 仍 `BLOCKED`。
+该窄修复当时的停止结论：窄修复完成，等待主控复核；Prompt 11A 仍 `BLOCKED`。当前状态以本节功能验收裁决为准。
 
 ## GitHub source publication and platform alignment
 

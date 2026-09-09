@@ -5,10 +5,11 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 ## Status
 
 Post-V1.0 product work is limited to the explicitly authorized Prompt 11A
-manual-relation loop. Its overall acceptance remains `BLOCKED`; Prompt 11B
-is not authorized. See the [active milestone](docs/PLANS/MILESTONE-6.md) for
-dated implementation and verification records. Passing a narrow repair or
-updating development-agent guidance does not accept the full stage.
+manual-relation loop, which has passed controller functional acceptance and
+remains unreleased. User Git and complete pending-change review remain
+`PENDING`; Prompt 11B is not authorized. See the
+[active milestone](docs/PLANS/MILESTONE-6.md) for the controller decision,
+evidence boundaries, and dated verification records.
 
 ### Historical V1.0 acceptance and publication
 

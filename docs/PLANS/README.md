@@ -13,7 +13,7 @@ or change a recorded acceptance decision.
 - [Milestone 3 — data hygiene](MILESTONE-3.md)
 - [Milestone 4 — portability and exploration](MILESTONE-4.md)
 - [Milestone 5 — release quality](MILESTONE-5.md)
-- [Milestone 6 — 手动关系用户闭环](MILESTONE-6.md) — Prompt 11A 本地实现已形成，验证 `BLOCKED`，等待主控审阅
+- [Milestone 6 — 手动关系用户闭环](MILESTONE-6.md) — Prompt 11A 功能验收通过；未发布；用户 Git 与完整待提交范围核对待完成；Prompt 11B 未授权
 
 Do not advance a product milestone while its prerequisite acceptance has
 failing checks, undocumented changes, unresolved private-data findings, or

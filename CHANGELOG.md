@@ -18,7 +18,17 @@
 
 ### Validation status
 
-- `BLOCKED — WAITING FOR CONTROLLER REVIEW`: the save-lifecycle repair first
+- Prompt 11A has passed controller functional acceptance and remains unreleased.
+  Evidence: Store 45/45, complete non-UI 221/221, relation UI 4/4 including
+  busy-state/Escape, Release build/product checks, and user-confirmed manual
+  creation, navigation, cancelled deletion and confirmed deletion in the
+  verified Release fictional in-memory instance. The controller accepted the
+  historical full UI 44/45 plus the diagnosed expectation repair's independent
+  1/1; this is not a single full UI 45/45 result and no full rerun is required
+  for that repair. User Git and complete pending-change review remain PENDING;
+  real-user database persistence manual verification and Intel hardware
+  execution remain unverified. Prompt 11B is not authorized.
+- Historical save-lifecycle repair (`BLOCKED` at that time): it first
   reproduced four failing non-UI cases (exit 65), then passed 12/12 Store tests,
   217/217 complete non-UI tests, and one Debug build (each exit 0). Structured
   result parsing completed. Previous 209/209 and UI 3/3 results predate this fix.
@@ -26,9 +36,10 @@
   13 failed / 0 skipped; retry-37 is a parseable interrupted run with 5 total /
   1 passed / 4 failed / 0 skipped, including a cancellation. Connection loss,
   authorization errors, and exact input-value mismatches do not establish a
-  common root cause. No new UI run was performed; busy-state/Escape runtime
-  checks, Release, and final audits remain unverified. This is not controller
-  acceptance or a release; all Git checks are manual user work.
+  common root cause. No new UI run was performed in that repair; busy-state/
+  Escape runtime checks, Release, and final audits were unverified at that
+  time. That repair alone was not controller acceptance or a release; all Git
+  checks remain manual user work. Later acceptance is recorded above.
 - No Schema 5, CSV, backup format, dependency, entitlement, marketing version,
   build number, or V1.0.0 release-history change is intended by Prompt 11A.
 

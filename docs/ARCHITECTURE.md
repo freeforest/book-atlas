@@ -4,10 +4,11 @@
 
 Prompts 6–10 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction were accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9's Apple Books and external reading-entry work was accepted at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b` after an independent Debug build, 171/171 tests, and 26/26 UI tests passed. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`; it changes no product scope or schema.
 
-Prompt 11A has a local working-tree implementation for the manual-relation user
-loop, but it is not controller-accepted: its required complete UI gate is
-`BLOCKED` after the one permitted clean infrastructure retry. Prompt 11B
-`BookKind` work is not part of this implementation.
+Prompt 11A's manual-relation user loop has passed controller functional
+acceptance and remains unreleased. The controller's evidence decision is
+recorded in [Milestone 6](PLANS/MILESTONE-6.md); user Git and complete
+pending-change review remain `PENDING`. Prompt 11B `BookKind` work is not
+authorized or part of this implementation.
 
 V1.0.0 source-publication preparation sets the production deployment target
 to macOS 26.0, marketing version 1.0.0, build number 1, and application bundle

@@ -2,9 +2,9 @@
 
 The original development roadmap was sequential and is complete through Prompt
 10. No Prompt 11 started automatically. Prompt 11A was later explicitly
-authorized as the first stage of Milestone 6. Its local implementation exists,
-but the required complete UI gate is `BLOCKED`; it has not passed controller
-acceptance. The separate GitHub source-publication
+authorized as the first stage of Milestone 6 and has passed controller
+functional acceptance. Prompt 11A remains unreleased, with user Git and complete
+pending-change review `PENDING`. The separate GitHub source-publication
 task completed the source-only V1.0.0 release on 2026-08-10; it was an
 operational publication task, not Prompt 11. Repository operations require
 explicit owner authorization, and authentication challenges remain owner-only.
@@ -202,20 +202,24 @@ workflow.
   create, view, exact-navigation, and confirmed-delete loop for existing Schema
   5 manual book relations. It must preserve the existing relation constraints,
   merge/backup behavior, bounded graph revision semantics, CSV format,
-  dependencies, and entitlements. Local implementation evidence remains
-  `BLOCKED — WAITING FOR CONTROLLER REVIEW` because the complete UI gate did not
-  survive its one permitted clean infrastructure retry.
+  dependencies, and entitlements. Controller functional acceptance is complete;
+  the final UI decision uses the historical complete run (44/45) plus the
+  diagnosed expectation fix's independent 1/1 verification, not a single 45/45
+  run. Verified Release fictional-memory manual checks are complete.
 - **Prompt 11B:** BookKind and detail completeness; not authorized in this round
   and must not be implemented or anticipated by Prompt 11A changes.
 
-Exit condition: Prompt 11A meets its complete automated, build, privacy, and
-fixed-fictional manual gates and is separately accepted by the controller.
+Prompt 11A functional exit condition: accepted by the controller using the
+evidence and explicit UI ruling in [Milestone 6](PLANS/MILESTONE-6.md).
+Publication is not included; user Git and complete pending-change review remain
+`PENDING`. Real-user database persistence manual verification and Intel hardware
+execution remain unverified.
 
 ## Required execution order
 
 Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
 
-Authorized current stage: `Prompt 11A (BLOCKED — WAITING FOR CONTROLLER REVIEW)`.
+Current status: `Prompt 11A functionally accepted; unreleased; user Git and complete pending-change review PENDING`.
 Prompt 11B is not authorized.
 
 The source-release sequence finalized the 2026-08-10 materials, completed the
