@@ -54,7 +54,7 @@ The separately authorized [Prompt 11B](PLANS/PROMPT-11B.md) adds the existing
 book kind to editing, detail and filtering: 图书、文集、工具书、其他, distinct
 from reading status. New books default to 图书; stored raw values and CSV are
 unchanged. Multiple selected kinds use OR, combined with other filter families
-using AND. Clearing filters preserves sorting. Targeted non-UI verification is BLOCKED;
+using AND. Clearing filters preserves sorting. The two corrected non-UI tests passed; UI awaits fresh session confirmation;
 P11 is not yet finally accepted or released.
 
 External reading actions are always user initiated. The app can hand a validated HTTPS URL to macOS, distinguish `books.apple.com`, offer a confirmed public Apple Books search, launch the installed Apple Books application, copy an ISBN or title, and retain a read-only bookmark for a file the user selected. It does not read ebook content, check URL reachability, use a network client, scan directories, or claim exact access to a private Apple Books library item.

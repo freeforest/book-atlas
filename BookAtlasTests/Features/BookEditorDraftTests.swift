@@ -3,6 +3,8 @@ import XCTest
 
 final class BookEditorDraftTests: XCTestCase {
     func testBookKindsRoundTripThroughCatalogWithoutLosingFieldsOrRelations() async throws {
+        let timestamp = FictionalLibraryFixtures.timestamp
+        let saveTime = timestamp.addingTimeInterval(120)
         XCTAssertEqual(BookEditorDraft().kind, .book)
         XCTAssertEqual(BookKind.allCases.map(\.displayTitle), ["图书", "文集", "工具书", "其他"])
         let repository = try BookRepository.inMemory()
@@ -14,11 +16,11 @@ final class BookEditorDraftTests: XCTestCase {
             startedAt: FictionalLibraryFixtures.timestamp,
             finishedAt: FictionalLibraryFixtures.timestamp.addingTimeInterval(60)
         ), at: FictionalLibraryFixtures.timestamp)
-        let target = try repository.create(BookDraft(title: "Fictional Counterpart", author: "Noa Reed"))
+        let target = try repository.create(BookDraft(title: "Fictional Counterpart", author: "Noa Reed"), at: timestamp)
         let relation = try repository.addManualRelation(ManualBookRelation(
-            sourceBookID: original.id, targetBookID: target.id, kind: .related
+            sourceBookID: original.id, targetBookID: target.id, kind: .related, createdAt: timestamp
         ))
-        let catalog = LibraryCatalogService(repository: repository)
+        let catalog = LibraryCatalogService(repository: repository, now: { saveTime })
         for kind in BookKind.allCases {
             var editor = BookEditorDraft(book: original)
             editor.kind = kind
@@ -29,6 +31,7 @@ final class BookEditorDraftTests: XCTestCase {
             XCTAssertEqual(loaded, saved)
             XCTAssertEqual(loaded.kind, kind)
             XCTAssertEqual(loaded.createdAt, original.createdAt)
+            XCTAssertEqual(loaded.updatedAt, saveTime)
             var restored = BookEditorDraft(book: loaded)
             restored.kind = original.kind
             XCTAssertEqual(restored, BookEditorDraft(book: original))

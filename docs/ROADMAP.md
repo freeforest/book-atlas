@@ -207,7 +207,7 @@ workflow.
   diagnosed expectation fix's independent 1/1 verification, not a single 45/45
   run. Verified Release fictional-memory manual checks are complete.
 - **Prompt 11B:** now separately authorized for BookKind editing, detail and
-  filtering; implementation exists, targeted non-UI verification is BLOCKED. See
+  filtering; implementation exists, the two corrected non-UI tests passed; UI awaits fresh session confirmation. See
   [the P11B record](PLANS/PROMPT-11B.md). P11 awaits final controller acceptance.
 
 Prompt 11A functional exit condition: accepted by the controller using the
@@ -221,7 +221,7 @@ execution remain unverified.
 Completed: `Prompt 0 → Prompt 1 → Prompt 2 → Prompt 3 → Prompt 4 → Prompt 5 → Prompt 6 → Prompt 7 → Prompt 8 → Prompt 9 → Prompt 10`
 
 Current status: `Prompt 11A functionally accepted; unreleased; user Git and complete pending-change review PENDING`.
-Prompt 11B is BLOCKED at targeted non-UI verification; no further product stage or release is authorized.
+Prompt 11B awaits UI session confirmation after the two corrected non-UI tests passed; no further product stage or release is authorized.
 
 The source-release sequence finalized the 2026-08-10 materials, completed the
 final independent clean-baseline review, published annotated tag `v1.0.0`, and

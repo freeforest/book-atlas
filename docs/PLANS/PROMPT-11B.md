@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-已授权，局部实现已形成；限定非 UI 验证修正后仍失败，状态 BLOCKED，已停止。P11 整体待主控最终验收，未发布。P11A 功能验收与文档收口已完成，其历史证据不改写。Git 与完整待提交范围由用户核对，仍 PENDING。
+已授权，局部实现已形成；新增授权的两项测试前置修正验证 2/2 通过，停在 UI 启动前等待本轮用户会话确认。其余历史 11 项通过证据沿用，不表述为本轮 13/13。P11 整体待主控最终验收，未发布。P11A 功能验收与文档收口已完成，其历史证据不改写。Git 与完整待提交范围由用户核对，仍 PENDING。
 
 ## 范围与检查
 
@@ -37,3 +37,22 @@ exit "$bookatlas_exit"
 解析分别为 `xcrun xcresulttool get test-results summary --path <EVIDENCE_DIR>/<RUN>.xcresult --compact` 与 `xcrun xcresulttool get test-results tests --path <EVIDENCE_DIR>/<RUN>.xcresult --compact`，JSON 均保留。原始日志亦保留；解析码不是测试码。
 
 本轮修正额度耗尽，停止等待主控。Git、完整待提交范围 PENDING；未运行 git/gh、未访问 `.git`、未清理或发布。P11A 已验收状态不受本轮失败撤销。
+
+## 2026-09-09 测试前置窄修正与条件续跑
+
+主控新增授权一次两项测试前置修正与定向验证，不重置上一轮额度。仅修改指定两个方法：Catalog 回归的对端和关系使用固定 timestamp、now 注入 timestamp + 120 秒，保留全部相等断言并增加 updatedAt 断言；Store 回归先 focus 并等待，再 setSort 并等待、断言排序前置，然后继续原流程。不修改生产代码、其他测试或 helper，不把历史日期差值推断写成实测根因。
+
+普通文件比较确认只改两方法；修改前 63 文件与上一轮校验全部一致，修改后测试状态清单在运行后全部一致。其余历史 11 项通过可沿用；本轮没有重跑它们，也不是完整 13/13 或完整非 UI。
+
+唯一一次定向运行完整结束：**2 executed / 2 passed / 0 failed / 0 skipped / 0 cancelled**，真实 xcodebuild exit **0**；summary 和完整 tests 解析各 exit **0**，身份恰为下列两项。日志保留包括系统服务伴随诊断在内的原始输出，不将测试通过解释为所有环境警告不存在。
+
+```sh
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath <EVIDENCE_DIR>/DerivedData -resultBundlePath <EVIDENCE_DIR>/targeted.xcresult -only-testing:BookAtlasTests/BookEditorDraftTests/testBookKindsRoundTripThroughCatalogWithoutLosingFieldsOrRelations -only-testing:BookAtlasTests/LibraryStoreTests/testKindFilterExcludesExactFocusAndClearRestoresWithoutChangingSort > <EVIDENCE_DIR>/targeted.log 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > <EVIDENCE_DIR>/targeted-exit.txt
+exit "$bookatlas_exit"
+```
+
+解析命令为 `xcrun xcresulttool get test-results summary --path <EVIDENCE_DIR>/targeted.xcresult --compact` 及 `xcrun xcresulttool get test-results tests --path <EVIDENCE_DIR>/targeted.xcresult --compact`；完整 JSON 留存。唯一新证据目录的本机路径见交付。
+
+当前停在 UI 启动前：尚未取得本轮新会话确认，不能沿用历史确认。后续条件授权仅一次现有两项 UI，通过后一次 Release 最小核验，再等待用户虚构内存人工反馈；尚未执行，不计为 skipped tests。未额外构建或运行完整套件。Git 与完整待提交范围 PENDING，真实库持久性人工验证及 Intel 实机未完成。未运行 git/gh、未访问 `.git`、未清理或发布。

@@ -6,9 +6,10 @@
 
 - Authorized Prompt 11B BookKind selector, detail display and shared-query
   multi-select filtering with unchanged stored values and default. Limited
-  non-UI validation is BLOCKED after the one permitted correction; P11 awaits
-  final controller acceptance. See the P11B plan for the 11 passed / 2 failed
-  result and unexecuted UI/Release/manual checks.
+  validation now has historical 11 passing tests plus two newly authorized
+  precondition-repair tests passing; not one 13/13 run. UI awaits fresh session
+  confirmation; Release/manual checks remain pending. P11 awaits final
+  controller acceptance. The P11B plan preserves the earlier 11/13 failure.
 
 - Local Prompt 11A working-tree implementation for viewing distinct incoming
   and outgoing manual book relations, bounded paged target search, explicit
