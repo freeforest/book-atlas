@@ -138,6 +138,12 @@ struct BookEditorSheet: View {
                             identifier: "editor-publication-date-error"
                         )
                     }
+                    Picker("书籍类型", selection: $draft.kind) {
+                        ForEach(BookKind.allCases, id: \.self) { kind in
+                            Text(kind.displayTitle).tag(kind)
+                        }
+                    }
+                    .accessibilityIdentifier("editor-book-kind")
                     Picker("阅读状态", selection: $draft.readingStatus) {
                         ForEach(ReadingStatus.allCases, id: \.self) { status in
                             Text(status.displayTitle).tag(status)

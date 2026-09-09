@@ -2,6 +2,44 @@ import XCTest
 @testable import BookAtlas
 
 final class BookEditorDraftTests: XCTestCase {
+    func testBookKindsRoundTripThroughCatalogWithoutLosingFieldsOrRelations() async throws {
+        XCTAssertEqual(BookEditorDraft().kind, .book)
+        XCTAssertEqual(BookKind.allCases.map(\.displayTitle), ["图书", "文集", "工具书", "其他"])
+        let repository = try BookRepository.inMemory()
+        let original = try repository.create(BookDraft(
+            title: "Fictional Kind Atlas", originalTitle: "Fictional Original",
+            author: "Mira Vale", isbn: "9781402894626", publisher: "Fictional Press",
+            publicationDate: PublicationDate(year: 2024, month: 2),
+            readingStatus: .read, priority: BookPriority(rawValue: 3), note: "Fictional note",
+            startedAt: FictionalLibraryFixtures.timestamp,
+            finishedAt: FictionalLibraryFixtures.timestamp.addingTimeInterval(60)
+        ), at: FictionalLibraryFixtures.timestamp)
+        let target = try repository.create(BookDraft(title: "Fictional Counterpart", author: "Noa Reed"))
+        let relation = try repository.addManualRelation(ManualBookRelation(
+            sourceBookID: original.id, targetBookID: target.id, kind: .related
+        ))
+        let catalog = LibraryCatalogService(repository: repository)
+        for kind in BookKind.allCases {
+            var editor = BookEditorDraft(book: original)
+            editor.kind = kind
+            XCTAssertEqual(try editor.makeBookDraft().kind, kind)
+            let saved = try await catalog.updateBook(original, from: editor)
+            let rows = try await catalog.queryBooks(LibraryQuery())
+            let loaded = try XCTUnwrap(rows.first { $0.id == original.id })
+            XCTAssertEqual(loaded, saved)
+            XCTAssertEqual(loaded.kind, kind)
+            XCTAssertEqual(loaded.createdAt, original.createdAt)
+            var restored = BookEditorDraft(book: loaded)
+            restored.kind = original.kind
+            XCTAssertEqual(restored, BookEditorDraft(book: original))
+            let relations = try await catalog.manualRelationSummaries(for: original.id)
+            XCTAssertEqual(relations.map(\.relation), [relation])
+            let created = try await catalog.createBook(from: editor)
+            let createdRows = try await catalog.queryBooks(LibraryQuery())
+            XCTAssertEqual(createdRows.first { $0.id == created.id }?.kind, kind)
+        }
+    }
+
     func testDefaultDraftRequiresOnlyTitleAndAuthorAndUsesWishToRead() throws {
         let draft = try BookEditorDraft(title: "  《雾港档案》 ", author: " 林雾 ").makeBookDraft()
 

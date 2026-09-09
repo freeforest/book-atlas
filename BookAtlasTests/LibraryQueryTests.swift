@@ -4,6 +4,48 @@ import XCTest
 final class LibraryQueryTests: XCTestCase {
     private var repository: BookRepository!
 
+    func testBookKindPredicatesShareCountsPagingAndExactFocus() throws {
+        var books: [Book] = []
+        for (index, kind) in BookKind.allCases.enumerated() {
+            books.append(try repository.create(
+                BookDraft(title: "Fictional Index \(index)", author: "Mira Vale", kind: kind, readingStatus: .reading),
+                at: FictionalLibraryFixtures.timestamp.addingTimeInterval(Double(index))
+            ))
+        }
+        let tag = try repository.createTag(Tag(name: "Fictional Kind Tag"))
+        let collection = try repository.createCollection(BookCollection(name: "Fictional Kind Shelf"))
+        let source = try repository.createSource(RecommendationSource(name: "Fictional Kind Source"))
+        try repository.attach(tagID: tag.id, toBookID: books[1].id)
+        try repository.add(bookID: books[1].id, toCollectionID: collection.id)
+        try repository.attach(sourceID: source.id, toBookID: books[1].id)
+        var query = LibraryQuery(bookKinds: [.essayCollection], limit: 1)
+        XCTAssertTrue(query.hasFilters)
+        XCTAssertEqual(try repository.query(query).map(\.id), [books[1].id])
+        query.bookKinds.insert(.reference)
+        let page = try repository.queryPage(query)
+        XCTAssertEqual(page.totalCount, 2)
+        XCTAssertTrue(page.hasMore)
+        XCTAssertEqual(page.books.map(\.id), [books[2].id])
+        XCTAssertEqual(try repository.queryPage(query, focusedBookID: books[1].id).focusedBook?.id, books[1].id)
+        XCTAssertNil(try repository.queryPage(query, focusedBookID: books[0].id).focusedBook)
+        query.offset = 1
+        XCTAssertEqual(try repository.queryPage(query).books.map(\.id), [books[1].id])
+        query.offset = 0
+        query.searchText = "Index"
+        query.readingStatuses = [.reading, .read]
+        query.tagIDs = [tag.id]
+        query.collectionIDs = [collection.id]
+        query.sourceIDs = [source.id]
+        XCTAssertEqual(try repository.queryPage(query).totalCount, 1)
+        query.readingStatuses = [.paused]
+        XCTAssertEqual(try repository.queryPage(query).totalCount, 0)
+        query.clearFilters()
+        XCTAssertFalse(query.hasFilters)
+        XCTAssertEqual(query.sortDirection, .descending)
+        XCTAssertEqual(try repository.queryPage(query).totalCount, 4)
+        XCTAssertEqual(try repository.queryPage(query, focusedBookID: books[0].id).focusedBook?.id, books[0].id)
+    }
+
     override func setUpWithError() throws {
         repository = try BookRepository.inMemory()
     }

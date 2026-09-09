@@ -424,6 +424,17 @@ private struct LibraryFilterBar: View {
 
     private var filterMenu: some View {
         Menu("筛选", systemImage: "line.3.horizontal.decrease.circle") {
+            Section("书籍类型（任一）") {
+                ForEach(BookKind.allCases, id: \.self) { kind in
+                    filterButton(
+                        kind.displayTitle,
+                        selected: store.query.bookKinds.contains(kind)
+                    ) {
+                        store.toggleBookKind(kind)
+                    }
+                    .accessibilityIdentifier("library-filter-kind-\(kind.rawValue)")
+                }
+            }
             Section("阅读状态（任一）") {
                 ForEach(ReadingStatus.allCases, id: \.self) { status in
                     filterButton(
@@ -494,6 +505,9 @@ private struct LibraryFilterBar: View {
 
     private var filterSummary: String {
         var values: [String] = []
+        if !store.query.bookKinds.isEmpty {
+            values.append("书籍类型 \(store.query.bookKinds.count)")
+        }
         if !store.query.normalizedSearchText.isEmpty {
             values.append("搜索")
         }
@@ -571,6 +585,17 @@ private struct LibraryBookRow: View {
         }
         .padding(.vertical, 3)
         .accessibilityElement(children: .combine)
+    }
+}
+
+extension BookKind {
+    var displayTitle: String {
+        switch self {
+        case .book: "图书"
+        case .essayCollection: "文集"
+        case .reference: "工具书"
+        case .other: "其他"
+        }
     }
 }
 

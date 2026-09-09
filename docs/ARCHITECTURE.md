@@ -7,8 +7,9 @@ Prompts 6–10 have passed independent acceptance. Prompt 7 adds versioned CSV i
 Prompt 11A's manual-relation user loop has passed controller functional
 acceptance and remains unreleased. The controller's evidence decision is
 recorded in [Milestone 6](PLANS/MILESTONE-6.md); user Git and complete
-pending-change review remain `PENDING`. Prompt 11B `BookKind` work is not
-authorized or part of this implementation.
+pending-change review remain `PENDING`. The separately authorized
+[Prompt 11B](PLANS/PROMPT-11B.md) now adds BookKind UI and query filtering;
+its targeted non-UI verification is BLOCKED and P11 awaits final controller acceptance.
 
 V1.0.0 source-publication preparation sets the production deployment target
 to macOS 26.0, marketing version 1.0.0, build number 1, and application bundle
@@ -41,6 +42,11 @@ The production registry currently advances from version 1 (core tables), through
 `LibraryQuery` is the single input for library reads. Free text searches title, original title, author, and normalized ISBN. Different filter families combine with AND; multiple reading statuses combine with OR; multiple tags, collections, or sources within one family require all selected memberships. Sorting by created time, updated time, or priority always adds the book ID as a deterministic tie-breaker. Production reads return a `LibraryPage`: a bounded 200-row slice plus the exact filtered count and a derived `hasMore` state. Manual-relation target search reuses this contract with the source book excluded and exposes its exact count and next page instead of retaining the whole library in view state. The presentation stores append only explicitly requested pages, reset after relevant query or catalog changes, and preserve existing rows if a later page fails. SQLite work runs behind the catalog actor, and main-actor stores reject cancelled or stale responses.
 
 ## State and concurrency
+
+BookKind uses one shared presentation mapping. `LibraryQuery.bookKinds` feeds
+the same parameter-bound SQL predicate for list pages, counts and exact UUID
+focus: selected kinds use OR, other filter families use AND. Empty selection
+means all kinds. Manual-relation target search retains its independent query.
 
 UI state remains feature-sized: `LibraryStore` is scoped to catalog/editor/duplicate flow, `ManualRelationStore` owns one selected book's incoming/outgoing relation snapshot and target-search/create/delete state, `CatalogOrganizerStore` owns organization state, `PortabilityStore` owns file-operation presentation, and `GraphStore` owns graph request generations, filters, selection, and view-local coordinates. A book switch makes `ManualRelationStore` synchronously clear the old snapshot, cancel old work, advance its generation, and require both generation and `bookID` to match before publishing. `StreamingCSVParser`, `LibraryImportCoordinator`, `LibraryExportCoordinator`, `BookAtlasSchemaValidator`, and `LibraryBackupCoordinator` separate parsing, disk staging, preview, transactional writes, serialization, application-schema validation, and SQLite file lifecycle. Import rows live in a controlled JSON-lines staging file; presentation retains aggregate statistics, at most 20 sample rows, and bounded issue details. A source/mapping fingerprint and operation generation prevent stale mapping tasks from publishing old state. SQLite and graph projection/layout work are serialized by the catalog actor instead of running in SwiftUI or on the main actor. That actor also publishes a process-local graph-content revision after successful graph-relevant mutations; graph generations discard stale center, filter, and older-revision results.
 

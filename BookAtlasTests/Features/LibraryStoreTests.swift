@@ -4,6 +4,35 @@ import XCTest
 
 @MainActor
 final class LibraryStoreTests: XCTestCase {
+    func testKindFilterExcludesExactFocusAndClearRestoresWithoutChangingSort() async throws {
+        let repository = try BookRepository.inMemory()
+        let source = try repository.create(BookDraft(title: "Fictional source", author: "Mira Vale"))
+        let target = try repository.create(BookDraft(title: "Fictional reference", author: "Noa Reed", kind: .reference))
+        let store = LibraryStore(catalog: LibraryCatalogService(repository: repository))
+        await store.waitForPendingWork()
+        store.setSort(field: .createdAt, direction: .ascending)
+        store.focusBook(source.id)
+        await store.waitForPendingWork()
+        store.toggleBookKind(.reference)
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.books.map(\.id), [target.id])
+        XCTAssertEqual(store.selectionIssue, .outsideCurrentResults)
+        store.clearFilters()
+        await store.waitForPendingWork()
+        XCTAssertEqual(store.selectedBookID, source.id)
+        XCTAssertNil(store.selectionIssue)
+        XCTAssertEqual(store.query.sortField, .createdAt)
+        XCTAssertEqual(store.query.sortDirection, .ascending)
+        XCTAssertFalse(store.query.hasFilters)
+        store.manualRelations.load(bookID: source.id)
+        await store.manualRelations.waitForPendingWork()
+        store.toggleBookKind(.book)
+        await store.waitForPendingWork()
+        store.manualRelations.beginCreate()
+        await store.manualRelations.waitForPendingWork()
+        XCTAssertTrue(store.manualRelations.targetBooks.contains { $0.id == target.id })
+    }
+
     func testSuspendedRelationSwitchRejectsInvalidCombinationsBeforeDatabaseResolution() {
         let flag = "-BookAtlasSuspendManualRelationSave"
         let combinations = [

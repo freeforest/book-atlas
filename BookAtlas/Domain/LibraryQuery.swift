@@ -13,8 +13,8 @@ enum LibrarySortDirection: String, CaseIterable, Sendable {
 
 /// Structured catalog query.
 ///
-/// Different filter families are combined with AND. Reading statuses within
-/// their family use OR because a book has one status. Tags, collections, and
+/// Different filter families are combined with AND. Reading statuses and book
+/// kinds within their respective families use OR. Tags, collections, and
 /// sources within their families use AND so every selected association must
 /// be present.
 struct LibraryQuery: Equatable, Sendable {
@@ -23,6 +23,7 @@ struct LibraryQuery: Equatable, Sendable {
 
     var searchText: String = ""
     var readingStatuses: Set<ReadingStatus> = []
+    var bookKinds: Set<BookKind> = []
     var tagIDs: Set<UUID> = []
     var collectionIDs: Set<UUID> = []
     var sourceIDs: Set<UUID> = []
@@ -40,6 +41,7 @@ struct LibraryQuery: Equatable, Sendable {
     var hasFilters: Bool {
         !normalizedSearchText.isEmpty
             || !readingStatuses.isEmpty
+            || !bookKinds.isEmpty
             || !tagIDs.isEmpty
             || !collectionIDs.isEmpty
             || !sourceIDs.isEmpty
@@ -48,6 +50,7 @@ struct LibraryQuery: Equatable, Sendable {
     mutating func clearFilters() {
         searchText = ""
         readingStatuses = []
+        bookKinds = []
         tagIDs = []
         collectionIDs = []
         sourceIDs = []

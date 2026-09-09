@@ -67,7 +67,7 @@ The schema is owned by `BookAtlas/Persistence/LibraryRepository.swift` and is ac
 ## Query and organization semantics
 
 - Free-text matching covers title, original title, author, and ISBN. User whitespace is collapsed, `%` and `_` are escaped as literals, ISBN search ignores spaces and hyphens, and current text matching follows SQLite `NOCASE` behavior.
-- Filter families combine with AND. Reading statuses within their family combine with OR. Selected tags, collections, and sources within each family use all-of semantics.
+- Filter families combine with AND. Reading statuses and BookKind values within their respective families combine with OR. Selected tags, collections, and sources within each family use all-of semantics. The P11B kind predicate is shared by rows, counts, paging and exact UUID focus; it does not change stored values or Schema 5.
 - Created-time, updated-time, and priority sorting use a stable `id ASC` tie-breaker. Missing priorities sort after assigned priorities.
 - Tag, collection, and source names collapse surrounding/repeated whitespace and are unique under case- and diacritic-insensitive comparison.
 - Membership join tables prevent duplicates. Deleting organization metadata removes only its joins; books remain. Tag merge inserts missing target memberships, removes the source, and rolls back as one transaction on failure.

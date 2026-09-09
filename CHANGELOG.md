@@ -4,6 +4,12 @@
 
 ### Added
 
+- Authorized Prompt 11B BookKind selector, detail display and shared-query
+  multi-select filtering with unchanged stored values and default. Limited
+  non-UI validation is BLOCKED after the one permitted correction; P11 awaits
+  final controller acceptance. See the P11B plan for the 11 passed / 2 failed
+  result and unexecuted UI/Release/manual checks.
+
 - Local Prompt 11A working-tree implementation for viewing distinct incoming
   and outgoing manual book relations, bounded paged target search, explicit
   source-to-target creation, exact counterpart navigation, and confirmed
@@ -27,7 +33,8 @@
   1/1; this is not a single full UI 45/45 result and no full rerun is required
   for that repair. User Git and complete pending-change review remain PENDING;
   real-user database persistence manual verification and Intel hardware
-  execution remain unverified. Prompt 11B is not authorized.
+  execution remain unverified. Prompt 11B is now separately authorized;
+  its validation does not reuse these P11A results.
 - Historical save-lifecycle repair (`BLOCKED` at that time): it first
   reproduced four failing non-UI cases (exit 65), then passed 12/12 Store tests,
   217/217 complete non-UI tests, and one Debug build (each exit 0). Structured

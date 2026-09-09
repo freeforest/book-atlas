@@ -615,6 +615,12 @@ final class LibraryStore: ObservableObject {
         scheduleQuery(delay: nil)
     }
 
+    func toggleBookKind(_ kind: BookKind) {
+        toggle(kind, in: &query.bookKinds)
+        resetPagination()
+        scheduleQuery(delay: nil)
+    }
+
     func toggleTag(_ id: UUID) {
         toggle(id, in: &query.tagIDs)
         resetPagination()

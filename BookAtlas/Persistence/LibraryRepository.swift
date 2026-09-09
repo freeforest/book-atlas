@@ -607,6 +607,12 @@ final class BookRepository {
             bindings.append(contentsOf: statuses.map { .text($0.rawValue) })
         }
 
+        if !query.bookKinds.isEmpty {
+            let kinds = query.bookKinds.sorted { $0.rawValue < $1.rawValue }
+            predicates.append("kind IN (\(placeholders(count: kinds.count)))")
+            bindings.append(contentsOf: kinds.map { .text($0.rawValue) })
+        }
+
         appendAssociationPredicates(
             ids: query.tagIDs,
             table: "book_tags",

@@ -242,6 +242,41 @@ final class BookAtlasUITests: XCTestCase {
     }
 
     @MainActor
+    func testBookKindSaveCancelDetailAndFilterRecovery() {
+        let app = launchInMemoryApp(seedManualRelations: true)
+        let sourceID = "00000000-0000-0000-0000-000000000101"
+        XCTAssertTrue(element("library-book-\(sourceID)", in: app).waitForExistence(timeout: 3))
+        element("library-book-\(sourceID)", in: app).click()
+        XCTAssertTrue(waitForAccessibilityText(element("book-detail-kind", in: app), containing: "图书", timeout: 3))
+        element("edit-book-button", in: app).click()
+        let picker = element("editor-book-kind", in: app)
+        XCTAssertTrue(picker.waitForExistence(timeout: 3))
+        XCTAssertEqual(picker.value as? String, "图书")
+        picker.click()
+        app.menuItems["工具书"].click()
+        app.typeKey("s", modifierFlags: .command)
+        XCTAssertTrue(waitForAccessibilityText(element("book-detail-kind", in: app), containing: "工具书", timeout: 3))
+        element("edit-book-button", in: app).click()
+        XCTAssertTrue(picker.waitForExistence(timeout: 3))
+        XCTAssertEqual(picker.value as? String, "工具书")
+        picker.click()
+        app.menuItems["文集"].click()
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(element("editor-discard-changes", in: app).waitForExistence(timeout: 3))
+        element("editor-discard-changes", in: app).click()
+        XCTAssertTrue(waitForAccessibilityText(element("book-detail-kind", in: app), containing: "工具书", timeout: 3))
+        element("library-filter-menu", in: app).click()
+        element("library-filter-kind-book", in: app).click()
+        XCTAssertTrue(element("library-selection-unavailable", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(waitForLibraryCount(displayed: 2, total: 2, in: app, timeout: 3))
+        element("clear-filters-selection-issue", in: app).click()
+        XCTAssertTrue(waitForLibraryCount(displayed: 3, total: 3, in: app, timeout: 3))
+        XCTAssertTrue(waitForAccessibilityText(element("book-detail-title", in: app), containing: "A101", timeout: 3))
+        XCTAssertTrue(waitForAccessibilityText(element("book-detail-kind", in: app), containing: "工具书", timeout: 3))
+        XCTAssertTrue(element("library-book-\(sourceID)", in: app).exists)
+    }
+
+    @MainActor
     func testDeleteRequiresConfirmationAndCanBeCancelledOrConfirmed() {
         let app = launchInMemoryApp(seedFictionalBooks: true)
         XCTAssertTrue(element("library-book-list", in: app).waitForExistence(timeout: 3))
