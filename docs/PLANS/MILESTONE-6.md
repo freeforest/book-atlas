@@ -244,3 +244,20 @@ xcrun xcresulttool get test-results tests --path /tmp/bookatlas-p11a-final-g6-fu
 - 只读解析唯一失败的 test-details 和 activities，各 exit 0；仅输出短活动、时间及对应源码/日志窗口，没有输出整份 AX 树或搜索系统日志。原始包与日志完整保留。日志中伴随 Xcode 调试器版本读取警告不等于根因证明。
 - **完整 UI 额度已消耗，未启动第二轮；Release 与增量产物审计未执行，因完整 UI 前置失败**，不计为 skipped tests。当前 Release 实际编译/替身排除/两架构权限 NOT VERIFIED，Intel 实机 NOT VERIFIED。人工验收、Git 和完整待提交范围 PENDING；旧 UI 诸根因仍分别 UNKNOWN。
 - 精确命令及本机路径保留于新临时 EVIDENCE.md，仓库采用 `<UI_EVIDENCE_DIR>` 占位符；见 DEVELOPMENT 追加记录。仅追加两份授权文档。无 git/gh、无 `.git` 访问、无清理、系统调整、提交或发布。**Prompt 11A 仍 BLOCKED；停止等待主控，不开始 Prompt 11B。**
+
+## 2026-09-08 — MINIMAL-COUNT-FIX
+
+主控确认原失败快照的实际数量文本包含“另显示 1 本定位书籍”，旧用例连续文本期望遗漏该部分；与既有分页外精确定位行为一致。本轮只修改 `testZeroResultSearchShowsFocusedIssueAndClearRecoversLibrary`：清除筛选后复用 `waitForAccessibilityText` 等待“已显示 200 本，共 501 本，另显示 1 本定位书籍，可以继续加载”，并使用精确 UUID `30000000-0000-0000-0000-000000000042` 检查原定位行存在。保留开头普通 200/501 与其他断言，未修改 helper、生产代码、工程、数据或超时。普通文件比较确认指定方法之外完全相同；测试后文件校验一致。
+
+用户本轮确认已解锁可交互、期间不输入/切换应用且无其他 UI 自动化。仅一次执行 `BookAtlasUITests/BookAtlasUITests/testZeroResultSearchShowsFocusedIssueAndClearRecoversLibrary`，实际 **1 executed / 1 passed / 0 failed / 0 skipped**，真实 xcodebuild **exit 0**。摘要和完整树解析分别 **exit 0**，树中只有指定身份，无中断或重跑。命令记录如下，`<EVIDENCE_DIR>` 为本轮全新临时目录占位符；精确本机路径由交付报告提供：
+
+```sh
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath <EVIDENCE_DIR>/DerivedData -resultBundlePath <EVIDENCE_DIR>/test.xcresult -only-testing:BookAtlasUITests/BookAtlasUITests/testZeroResultSearchShowsFocusedIssueAndClearRecoversLibrary > <EVIDENCE_DIR>/test.log 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > <EVIDENCE_DIR>/test-exit.txt
+exit "$bookatlas_exit"
+```
+
+解析命令分别为 `xcrun xcresulttool get test-results summary --path <EVIDENCE_DIR>/test.xcresult --compact` 和 `xcrun xcresulttool get test-results tests --path <EVIDENCE_DIR>/test.xcresult --compact`；保留完整 summary.json 和 tests.json，不以解析码代替测试码。
+
+**本次 UI 用例窄修复验证通过，等待主控复核；Prompt 11A 尚未完成整体验收。** 本次不是完整 UI 通过。未重复非 UI、4 项关系 UI、完整 UI、独立构建或 Release，未做全项目扫描。修改后的完整 UI、Release 仍未验证，人工验收及完整待提交范围 PENDING，后续由主控决定。旧结果不覆盖为通过；本轮仅追加本计划，无 git/gh、无 `.git` 访问、无未知文件清理、系统调整、提交或发布。完成后停止，不开始 Prompt 11B。

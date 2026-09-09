@@ -491,10 +491,9 @@ final class BookAtlasUITests: XCTestCase {
         XCTAssertTrue(clearFilters.waitForExistence(timeout: 3))
         clearFilters.click()
         XCTAssertTrue(
-            waitForLibraryCount(
-                displayed: 200,
-                total: 501,
-                in: app,
+            waitForAccessibilityText(
+                element("library-result-count", in: app),
+                containing: "已显示 200 本，共 501 本，另显示 1 本定位书籍，可以继续加载",
                 timeout: 10
             )
         )
@@ -503,6 +502,10 @@ final class BookAtlasUITests: XCTestCase {
                 .waitForExistence(timeout: 3)
         )
         XCTAssertTrue(unavailable.waitForNonExistence(timeout: 3))
+        XCTAssertTrue(
+            element("library-book-30000000-0000-0000-0000-000000000042", in: app)
+                .waitForExistence(timeout: 3)
+        )
     }
 
     @MainActor
