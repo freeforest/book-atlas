@@ -2,6 +2,12 @@
 
 ## Current state
 
+P12 prepares v1.2.0/build 2 as a universal ad-hoc signed `.app` in a DMG.
+The bundle identifier, macOS 26 minimum, SQLite path, Schema 5 and production
+entitlements remain unchanged. Packaging and app-icon resources are local build
+concerns, not a new runtime service. [ADR-0010](DECISIONS/0010-adhoc-dmg-distribution.md)
+supersedes the future source-only policy; V1.0.0 records below remain historical.
+
 Prompts 6–10 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction were accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9's Apple Books and external reading-entry work was accepted at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b` after an independent Debug build, 171/171 tests, and 26/26 UI tests passed. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`; it changes no product scope or schema.
 
 Prompt 11A's manual-relation user loop has passed controller functional

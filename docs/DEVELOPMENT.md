@@ -43,6 +43,16 @@ use relative references or redacted placeholders in repository reports.
 
 ## Current application
 
+P12 prepares version **1.2.0 / build 2**. Use
+`bash Scripts/package_release.sh` for the Universal ad-hoc DMG; see
+[Distribution](DISTRIBUTION.md) and [P12 evidence](PLANS/PROMPT-12.md).
+The paragraphs and results mentioning V1.0.0 below retain their historical
+version and publication context. Current binary distribution is authorized
+without Developer ID or notarization; it is not yet a published Release.
+The sandbox resolves Application Support beneath
+`~/Library/Containers/io.github.freeforest.BookAtlas/Data/Library/`, not the
+unsandboxed user's Library path. Packaging preserves this identity and path.
+
 `BookAtlas.xcodeproj` contains the `BookAtlas` macOS application scheme plus
 `BookAtlasTests` and `BookAtlasUITests`. V1.0.0 targets macOS 26.0 in project,
 application, unit-test, and UI-test Debug/Release settings, uses only SwiftUI

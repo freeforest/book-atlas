@@ -3,7 +3,7 @@
 ## Project identity
 
 - Book Atlas · 图书志 is a local-first macOS tool for managing a personal bibliography and exploring relationships between books.
-- Its audience is the owner and a small number of Mac users comfortable building from GitHub source. Optimize for a dependable, inspectable personal tool, not hypothetical service scale.
+- Its audience is the owner and a small number of Mac users. P12 authorizes ad-hoc signed DMG distribution through owner-managed GitHub Releases; end users need not build from source. Optimize for a dependable, inspectable personal tool, not hypothetical service scale.
 - Build a native Swift and SwiftUI application for macOS only. Use AppKit only where SwiftUI is insufficient.
 - This is not an ebook reader and does not replace reading or note-taking applications.
 - The application is offline by default. Network access requires an explicit, documented reason.

@@ -4,15 +4,64 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-Post-V1.0 product work is limited to the explicitly authorized Prompt 11A
-manual-relation loop, which has passed controller functional acceptance and
-remains unreleased. User Git and complete pending-change review remain
-`PENDING`; [Prompt 11B](docs/PLANS/PROMPT-11B.md) is now authorized for
-BookKind editing, detail display and filtering. The controller accepted the
-agreed P11A and P11B functional scope on 2026-09-10; P11 functional work is
-complete and unreleased. See the
-[final P11 decision](docs/PLANS/PROMPT-11B.md) for the controller decision,
-evidence boundaries, and dated verification records.
+**v1.2.0's macOS App and DMG are ready locally; not yet published.** P11's manual
+relationships and BookKind work passed functional acceptance on 2026-09-10.
+P12's local installation, relaunch and replacement checks passed with authorized
+fictional persistent data. The owner reports completing earlier Git operations; agents do not check
+Git or upload releases. See [P12 status and evidence](docs/PLANS/PROMPT-12.md).
+
+## Download and install / 下载与安装
+
+Requires **macOS 26.0 or newer**. The universal app contains Apple Silicon
+(arm64) and Intel (x86_64) code; Intel hardware execution is not yet verified.
+Users do **not** need Xcode, Homebrew or any development environment.
+
+After the owner publishes v1.2.0, choose **BookAtlas-1.2.0.dmg** under Assets on the
+[GitHub Releases page](https://github.com/freeforest/book-atlas/releases).
+The older v1.0.0 contains source archives only.
+
+**Download DMG → Open DMG → Drag BookAtlas into Applications → Eject DMG →
+Launch BookAtlas from Applications.**
+
+### First launch / 首次打开
+
+This version is **ad-hoc signed, without Apple Developer ID or notarization**.
+macOS may block the first launch because it cannot verify the developer.
+Only if you trust this official release, try opening the installed app once,
+then choose **System Settings → Privacy & Security → Open Anyway** and confirm.
+中文：**系统设置 → 隐私与安全性 → 安全性 → 仍要打开**。
+Later launches normally work by double-clicking; updates or system policies
+may require approval again. Follow
+[Apple's instructions](https://support.apple.com/guide/mac-help/mh40616/mac).
+
+Do not disable Gatekeeper or remove quarantine attributes. If macOS reports
+malware, a damaged app, or an organizational restriction, stop and report the
+exact message without private library data. Ad-hoc signing is not Apple review
+or verified publisher identity. The adjacent SHA-256 file checks download
+integrity, not publisher authenticity.
+
+### Upgrade without losing your library / 升级
+
+Create a full backup using **数据 → 创建完整备份…**, quit the old app, then
+drag the new app into Applications and confirm replacement. Do not use a
+cleaner that deletes the app's data container. There is no automatic updater.
+
+The Bundle ID remains `io.github.freeforest.BookAtlas`. The database remains
+outside the app in the sandbox's Application Support directory, normally:
+
+```text
+~/Library/Containers/io.github.freeforest.BookAtlas/Data/Library/Application Support/BookAtlas/book-atlas.sqlite
+```
+
+Schema 5 and backup format 1 are unchanged. Different source-build Bundle IDs
+or sandbox settings can use different locations; in that case transfer data
+through the old app's full-backup and the new app's restore UI. Never move a
+live SQLite database manually or copy it without its active sidecar files.
+See [installation instructions](docs/INSTALL.txt) and
+[v1.2.0 release notes](docs/RELEASE_NOTES-1.2.0.md).
+
+<details>
+<summary>Historical development and v1.0.0 acceptance evidence</summary>
 
 ### Historical V1.0 acceptance and publication
 
@@ -54,6 +103,8 @@ supplement evidence is recorded in `docs/QUALITY_AUDIT.md`. Prompt 10 later
 passed independent acceptance; that acceptance did not publish the repository,
 create a tag or GitHub Release, or upload an application.
 
+</details>
+
 ## Product boundaries
 
 - Native macOS application using Swift, SwiftUI, and only necessary AppKit integration.
@@ -66,7 +117,11 @@ The Xcode project and Swift module are both `BookAtlas`, the display name is
 `Book Atlas`, and the V1.0.0 application bundle identifier is
 `io.github.freeforest.BookAtlas`.
 
-## GitHub source-publication policy
+## Historical v1.0.0 source-publication policy
+
+The source-only restrictions in this section apply to **v1.0.0**, not to the
+newly authorized P12 distribution. [ADR-0010](docs/DECISIONS/0010-adhoc-dmg-distribution.md)
+permits ad-hoc DMGs from 1.2.0 onward, without Developer ID or notarization.
 
 The approved Book Atlas V1.0.0 source snapshot was formally published as a
 source-only Release at
@@ -114,9 +169,9 @@ configured; [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) is the authoritative
 source for that contact. The user confirmed control of the dedicated project
 channel and authorized its publication. Security PVR remains limited to
 vulnerability reports and is not a conduct-reporting substitute. No test
-message was sent. If precompiled GitHub Release applications are considered
-in the future, that requires a separate authorized release task covering
-Developer ID, notarization, Gatekeeper, integrity, installation, and updates.
+message was sent. P12 is the separately authorized binary-distribution task;
+its signing limitations, installation checks and manual updates are recorded
+in ADR-0010 and the P12 plan, without changing the v1.0.0 tag or Release.
 
 ## Documentation
 
@@ -134,6 +189,8 @@ Developer ID, notarization, Gatekeeper, integrity, installation, and updates.
 - [GitHub source publication checklist](docs/RELEASE_CHECKLIST.md)
 - [Changelog](CHANGELOG.md)
 - [V1.0.0 source release notes](docs/RELEASE_NOTES-1.0.0.md)
+- [V1.2.0 app release notes](docs/RELEASE_NOTES-1.2.0.md)
+- [Local packaging and release checklist](docs/DISTRIBUTION.md)
 
 ## Repository data policy
 
@@ -162,6 +219,17 @@ xcodebuild \
 ```
 
 The complete commands, test isolation rules, effective-entitlement check, and current limitations are in [Development](docs/DEVELOPMENT.md). Prompt 1's isolated experiments remain in `Experiments/TechnicalSpikes/` and are not a production dependency.
+
+To produce the version configured in the Xcode project (currently 1.2.0), run:
+
+```sh
+bash Scripts/package_release.sh
+```
+
+The script builds a universal Release app and writes the DMG and SHA-256 file
+to `dist/`. It never publishes, uses paid credentials or performs Git actions.
+It refuses to overwrite an existing artifact; pass a new output directory for
+a new candidate. Xcode is required only by maintainers building the package.
 
 ## Local data and privacy
 

@@ -27,8 +27,11 @@ Protect the integrity and confidentiality of the local library, minimize OS capa
 The repository must not contain API keys, private keys, certificates,
 provisioning profiles, credentials, notarization secrets, private environment
 files, or account identifiers. V1.0.0 is source-only and has no distribution
-signing/notarization setup. If binary distribution is considered later, it
-requires a separate task and secret-safe configuration outside the repository.
+signing/notarization setup. P12 separately authorizes ad-hoc signed DMGs from
+v1.2.0 onward, without paid membership, Developer ID or notarization secrets.
+This does not authenticate the publisher to Apple. Documentation presents the
+per-app Open Anyway decision and never recommends disabling Gatekeeper or
+removing quarantine. See [ADR-0010](DECISIONS/0010-adhoc-dmg-distribution.md).
 
 ## Dependency policy
 

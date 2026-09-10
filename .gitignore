@@ -3,6 +3,9 @@
 .AppleDouble
 
 # Xcode and Swift build output
+dist/
+*.dmg
+*.app/
 DerivedData/
 .build/
 Build/

@@ -30,3 +30,4 @@ Keep ADRs concise. An ADR records a decision; implementation details belong in c
 - [ADR-0007: Deterministic duplicate resolution](0007-deterministic-duplicate-resolution.md) — Accepted
 - [ADR-0008: Versioned portability formats and safe database snapshots](0008-versioned-portability-formats.md) — Accepted
 - [ADR-0009: macOS 26-only source release](0009-macos-26-only-source-release.md) — Accepted
+- [ADR-0010: Ad-hoc signed DMG distribution](0010-adhoc-dmg-distribution.md) — Accepted; supersedes ADR-0009's future source-only restriction, retains macOS 26 minimum

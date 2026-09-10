@@ -1,0 +1,35 @@
+Book Atlas · 图书志
+
+安装 / Install
+1. 需要 macOS 26.0 或更新版本。不需要 Xcode 或其他开发工具。
+2. 打开 DMG，把 BookAtlas.app 拖到 Applications（应用程序）。
+3. 推出 DMG，从 Applications 双击打开 BookAtlas。
+
+首次打开 / First launch
+本版本使用 ad-hoc 签名，没有 Apple Developer ID 签名，也没有 Apple 公证。
+若 macOS 因无法验证开发者阻止启动，先尝试从 Applications 打开一次，
+再前往：系统设置 → 隐私与安全性 → 安全性 → 仍要打开，确认本次打开。
+只有确认安装包来自项目官方 Release 并愿意承担风险时才这样操作。
+之后通常可以正常双击启动；系统策略或后续更新可能要求再次确认。
+若提示恶意软件、文件损坏，或设备由组织管理且不允许打开，请停止并反馈；
+不要关闭 Gatekeeper、删除隔离属性或修改系统安全设置来强行运行。
+
+Open the DMG → drag BookAtlas into Applications → eject the DMG → launch BookAtlas.
+If macOS blocks this unidentified app, use System Settings → Privacy & Security
+→ Open Anyway, only if you trust this release. No Developer ID or notarization.
+Apple's instructions: https://support.apple.com/guide/mac-help/mh40616/mac
+
+升级和数据 / Updates and data
+升级前，在旧版“数据 → 创建完整备份…”保存备份，再完全退出旧版。
+把新 BookAtlas.app 拖到 Applications 并确认替换。不要使用清理工具删除书库。
+数据库位于应用沙盒的 Application Support/BookAtlas/book-atlas.sqlite，
+不在 App 或 DMG 内。替换 App 不会主动删除书库。请保留完整沙盒和备份，
+不要在 App 运行时手动移动数据库，也不要只复制 SQLite 文件而遗漏旁文件。
+BookAtlas 不自动更新；以后仍从官方 Release 下载新版本。
+
+平台 / Platform
+安装包包含 arm64（Apple Silicon）和 x86_64（Intel）原生代码；
+仅兼容能运行 macOS 26 的 Mac。Intel 实机尚未验证。
+没有账号、AI、云同步、遥测或应用内网络客户端。
+
+项目 / Project: https://github.com/freeforest/book-atlas

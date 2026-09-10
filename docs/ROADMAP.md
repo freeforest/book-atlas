@@ -1,5 +1,19 @@
 # Roadmap
 
+## Current stage: P12 — v1.2.0 App distribution
+
+P11A/P11B functional work is accepted. The owner reports completing Git and
+has authorized direct P12 implementation in the existing workspace: standard
+Universal App, ad-hoc signature, DMG, installation/persistence verification,
+and ordinary-user documentation. No paid Apple signing, notarization, new
+feature or automatic update work. Publishing/tagging remains manual owner work.
+See [P12](PLANS/PROMPT-12.md); the source-only exclusions below are historical
+V1.0.0 decisions, superseded for new versions by ADR-0010.
+The local DMG, six targeted tests and authorized fictional-data installation,
+relaunch and replacement checks are complete. Intel hardware and a different
+Mac's downloaded-app Gatekeeper flow remain unverified. Release publication
+and the current pending-change review remain owner actions.
+
 The original development roadmap was sequential and is complete through Prompt
 10. No Prompt 11 started automatically. Prompt 11A was later explicitly
 authorized as the first stage of Milestone 6 and has passed controller
