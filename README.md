@@ -4,20 +4,22 @@ Book Atlas is a lightweight, local-first macOS application for maintaining a per
 
 ## Status
 
-**v1.2.0's macOS App and DMG are ready locally; not yet published.** P11's manual
+**[BookAtlas v1.2.0 is published](https://github.com/freeforest/book-atlas/releases/tag/v1.2.0).** P11's manual
 relationships and BookKind work passed functional acceptance on 2026-09-10.
 P12's local installation, relaunch and replacement checks passed with authorized
-fictional persistent data. The owner reports completing earlier Git operations; agents do not check
-Git or upload releases. See [P12 status and evidence](docs/PLANS/PROMPT-12.md).
+fictional persistent data. Publication and public-download checksum verification completed
+on 2026-09-10 under explicit release authorization. Post-publication documentation
+and the complete pending-change review remain owner Git work. See [P12 status and evidence](docs/PLANS/PROMPT-12.md).
 
 ## Download and install / 下载与安装
 
-Requires **macOS 26.0 or newer**. The universal app contains Apple Silicon
-(arm64) and Intel (x86_64) code; Intel hardware execution is not yet verified.
+Supports **Apple Silicon / M-series Macs running macOS 26.0 or newer**.
+The package contains arm64 and x86_64 code, but Intel is not supported by this release
+and Intel hardware execution is not verified.
 Users do **not** need Xcode, Homebrew or any development environment.
 
-After the owner publishes v1.2.0, choose **BookAtlas-1.2.0.dmg** under Assets on the
-[GitHub Releases page](https://github.com/freeforest/book-atlas/releases).
+Download **[BookAtlas-1.2.0.dmg](https://github.com/freeforest/book-atlas/releases/download/v1.2.0/BookAtlas-1.2.0.dmg)**
+and its [SHA-256 checksum](https://github.com/freeforest/book-atlas/releases/download/v1.2.0/BookAtlas-1.2.0.dmg.sha256).
 The older v1.0.0 contains source archives only.
 
 **Download DMG → Open DMG → Drag BookAtlas into Applications → Eject DMG →

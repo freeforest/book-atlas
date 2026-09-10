@@ -43,7 +43,7 @@ use relative references or redacted placeholders in repository reports.
 
 ## Current application
 
-P12 prepares version **1.2.0 / build 2**. Use
+P12 published version **1.2.0 / build 2**, supporting M-series Macs on macOS 26.0+. Use
 `bash Scripts/package_release.sh` for the Universal ad-hoc DMG; see
 [Distribution](DISTRIBUTION.md) and [P12 evidence](PLANS/PROMPT-12.md).
 The paragraphs and results mentioning V1.0.0 below retain their historical

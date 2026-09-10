@@ -2,18 +2,19 @@
 
 ## [Unreleased]
 
-### P12 — v1.2.0 distribution preparation
+### P12 — v1.2.0 distribution (published 2026-09-10)
 
 - Standard app icon and 1.2.0/build 2 metadata; stable Bundle ID and macOS 26 minimum.
 - Local universal ad-hoc Release/DMG packaging script, SHA-256 file and ordinary-user
   installation, first-launch and backup-before-update instructions.
 - No Developer ID/notarization, Gatekeeper bypass, automatic updater, schema,
-  data-location or runtime dependency change. Not yet published; P12 execution
+  data-location or runtime dependency change. Formally published with public-download checksum verification; P12 execution
   evidence and remaining checks are recorded in `docs/PLANS/PROMPT-12.md`.
 - Local DMG integrity, six targeted tests, About metadata, installation,
   relaunch and replacement persistence passed on authorized fictional data.
   Intel hardware and another Mac's downloaded-app first-approval flow remain
-  unverified; no full-suite rerun or actual publication is implied.
+  unverified; no full-suite rerun is implied. This release supports M-series Macs
+  on macOS 26.0+ only, despite retaining the universal package.
 
 ### Accepted P11 work and historical verification
 

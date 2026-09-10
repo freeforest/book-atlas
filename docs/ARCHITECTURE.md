@@ -2,7 +2,8 @@
 
 ## Current state
 
-P12 prepares v1.2.0/build 2 as a universal ad-hoc signed `.app` in a DMG.
+P12 published v1.2.0/build 2 as a universal ad-hoc signed `.app` in a DMG;
+the release support policy is M-series Macs only, macOS 26.0+.
 The bundle identifier, macOS 26 minimum, SQLite path, Schema 5 and production
 entitlements remain unchanged. Packaging and app-icon resources are local build
 concerns, not a new runtime service. [ADR-0010](DECISIONS/0010-adhoc-dmg-distribution.md)

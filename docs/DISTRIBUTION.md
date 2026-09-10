@@ -1,7 +1,10 @@
 # Local macOS distribution
 
-P12 prepares an **ad-hoc signed, non-notarized** GitHub Release DMG.
-The owner publishes it manually. The historical
+P12 published the **ad-hoc signed, non-notarized**
+[v1.2.0 DMG](https://github.com/freeforest/book-atlas/releases/tag/v1.2.0)
+under explicit one-release authorization on 2026-09-10. Support is limited to
+**M-series Macs with macOS 26.0+**; the existing universal package is unchanged.
+The historical
 [v1.0.0 source checklist](RELEASE_CHECKLIST.md) is not a binary release checklist.
 
 ## Build and package
@@ -52,7 +55,7 @@ tools, with no downloaded assets or external package dependency.
   exist, and no development path, third-party runtime or data is in the bundle.
 - A real browser download on a separate Mac is needed to verify its actual
   Gatekeeper/first-approval flow. A local `open` success is not that evidence.
-- Intel is unverified until tested on an Intel Mac running supported macOS.
+- Intel hardware execution is unverified and Intel is outside this release's support policy.
 
 Never open a real user library for testing without explicit permission. Do not
 rename/delete a data container or use cleanup/security bypass commands to make
@@ -61,18 +64,19 @@ or differently identified source builds.
 
 ## Owner's GitHub Release
 
-After reviewing the current files and verification record, the owner manually
-creates a **new** `v1.2.0` tag/Release titled **Book Atlas v1.2.0**.
+The published `v1.2.0` tag points to `7c324d82dbb6a4f65b2aafceabbddd942050c97b`.
+The formal Release is titled **BookAtlas v1.2.0**, neither draft nor prerelease.
+The two custom assets were publicly downloaded and checked against the local package.
+Future repository operations still require the owner's explicit authorization.
 Do not move, replace or delete `v1.0.0`. Upload **only** the DMG and its
 `.dmg.sha256` checksum as custom assets. Use
-[RELEASE_NOTES-1.2.0.md](RELEASE_NOTES-1.2.0.md) as the body, omitting its
-pre-publication preparation sentence. Replace the relative P12 record link
-with a link to that file in the v1.2.0 source snapshot.
+[RELEASE_NOTES-1.2.0.md](RELEASE_NOTES-1.2.0.md) for the release content;
+public links must resolve to the official repository or versioned source snapshot.
 
 Do not upload DerivedData, `.xcresult`, logs, signing keys/certificates,
 databases, backups, or the temporary test app. The DMG already contains the
 app and install instructions; a ZIP or PKG is unnecessary.
 
-Only after publication should README's prepared/not-published wording change
-to the actual release URL/date. Document the real downloaded-artifact checks
-separately. [P12](PLANS/PROMPT-12.md) records performed checks and limitations.
+[P12](PLANS/PROMPT-12.md) records publication, downloaded-artifact checks and
+limitations. Post-publication local documentation remains for the owner to commit;
+that does not make the published installation assets unavailable.

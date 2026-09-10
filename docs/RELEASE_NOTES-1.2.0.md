@@ -1,7 +1,6 @@
 # Book Atlas v1.2.0 · 图书志
 
-Release text prepared for the owner's new `v1.2.0` GitHub Release.
-Preparing this file does not publish a Release.
+Published on 2026-09-10: [BookAtlas v1.2.0](https://github.com/freeforest/book-atlas/releases/tag/v1.2.0).
 
 ## Download and install / 下载与安装
 
@@ -12,8 +11,8 @@ Xcode, a compiler, Homebrew, or a developer account.
 2. Drag **BookAtlas.app** into **Applications**.
 3. Eject the DMG and launch BookAtlas from Applications.
 
-Requires **macOS 26.0 or newer**. The app contains Apple Silicon (arm64) and
-Intel (x86_64) code; only Intel Macs that support macOS 26 are eligible.
+Supports **Apple Silicon / M-series Macs with macOS 26.0 or newer**. The app
+contains arm64 and x86_64 code, but this release does not offer Intel support.
 Intel hardware execution has not been verified.
 
 ## First launch / 首次打开

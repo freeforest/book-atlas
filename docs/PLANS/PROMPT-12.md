@@ -4,9 +4,10 @@
 
 2026-09-10，用户正式授权在当前 workspace、当前主代理直接实施。
 P11 功能验收不变；用户表示已完成 Git 操作（用户反馈，不等于代理核验工作区）。
-本阶段准备新的 v1.2.0 GitHub Release 产物，不修改 v1.0.0 或其 tag。
-本地交付状态：**P12 实现及限定安装验证完成，DMG 已备妥；未发布。**
-Git、创建新 tag、上传 Release 由用户手动处理。实际结果和限制见下文。
+当前交付状态：**v1.2.0 已正式发布，公开下载校验通过；仅支持 M 系列 Mac / macOS 26.0+。**
+2026-09-10 的 P12-RELEASE-FINAL 专项授权允许本次远端 tag、Release 和资产操作；
+本地 Git 及发布后文档同步仍由用户处理，完整待提交范围核对 PENDING。
+下方原准备与本地验证记录保留为历史，不代表当前尚未发布；v1.0.0 未修改。
 
 ## 范围
 
@@ -172,3 +173,49 @@ P11 保存的 9 个直接相关 Swift/测试文件与当前逐字节校验一致
 
 结论：本地 App、DMG 和安装/重开/覆盖安装的数据持久性检查通过，所述限制保留。
 发行文件和普通用户文档已准备；发布前由用户核对本次变更并创建新的 v1.2.0 Release。
+
+## 2026-09-10 P12-RELEASE-FINAL：正式发布
+
+**PUBLISHED**。发布时间为 2026-09-10 08:17:55 UTC。用户专项授权本次远端
+创建 tag、草稿、上传两个资产并正式发布；未执行本地 Git 或访问 `.git`。
+未修改 v1.0.0、历史 tag、权限或 Secrets，未构建、测试、启动或安装应用。
+
+- [正式 Release](https://github.com/freeforest/book-atlas/releases/tag/v1.2.0)，
+  标题 `BookAtlas v1.2.0`，非 Draft、非 Pre-release；此前只有 v1.0.0，设置为 Latest。
+- tag `v1.2.0` 指向完整提交 `7c324d82dbb6a4f65b2aafceabbddd942050c97b`。
+- [BookAtlas-1.2.0.dmg](https://github.com/freeforest/book-atlas/releases/download/v1.2.0/BookAtlas-1.2.0.dmg)，5,751,239 bytes。
+- [校验文件](https://github.com/freeforest/book-atlas/releases/download/v1.2.0/BookAtlas-1.2.0.dmg.sha256)，86 bytes。
+- DMG SHA-256：`553e23f6c69bb8b4aeac3cc1906dbaa470ae06fc0fab15771a8776cb438c4d12`。
+- 版本 1.2.0 / build 2，Bundle ID `io.github.freeforest.BookAtlas`。
+
+### 本轮最小核验
+
+从上述不可变提交下载公开源码快照，46 个应用源码、工程、资源和打包输入逐文件
+`cmp` 与本地一致；保留构建的 36 个应用 Swift 输入身份也一致。相关输入修改时间
+均不晚于最终构建开始；保留的最终构建结果为 exit 0，本轮 build-results 只读解析
+exit 0 / succeeded / 0 errors / 0 structured warnings。原始 AppIntents 跳过警告保留。
+最终包装暂存的安装说明、License、图标与输入逐字节一致，dist DMG 与该最终包装
+DMG 逐字节一致。结合既有最终元数据、签名及安装记录建立本次发行输入对应关系；
+不声称重建可复现或完整历史/待提交范围审计。
+
+首次受限网络 POST 在连接代理前被沙盒拒绝；随后先查询确认 tag 仍不存在（404），
+获所需网络执行权限后才创建。草稿按 tag 查询返回 404，改用 Release 列表核验同一
+草稿，未重复创建。创建、上传及发布操作均 exit 0，两资产 state=uploaded，GitHub
+摘要与本地一致，无覆盖操作。
+
+发布后使用不带认证的 `curl --fail --location` 读取公开页面、Release API 和 tag，
+并将两个资产重新下载至独立 `<PUBLISH_EVIDENCE>/download/`；命令完成 exit 0。
+公开 API 确认 draft=false、prerelease=false、tag 提交与资产名称/大小正确；
+`shasum -a 256 -c BookAtlas-1.2.0.dmg.sha256` 及与本地两个文件的 `cmp` 均成功。
+这是公开下载交付核验，不是另一台 Mac 的 Gatekeeper 或首次启动验证。
+
+### 支持与剩余事项
+
+仅支持 **Apple Silicon / M 系列 Mac，macOS 26.0+**。安装包保留 arm64+x86_64，
+不是 arm64-only，也不承诺 Intel 支持。ad-hoc 签名，无 Developer ID/Apple 公证；
+其他设备首次下载和启动反馈尚未收集，Intel 实机运行未验证，均为本次已接受限制。
+首次启动按 Apple 官方“隐私与安全性 → 仍要打开”流程，不绕过系统保护。
+
+本轮发布后文档修改尚未同步远端，交用户手动 Git；完整待提交范围核对仍 PENDING。
+本地文档未提交不改变安装包已公开发布的事实。既有真实用户数据、历史版本和
+跨设备验证边界保留；不把 P11 分轮证据合并成单轮完整通过，不启动下一功能阶段。

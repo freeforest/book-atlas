@@ -24,8 +24,8 @@ Book Atlas · 图书志 helps one person turn a growing personal bibliography in
 
 ## First-release scope
 
-Current distribution work is [P12](PLANS/PROMPT-12.md): a downloadable v1.2.0
-ad-hoc signed DMG, requiring macOS 26 but no developer tools for end users.
+Current distribution is [P12's published v1.2.0](PLANS/PROMPT-12.md): an
+ad-hoc signed DMG for M-series Macs running macOS 26.0+, with no developer tools required.
 The owner accepts the first-launch Gatekeeper warning; no Developer ID,
 notarization, paid account, automatic updates or new product feature is added.
 The V1.0.0 paragraph below describes that historical source-only release.
