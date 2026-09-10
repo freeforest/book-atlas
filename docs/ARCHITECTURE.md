@@ -12,11 +12,11 @@ supersedes the future source-only policy; V1.0.0 records below remain historical
 Prompts 6–10 have passed independent acceptance. Prompt 7 adds versioned CSV import, mapping and preview, safe Markdown/CSV export, SQLite online backup, and validated interruption-safe restore; it was accepted at baseline `b27318c741fee5b4a66e5ad99cb979177285fef5`. Prompt 8's bounded graph projection, deterministic layout, native rendering, and accessible interaction were accepted after its second independent review at baseline `6ae90dd50ee71f574e0b4cc1ffccfd7e4c2e71aa`. Prompt 9's Apple Books and external reading-entry work was accepted at baseline `1f7a35cda11fcafd23aacab0cb5c72e811327d0b` after an independent Debug build, 171/171 tests, and 26/26 UI tests passed. Prompt 10 passed independent acceptance at documentation baseline `ec0b04f1c004ef5c897d3269e335c92034d6021e`, against verified code baseline `4cc20b8c88cb674a4f9a52d3e8de70c295169281`; it changes no product scope or schema.
 
 Prompt 11A's manual-relation user loop has passed controller functional
-acceptance and remains unreleased. The controller's evidence decision is
+acceptance and is included in v1.2.0. The controller's evidence decision is
 recorded in [Milestone 6](PLANS/MILESTONE-6.md); user Git and complete
 pending-change review remain `PENDING`. The separately authorized
 [Prompt 11B](PLANS/PROMPT-11B.md) now adds BookKind UI and query filtering;
-its two corrected non-UI tests passed, the separate accessibility repair passed its single UI and Release checks, the user confirmed the four fictional-memory manual checks, and the controller accepted P11A/P11B's agreed functional scope on 2026-09-10. P11 functional work is complete and unreleased.
+its two corrected non-UI tests passed, the separate accessibility repair passed its single UI and Release checks, the user confirmed the four fictional-memory manual checks, and the controller accepted P11A/P11B's agreed functional scope on 2026-09-10. P11 functional work is complete and included in v1.2.0.
 
 V1.0.0 source-publication preparation sets the production deployment target
 to macOS 26.0, marketing version 1.0.0, build number 1, and application bundle

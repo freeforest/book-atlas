@@ -5,9 +5,9 @@ Book Atlas v1.0.0 was formally published as a source-only GitHub Release on
 `991d932a5fafe0d9821b46ec5e779cd6c9849171`. The public Release is available at
 <https://github.com/freeforest/book-atlas/releases/tag/v1.0.0> and contains only
 GitHub-generated source archives; no precompiled application or custom release
-asset is distributed in that version. P12 now prepares a separate v1.2.0
-ad-hoc signed DMG, without Developer ID or Apple notarization; it is not yet
-published. See [distribution security](docs/DECISIONS/0010-adhoc-dmg-distribution.md).
+asset is distributed in that version. The published v1.2.0 provides an
+ad-hoc signed DMG for M-series Macs on macOS 26.0+, without Developer ID or
+Apple notarization. See [distribution security](docs/DECISIONS/0010-adhoc-dmg-distribution.md).
 
 The project security model, threat boundaries, import/URL/backup controls,
 dependency policy, and logging rules are documented in

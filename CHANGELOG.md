@@ -2,7 +2,14 @@
 
 ## [Unreleased]
 
-### P12 — v1.2.0 distribution (published 2026-09-10)
+### Changed
+
+- Refocused the GitHub introduction, added a fictional CSV demo and real
+  library/Book Graph screenshots, and clarified installation and documentation links.
+
+## [1.2.0] - 2026-09-10
+
+### Distribution
 
 - Standard app icon and 1.2.0/build 2 metadata; stable Bundle ID and macOS 26 minimum.
 - Local universal ad-hoc Release/DMG packaging script, SHA-256 file and ordinary-user
@@ -27,11 +34,11 @@
   remains 1 passed / 1 failed; the separately authorized detail accessibility
   repair passed its single UI and Release checks. The user confirmed all four
   fictional-memory manual checks. The controller accepted P11A and P11B's
-  agreed functional scope on 2026-09-10; P11 functional work is complete and
-  unreleased. User Git and complete pending-change review remain PENDING.
+  agreed functional scope on 2026-09-10; that work is included in 1.2.0.
+  At acceptance it was unreleased, with user Git and complete pending-change review PENDING.
   The P11B plan preserves the earlier 11/13 failure and final evidence limits.
 
-- Local Prompt 11A working-tree implementation for viewing distinct incoming
+- Manual-relation workflow for viewing distinct incoming
   and outgoing manual book relations, bounded paged target search, explicit
   source-to-target creation, exact counterpart navigation, and confirmed
   relation-only deletion.
@@ -45,7 +52,7 @@
 
 ### Validation status
 
-- Prompt 11A has passed controller functional acceptance and remains unreleased.
+- Prompt 11A passed controller functional acceptance before publication in 1.2.0.
   Evidence: Store 45/45, complete non-UI 221/221, relation UI 4/4 including
   busy-state/Escape, Release build/product checks, and user-confirmed manual
   creation, navigation, cancelled deletion and confirmed deletion in the
@@ -54,7 +61,7 @@
   1/1; this is not a single full UI 45/45 result and no full rerun is required
   for that repair. User Git and complete pending-change review remain PENDING;
   real-user database persistence manual verification and Intel hardware
-  execution remain unverified. Prompt 11B is now separately authorized;
+  execution remained unverified at that acceptance. Prompt 11B was separately authorized;
   its validation does not reuse these P11A results.
 - Historical save-lifecycle repair (`BLOCKED` at that time): it first
   reproduced four failing non-UI cases (exit 65), then passed 12/12 Store tests,
@@ -100,4 +107,5 @@
 - No claim of exact Apple Books private-library targeting or permanent
   whole-application zero-warning Accessibility Inspector results.
 
+[1.2.0]: https://github.com/freeforest/book-atlas/releases/tag/v1.2.0
 [1.0.0]: https://github.com/freeforest/book-atlas/releases/tag/v1.0.0

@@ -48,7 +48,9 @@ P12 published version **1.2.0 / build 2**, supporting M-series Macs on macOS 26.
 [Distribution](DISTRIBUTION.md) and [P12 evidence](PLANS/PROMPT-12.md).
 The paragraphs and results mentioning V1.0.0 below retain their historical
 version and publication context. Current binary distribution is authorized
-without Developer ID or notarization; it is not yet a published Release.
+without Developer ID or notarization; v1.2.0 is published.
+The P11 acceptance-time references to unreleased work below are historical;
+the accepted manual-relation and BookKind features are included in v1.2.0.
 The sandbox resolves Application Support beneath
 `~/Library/Containers/io.github.freeforest.BookAtlas/Data/Library/`, not the
 unsandboxed user's Library path. Packaging preserves this identity and path.

@@ -39,12 +39,12 @@ promise macOS 14/15 compatibility or provide a precompiled application.
 
 The current implementation provides the native library interface, book CRUD, organization, search/filter/sort, deterministic duplicate review, CSV import with mapping and bounded disk-staged preview, Markdown/CSV export, versioned full-database backup/restore, a bounded local relationship graph, and explicit external reading entries on the accepted direct-SQLite store. Import explains duplicates against both the current library and earlier rows in the same batch, then rechecks at execution; it never overwrites, automatically merges, or creates a hidden pending-review record. Restore validates the physical file and Book Atlas domain schema, creates a recovery copy, and enters a process-interruption-safe replacement protocol only after confirmation. The graph is an optional projection of same-author, shared-tag, same-list, same-source, and explicit manual relationships; it does not infer editions or persist layout state.
 
-The Prompt 11A working tree adds a book-detail loop for explicit manual
+Released in v1.2.0, Prompt 11A adds a book-detail loop for explicit manual
 relations: incoming and outgoing directions stay distinct; a user can search a
 bounded, paged target list, preview source-to-target direction, create a typed
 relation with an optional note, navigate to the exact counterpart UUID, and
 confirm deletion of only the relation. Prompt 11A has passed controller
-functional acceptance and remains unreleased; user Git and complete
+functional acceptance; at that acceptance it was unreleased. User Git and complete
 pending-change review remain `PENDING`.
 Creation can be cancelled before submission without writing. Once submitted,
 cancellation and related draft changes are temporarily disabled until the
@@ -62,7 +62,7 @@ from reading status. New books default to 图书; stored raw values and CSV are
 unchanged. Multiple selected kinds use OR, combined with other filter families
 using AND. Clearing filters preserves sorting. The two corrected non-UI tests passed; the separate accessibility repair passed its single UI and Release checks; the user confirmed all four fictional-memory manual checks;
 P11A and P11B's agreed functional scope was accepted by the controller on
-2026-09-10; P11 functional work is complete and unreleased. User Git and
+2026-09-10; P11 functional work is complete and included in v1.2.0. User Git and
 complete pending-change review remain PENDING.
 
 External reading actions are always user initiated. The app can hand a validated HTTPS URL to macOS, distinguish `books.apple.com`, offer a confirmed public Apple Books search, launch the installed Apple Books application, copy an ISBN or title, and retain a read-only bookmark for a file the user selected. It does not read ebook content, check URL reachability, use a network client, scan directories, or claim exact access to a private Apple Books library item.
