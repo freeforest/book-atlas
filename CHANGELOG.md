@@ -10,8 +10,10 @@
   precondition-repair tests passing; not one 13/13 run. The historical UI batch
   remains 1 passed / 1 failed; the separately authorized detail accessibility
   repair passed its single UI and Release checks. The user confirmed all four
-  fictional-memory manual checks. P11 awaits final
-  controller acceptance. The P11B plan preserves the earlier 11/13 failure.
+  fictional-memory manual checks. The controller accepted P11A and P11B's
+  agreed functional scope on 2026-09-10; P11 functional work is complete and
+  unreleased. User Git and complete pending-change review remain PENDING.
+  The P11B plan preserves the earlier 11/13 failure and final evidence limits.
 
 - Local Prompt 11A working-tree implementation for viewing distinct incoming
   and outgoing manual book relations, bounded paged target search, explicit

@@ -14,7 +14,7 @@ or change a recorded acceptance decision.
 - [Milestone 4 — portability and exploration](MILESTONE-4.md)
 - [Milestone 5 — release quality](MILESTONE-5.md)
 - [Milestone 6 — 手动关系用户闭环](MILESTONE-6.md) — Prompt 11A 功能验收及文档收口通过；未发布；用户 Git 与完整待提交范围核对待完成
-- [Prompt 11B — BookKind 与详情完整性](PROMPT-11B.md) — 实现与本轮限定验证、四项用户人工检查完成；P11 整体待主控最终验收
+- [Prompt 11B — BookKind 与详情完整性](PROMPT-11B.md) — P11A/P11B 约定功能范围已获主控验收，P11 功能工作完成；未发布；用户 Git 与完整待提交范围核对 PENDING
 
 Do not advance a product milestone while its prerequisite acceptance has
 failing checks, undocumented changes, unresolved private-data findings, or
