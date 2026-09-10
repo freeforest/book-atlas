@@ -14,17 +14,15 @@ Native macOS · Local-first · Offline · No account · No telemetry
 
 No Xcode, Homebrew or development environment required.
 
-**Download → Open DMG → Drag BookAtlas.app to Applications → Eject DMG → Launch from Applications.**
+**Download → Open DMG → Drag to Applications → Eject → Launch.**
 
 中文：下载安装包 → 打开 DMG → 拖入“应用程序”→ 推出 DMG → 从“应用程序”启动。
 
-This release supports **M-series Macs running macOS 26.0 or later**. The package includes arm64 and x86_64 code, but Intel support is not offered.
+The app is **ad-hoc signed, without Developer ID signing or Apple notarization**. Only for an unverified-developer block, and if you trust the official Release source, follow [Apple’s instructions](https://support.apple.com/guide/mac-help/mh40616/mac): **System Settings → Privacy & Security → Open Anyway**. 中文：**系统设置 → 隐私与安全性 → 仍要打开**。
 
-The app is **ad-hoc signed, without Developer ID signing or Apple notarization**. If macOS blocks it because the developer cannot be verified, first confirm that you downloaded it from the official Release, then follow [Apple’s instructions](https://support.apple.com/guide/mac-help/mh40616/mac): **System Settings → Privacy & Security → Open Anyway**. 中文：**系统设置 → 隐私与安全性 → 仍要打开**。
+Open Anyway is not available under every policy. For a **damaged app, malware warning or organizational restriction**, stop and report it. Do not disable Gatekeeper or remove quarantine attributes.
 
-This may not be available under every system policy. A **damaged app, malware warning or organizational restriction** is different: stop and report it. Do not disable Gatekeeper or remove quarantine attributes.
-
-Before upgrading, create an in-app full backup, quit the old app completely, then replace it in Applications. Do not delete the app’s data container.
+Before upgrading, create an in-app full backup, quit the old app completely, then replace it in Applications without deleting its data container.
 
 [Release notes](docs/RELEASE_NOTES-1.2.0.md) · [SHA-256 checksum](https://github.com/freeforest/book-atlas/releases/download/v1.2.0/BookAtlas-1.2.0.dmg.sha256) · [Distribution details](docs/DISTRIBUTION.md)
 
@@ -57,7 +55,13 @@ External reading actions are deliberate: opening a link hands it to another app,
 Open `BookAtlas.xcodeproj`, select the **BookAtlas** scheme and use a compatible **Xcode 26** toolchain. From the repository root:
 
 ```sh
-xcodebuild -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -derivedDataPath /tmp/bookatlas-debug build
+xcodebuild \
+  -project BookAtlas.xcodeproj \
+  -scheme BookAtlas \
+  -configuration Debug \
+  -destination 'platform=macOS,arch=arm64' \
+  -derivedDataPath /tmp/bookatlas-debug \
+  build
 ```
 
 See [Development](docs/DEVELOPMENT.md) for testing and isolated runs, and [Distribution](docs/DISTRIBUTION.md) for packaging.
@@ -66,7 +70,7 @@ The architecture is SwiftUI/AppKit UI → feature stores/catalog → domain mode
 
 [Product](docs/PRODUCT.md) · [Architecture](docs/ARCHITECTURE.md) · [Data model](docs/DATA_MODEL.md) · [Changelog](CHANGELOG.md)
 
-Historical verification is archived separately: [v1.0.0 quality audit](docs/QUALITY_AUDIT.md), [v1.0.0 source-release record](docs/RELEASE_CHECKLIST.md), [manual relationships](docs/PLANS/MILESTONE-6.md), [book types and details](docs/PLANS/PROMPT-11B.md), and [v1.2.0 distribution evidence](docs/PLANS/PROMPT-12.md). These records retain their original scope and are not claims of new test runs.
+Development history and verification records are available in the [milestone documentation](docs/PLANS/README.md).
 
 ## Contributing and license
 
