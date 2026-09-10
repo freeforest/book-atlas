@@ -8,7 +8,7 @@ Post-V1.0 product work is limited to the explicitly authorized Prompt 11A
 manual-relation loop, which has passed controller functional acceptance and
 remains unreleased. User Git and complete pending-change review remain
 `PENDING`; [Prompt 11B](docs/PLANS/PROMPT-11B.md) is now authorized for
-BookKind editing, detail display and filtering; the two corrected non-UI tests passed and the UI batch failed (1 passed, 1 failed), so continuation is BLOCKED.
+BookKind editing, detail display and filtering; the two corrected non-UI tests passed and the separately authorized accessibility repair passed its single UI check and Release checks; the user confirmed all four fictional-memory manual checks. P11 awaits final controller acceptance.
 P11 awaits final controller acceptance. See the
 [active milestone](docs/PLANS/MILESTONE-6.md) for the controller decision,
 evidence boundaries, and dated verification records.

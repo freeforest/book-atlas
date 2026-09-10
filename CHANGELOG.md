@@ -7,8 +7,10 @@
 - Authorized Prompt 11B BookKind selector, detail display and shared-query
   multi-select filtering with unchanged stored values and default. Limited
   validation now has historical 11 passing tests plus two newly authorized
-  precondition-repair tests passing; not one 13/13 run. The UI batch failed (1 passed, 1 failed);
-  Release/manual checks were not executed. P11 awaits final
+  precondition-repair tests passing; not one 13/13 run. The historical UI batch
+  remains 1 passed / 1 failed; the separately authorized detail accessibility
+  repair passed its single UI and Release checks. The user confirmed all four
+  fictional-memory manual checks. P11 awaits final
   controller acceptance. The P11B plan preserves the earlier 11/13 failure.
 
 - Local Prompt 11A working-tree implementation for viewing distinct incoming

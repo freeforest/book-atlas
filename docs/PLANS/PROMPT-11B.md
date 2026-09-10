@@ -4,6 +4,8 @@
 
 已授权，局部实现已形成；两项测试前置修正验证 2/2 通过，后续唯一一次 UI 批次 1 passed / 1 failed，状态 BLOCKED，已停止。其余历史 11 项通过证据沿用，不表述为本轮 13/13。P11 整体待主控最终验收，未发布。P11A 功能验收与文档收口已完成，其历史证据不改写。Git 与完整待提交范围由用户核对，仍 PENDING。
 
+2026-09-10 当前进度：详情类型可访问性局部修复的独立 UI 1/1、一次 Release 最小核验及用户虚构内存四项人工检查通过。P11B 实现与本轮限定验证完成，等待主控最终验收 P11；未发布。上段为先前停止状态，历史失败保留，不合并为一次全套通过。Git 与完整待提交范围仍 PENDING。
+
 ## 范围与检查
 
 - 复用四种 BookKind 与既有草稿/保存通路；共享中文映射，增加编辑器选择器和详情显示。
@@ -78,3 +80,52 @@ exit "$bookatlas_exit"
 ```
 
 解析命令分别为 `xcrun xcresulttool get test-results summary --path <UI_EVIDENCE_DIR>/ui.xcresult --compact` 与 `xcrun xcresulttool get test-results tests --path <UI_EVIDENCE_DIR>/ui.xcresult --compact`，JSON 与日志、结果包保留。用户 Git 和完整待提交范围仍 PENDING；真实库持久性人工验证和 Intel 实机未完成。未执行 git/gh、未访问 `.git`、未清理、调整系统或发布。
+
+## 2026-09-10 详情类型可访问性窄修复：等待会话确认
+
+本轮新授权仅将 BookDetailView 的“书籍类型”布局行改为局部两列 GridRow，标识直接绑定实际值 Text；可见值与 accessibilityValue 共用 book.kind.displayTitle，保留 secondary 标签样式和文本选择。没有改变公共 DetailField/DetailFields、其他字段、测试、helper、保存或查询逻辑。普通文件 diff 确认仅此局部变化，标识源码只有一处；四处 UI 断言保持原样。
+
+主控报告已只读核对旧录像，四个时点的可见类型符合预期；此为主控提供的证据，不是本轮人工验收。具体 SwiftUI/系统成因仍未完全证实；辅助进程崩溃附件与断言的因果关系未建立，不展开系统排查。
+
+上轮临时目录中的 tested-state.sha256 当前不存在，读取校验退出 2；因此本轮未重新验证历史清单逐字节对应关系（NOT VERIFIED），不能声称历史各文件再次核对通过。本轮保留修改前详情快照、普通文件比较和当前直接相关文件校验，未删除任何旧证据或重新运行历史测试。
+
+尚未取得本轮 UI 会话确认，未运行测试或构建。后续仅授权一次既有 BookKind 综合 UI 单项，通过后一次 Release 最小检查，再由用户完成虚构内存人工检查；失败即停，不重试。P11 整体仍待主控最终验收，Git/完整待提交范围及人工反馈 PENDING，真实库持久性人工验证、Intel 实机未完成。未执行 git/gh、未访问 `.git`，未清理、调整系统或发布。
+
+### 同日获确认后的实际结果
+
+用户提供本轮会话确认后，唯一一次 `BookAtlasUITests/testBookKindSaveCancelDetailAndFilterRecovery()` 实际完整执行：**1 passed / 0 failed / 0 skipped / 0 cancelled**，真实进程 exit **0**；summary、完整 tests 解析各 exit **0**，身份一致。四处详情类型文本及保存、取消、筛选、恢复断言均未改动。未重跑历史键盘回归、非 UI、P11A 或完整套件。仅能证明该局部修复后的场景通过，不声称旧系统成因完全查明。
+
+随后一次 Release build：真实进程 exit **0**，build-results 解析 exit **0**，succeeded，结构化 errorCount/warningCount/analyzerWarningCount 均 0。原始日志另有 `Metadata extraction skipped. No AppIntents.framework dependency found.` 警告，保留，不抹去。
+
+实际两个 SwiftDriver 编译命令均未定义 DEBUG，已有等待替身与注入仍由 `#if DEBUG` 隔离。lipo 返回 x86_64、arm64；按各架构 codesign 读取 entitlement 均 exit 0，均仅 sandbox、user-selected.read-write、bookmarks.app-scope 三项 true，无网络 entitlement。此为本地构建，不是 Intel 实机运行或发布证明。本轮 10 个直接相关文件的局部校验在 UI 前后及 Release 后一致；不扩大为已丢失历史清单的重新核验。
+
+以下 `<EVIDENCE_DIR>` 指本轮唯一临时目录，真实本机路径在交付报告；所有日志、退出码、JSON、结果包及各架构 entitlement 保留：
+
+```sh
+xcodebuild test -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Debug -destination 'platform=macOS,arch=arm64' -parallel-testing-enabled NO -maximum-parallel-testing-workers 1 -derivedDataPath <EVIDENCE_DIR>/ui-dd -resultBundlePath <EVIDENCE_DIR>/ui.xcresult -only-testing:BookAtlasUITests/BookAtlasUITests/testBookKindSaveCancelDetailAndFilterRecovery > <EVIDENCE_DIR>/ui.log 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > <EVIDENCE_DIR>/ui-exit.txt
+exit "$bookatlas_exit"
+
+xcodebuild build -project BookAtlas.xcodeproj -scheme BookAtlas -configuration Release -destination 'platform=macOS,arch=arm64' -derivedDataPath <EVIDENCE_DIR>/release-dd -resultBundlePath <EVIDENCE_DIR>/release.xcresult > <EVIDENCE_DIR>/release.log 2>&1
+bookatlas_exit=$?
+printf '%s\n' "$bookatlas_exit" > <EVIDENCE_DIR>/release-exit.txt
+exit "$bookatlas_exit"
+```
+
+两条构建/测试命令分别执行；解析使用 `xcrun xcresulttool get test-results summary`、`test-results tests`（`--path <EVIDENCE_DIR>/ui.xcresult --compact`），以及 `get build-results --path <EVIDENCE_DIR>/release.xcresult --compact`。解析退出码不是测试/构建退出码。
+
+人工检查尚未反馈：使用本轮 `release-dd/Build/Products/Release/BookAtlas.app`，以 `open -n "<RELEASE_APP>" --args -ApplePersistenceIgnoreState YES -BookAtlasUseInMemoryStore -BookAtlasSeedManualRelationUITestData` 启动独立虚构内存实例，确认 A101/B202/C303 后检查类型保存、修改后取消、类型筛选、清除筛选与精确定位。不得默认打开真实库，不将录像或自动化当作人工通过。P11 整体待主控最终验收；未发布，Git/完整待提交范围 PENDING。
+
+### 同日用户人工反馈
+
+用户针对上述本轮已核验 Release 虚构内存实例的四步清单，实际反馈“上述四项均无异常”。据此记录以下结果为 PASS（用户确认，非代理自动操作或录像推定）：
+
+1. A101 类型改为“工具书”并保存，详情显示正确。
+2. 再改“文集”后取消并放弃修改，原“工具书”类型保留。
+3. 筛选“图书”时仅 B202、C303，A101 提示不在当前结果中。
+4. 清除筛选后恢复三本书并精确定位 A101，类型仍为“工具书”。
+
+本次只证明该虚构内存环境的人工交互；真实用户数据库持久性人工验证、Intel 实机运行仍未完成。历史 11 项非 UI 通过、两项修正后独立通过、历史 UI 1 passed / 1 failed、本轮独立 UI 1/1 分别保留，不合并成单轮全套通过。
+
+**P11B 实现与本轮限定验证完成，等待主控最终验收 P11；未发布。** P11A 已验收状态不变；用户 Git 与完整待提交范围核对 PENDING。本次仅记录反馈和同步当前文档状态，未新增构建或测试，未执行 git/gh、未访问 `.git`、未清理、提交或发布。停止等待主控。

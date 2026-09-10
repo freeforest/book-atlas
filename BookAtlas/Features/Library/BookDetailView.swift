@@ -35,9 +35,15 @@ struct BookDetailView: View {
 
                 GroupBox("书目信息") {
                     DetailFields {
-                        DetailField("书籍类型", value: book.kind.displayTitle)
-                            .accessibilityElement(children: .combine)
-                            .accessibilityIdentifier("book-detail-kind")
+                        GridRow {
+                            Text("书籍类型")
+                                .foregroundStyle(.secondary)
+                            Text(book.kind.displayTitle)
+                                .textSelection(.enabled)
+                                .accessibilityLabel("书籍类型")
+                                .accessibilityValue(book.kind.displayTitle)
+                                .accessibilityIdentifier("book-detail-kind")
+                        }
                         DetailField("阅读状态", value: book.readingStatus.displayTitle)
                         if let priority = book.priority {
                             DetailField("优先级", value: "\(priority.rawValue)")
