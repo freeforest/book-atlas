@@ -24,14 +24,6 @@ struct AppShellView: View {
                 )
         }
         .toolbar {
-            if selection != .library {
-                ToolbarItem(placement: .principal) {
-                    Text(selection.title)
-                        .font(.headline)
-                        .accessibilityIdentifier("toolbar-title")
-                }
-            }
-
             ToolbarItem(placement: .primaryAction) {
                 Menu("导航", systemImage: "sidebar.left") {
                     ForEach(AppSection.allCases) { section in

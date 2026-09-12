@@ -40,8 +40,8 @@ final class BookAtlasUITests: XCTestCase {
                         .waitForExistence(timeout: 3),
                     "Expected \(title) page after selecting \(identifier)"
                 )
-                XCTAssertTrue(element("toolbar-title", in: app).waitForExistence(timeout: 3))
             }
+            XCTAssertTrue(element("toolbar-title", in: app).waitForNonExistence(timeout: 3))
         }
 
         element("navigation-library", in: app).click()
