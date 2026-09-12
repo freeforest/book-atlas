@@ -2,7 +2,7 @@
 
 A native Mac app to organize your books and explore the connections between them.
 
-**[Download v1.2.0](https://github.com/freeforest/book-atlas/releases/download/v1.2.0/BookAtlas-1.2.0.dmg) · Apple Silicon · macOS 26.0+**
+**[Download v1.2.1](https://github.com/freeforest/book-atlas/releases/download/v1.2.1/BookAtlas-1.2.1.dmg) · Apple Silicon · macOS 26.0+**
 
 ![Book Atlas library with twelve fictional books and the selected book’s type, reading status and notes](docs/media/bookatlas-library.png)
 
@@ -24,7 +24,7 @@ Open Anyway is not available under every policy. For a **damaged app, malware wa
 
 Before upgrading, create an in-app full backup, quit the old app completely, then replace it in Applications without deleting its data container.
 
-[Release notes](docs/RELEASE_NOTES-1.2.0.md) · [SHA-256 checksum](https://github.com/freeforest/book-atlas/releases/download/v1.2.0/BookAtlas-1.2.0.dmg.sha256) · [Distribution details](docs/DISTRIBUTION.md)
+[Release notes](docs/RELEASE_NOTES-1.2.1.md) · [SHA-256 checksum](https://github.com/freeforest/book-atlas/releases/download/v1.2.1/BookAtlas-1.2.1.dmg.sha256) · [Distribution details](docs/DISTRIBUTION.md)
 
 ## A library you can work with
 

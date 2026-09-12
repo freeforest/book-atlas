@@ -7,13 +7,22 @@ under explicit one-release authorization on 2026-09-10. Support is limited to
 The historical
 [v1.0.0 source checklist](RELEASE_CHECKLIST.md) is not a binary release checklist.
 
-## 1.2.1 local package — not yet published
+## 1.2.1 published release
 
-Version **1.2.1 / build 3** has been prepared locally for the accepted main-page
-toolbar-title fix. Its artifacts are `dist/BookAtlas-1.2.1.dmg` and
-`dist/BookAtlas-1.2.1.dmg.sha256`; see the [draft release notes](RELEASE_NOTES-1.2.1.md).
-No 1.2.1 upload or publication has occurred. The published v1.2.0 downloads and
-historical verification below remain unchanged.
+Version **1.2.1 / build 3** was published on **2026-09-12 at 08:58:32 UTC**
+for the accepted main-page toolbar-title fix. The
+[formal Release](https://github.com/freeforest/book-atlas/releases/tag/v1.2.1)
+is neither draft nor prerelease and is marked Latest. Tag `v1.2.1` points to
+`38db00ba266a8f2e095a3ac9ffeb8578fc187dea`.
+
+The two assets are `BookAtlas-1.2.1.dmg` (5,729,230 bytes) and
+`BookAtlas-1.2.1.dmg.sha256` (86 bytes); see the [release notes](RELEASE_NOTES-1.2.1.md).
+The local DMG and GitHub's uploaded-asset digest both equal
+`2b0cc50c6f04c9067ebf3df96b331aae453bf66d62d60bac164bda65a1b1e504`.
+Public-download verification was explicitly omitted at the owner's request;
+uploaded-asset metadata is not a downloaded-file check. Local documentation
+updates remain for the owner to commit and push. The v1.0.0/v1.2.0 tags,
+Release content, assets and historical verification remain unchanged.
 
 ## Build and package
 

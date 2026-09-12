@@ -1,6 +1,7 @@
 # Book Atlas 1.2.1
 
-Version **1.2.1 / build 3**。本地准备完成，尚未发布；本文为后续正式发布正文草稿。
+Version **1.2.1 / build 3**，于 **2026-09-12 08:58:32 UTC** 正式发布并设为 Latest。
+[正式 Release](https://github.com/freeforest/book-atlas/releases/tag/v1.2.1)。
 
 ## 本次修复
 

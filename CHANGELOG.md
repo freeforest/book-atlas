@@ -2,15 +2,17 @@
 
 ## [Unreleased]
 
-### Fixed
-
-- Prepared for 1.2.1: removed the redundant button-like central toolbar titles
-  from all five main pages, preserving page headings, sidebar and navigation actions.
-
 ### Changed
 
 - Refocused the GitHub introduction, added a fictional CSV demo and real
   library/Book Graph screenshots, and clarified installation and documentation links.
+
+## [1.2.1] - 2026-09-12
+
+### Fixed
+
+- Removed the redundant button-like central toolbar titles from all five main
+  pages, preserving page headings, sidebar and navigation actions.
 
 ## [1.2.0] - 2026-09-10
 
