@@ -24,10 +24,12 @@ struct AppShellView: View {
                 )
         }
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(selection.title)
-                    .font(.headline)
-                    .accessibilityIdentifier("toolbar-title")
+            if selection != .library {
+                ToolbarItem(placement: .principal) {
+                    Text(selection.title)
+                        .font(.headline)
+                        .accessibilityIdentifier("toolbar-title")
+                }
             }
 
             ToolbarItem(placement: .primaryAction) {

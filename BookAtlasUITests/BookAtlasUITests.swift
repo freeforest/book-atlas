@@ -25,6 +25,7 @@ final class BookAtlasUITests: XCTestCase {
 
         XCTAssertTrue(element("app-sidebar", in: app).waitForExistence(timeout: 3))
         XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("toolbar-title", in: app).waitForNonExistence(timeout: 3))
         XCTAssertTrue(app.menuBars.menuBarItems["导航"].exists)
 
         for (identifier, title) in pages {
@@ -39,8 +40,13 @@ final class BookAtlasUITests: XCTestCase {
                         .waitForExistence(timeout: 3),
                     "Expected \(title) page after selecting \(identifier)"
                 )
+                XCTAssertTrue(element("toolbar-title", in: app).waitForExistence(timeout: 3))
             }
         }
+
+        element("navigation-library", in: app).click()
+        XCTAssertTrue(element("library-empty-state", in: app).waitForExistence(timeout: 3))
+        XCTAssertTrue(element("toolbar-title", in: app).waitForNonExistence(timeout: 3))
     }
 
     @MainActor
