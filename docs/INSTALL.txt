@@ -28,8 +28,8 @@ Apple's instructions: https://support.apple.com/guide/mac-help/mh40616/mac
 BookAtlas 不自动更新；以后仍从官方 Release 下载新版本。
 
 平台 / Platform
-安装包包含 arm64（Apple Silicon）和 x86_64（Intel）原生代码；
-仅兼容能运行 macOS 26 的 Mac。Intel 实机尚未验证。
+仅支持 Apple Silicon / M 系列 Mac，要求 macOS 26.0 或更新版本。
+安装包保留 arm64 和 x86_64 原生代码，但不承诺 Intel 支持；Intel 实机尚未验证。
 没有账号、AI、云同步、遥测或应用内网络客户端。
 
 项目 / Project: https://github.com/freeforest/book-atlas

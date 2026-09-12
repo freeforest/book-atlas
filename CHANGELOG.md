@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Prepared for 1.2.1: removed the redundant button-like central toolbar titles
+  from all five main pages, preserving page headings, sidebar and navigation actions.
+
 ### Changed
 
 - Refocused the GitHub introduction, added a fictional CSV demo and real

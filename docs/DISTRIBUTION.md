@@ -7,6 +7,14 @@ under explicit one-release authorization on 2026-09-10. Support is limited to
 The historical
 [v1.0.0 source checklist](RELEASE_CHECKLIST.md) is not a binary release checklist.
 
+## 1.2.1 local package — not yet published
+
+Version **1.2.1 / build 3** has been prepared locally for the accepted main-page
+toolbar-title fix. Its artifacts are `dist/BookAtlas-1.2.1.dmg` and
+`dist/BookAtlas-1.2.1.dmg.sha256`; see the [draft release notes](RELEASE_NOTES-1.2.1.md).
+No 1.2.1 upload or publication has occurred. The published v1.2.0 downloads and
+historical verification below remain unchanged.
+
 ## Build and package
 
 On a Mac with Xcode 26 and its command-line tools selected, from the repo root:
@@ -23,7 +31,7 @@ It does not launch the app or inspect any library. The printed temporary
 directory retains the raw build log, true exit code, `.xcresult`, app and
 package diagnostics. No log or database is embedded in the DMG.
 
-Output for this version:
+Published v1.2.0 artifacts (retained):
 
 ```text
 dist/BookAtlas-1.2.0.dmg
